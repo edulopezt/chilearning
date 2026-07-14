@@ -7,6 +7,35 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-15 — Cableado del motor (tarea 0.7) + endurecimiento por revisión adversarial
+
+Implementación del motor sobre el contrato congelado: cifrado AES-256-GCM del
+token (I-6/I-7), servicio `startSession`/`handleCallback`/`buildCloseForm` con
+`tenantGuard`, rutas `/api/sence/start|cb/{nonce}|close` (Zod en el borde),
+tablas `sence_otec_config` (token cifrado por tenant) y subconjunto académico
+mínimo (`courses`/`actions`/`enrollments`). Suite de integración con BD contra el
+mock cubre el gate F0 (apertura, error mono/multi, cierre, replay, exento,
+abandono de Clave Única, aislamiento, token nunca persistido).
+
+**Revisión adversarial (4 ojos, agente distinto) — correcciones aplicadas:**
+- **C-1 (crítico):** `dedupe_hash` pasa a índice NO-único; se persiste todo
+  callback (I-1) y se chequea el error de insert (ver [D-012](../../specs/DECISIONES.md)).
+- **H-1 (alto):** `/api/sence/close` ahora verifica que la sesión pertenece al
+  alumno (antes filtraba el token del OTEC a cualquier usuario del tenant).
+- **H-2 (alto):** nonce por sesión en la URL de callback contra falsificación
+  cross-sesión ([D-013](../../specs/DECISIONES.md)).
+- **H-3 (alto):** compare-and-set en la transición (evita que una carrera pise
+  una transición legítima).
+- **M-1:** `expires_at` anclado a la hora de recepción ([D-014](../../specs/DECISIONES.md)).
+- **M-2:** `Cache-Control: no-store` en las respuestas con el token.
+- **M-3/M-4:** logging de callbacks de error y gate anti-basura en el receptor.
+
+Pendiente (Hito 1/3): worker de expiración (T4/T6/T9), alerting completo (I-9),
+rate-limiting del callback público. Sigue faltando la certificación en `rcetest`
+con token real (tarea 0.9, con Edu).
+
+---
+
 ## 2026-07-14 — Contrato del motor congelado contra manual oficial *Integración Registro Asistencia SENCE* v1.1.6
 
 El contrato del motor SENCE queda **congelado contra el manual oficial

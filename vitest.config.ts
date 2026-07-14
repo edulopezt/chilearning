@@ -5,6 +5,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Marcadores de Next.js: Next los provee en runtime; en vitest son no-op.
+      "server-only": path.resolve(__dirname, "./test/empty-module.ts"),
+      "client-only": path.resolve(__dirname, "./test/empty-module.ts"),
     },
   },
   test: {

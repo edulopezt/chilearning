@@ -245,3 +245,54 @@ entrada original.
   RLS igual niega todo, pero el signup abierto habilita creación masiva de
   cuentas y enumeración de correos. Hallazgo LOW-5 de la revisión de 0.4.
 - **Alternativas descartadas:** dejar el signup abierto en prod (riesgo de abuso).
+
+---
+
+## D-012 — El `dedupe_hash` de sence_events NO es único (persistir todo callback)
+
+- **ID:** D-012
+- **Fecha:** 2026-07-15
+- **Decisión:** el índice `sence_events_dedupe_idx` es NO-único. Un callback
+  repetido (replay) persiste un SEGUNDO evento; la idempotencia de la TRANSICIÓN
+  la garantiza la máquina de estados (re-leer la fila → `applyCallback` no-op).
+- **Por qué:** la revisión adversarial del motor (hallazgo C-1) mostró que un
+  índice único DESCARTABA el 2º evento y —peor— el código tragaba cualquier
+  error de insert, violando I-1 ("perder un callback es perder evidencia
+  irrecuperable"). El contrato (I-1, I-3, §8 caso 5) exige DOS filas, UNA
+  transición.
+- **Alternativas descartadas:** índice único + ignorar el error de choque
+  (descartada: pierde evidencia y enmascara errores reales de persistencia).
+
+## D-013 — Nonce por sesión en la URL de callback (anti-falsificación)
+
+- **ID:** D-013
+- **Fecha:** 2026-07-15
+- **Decisión:** cada sesión SENCE genera un `callback_nonce` corto que viaja en
+  `UrlRetoma`/`UrlError` (`/api/sence/cb/{nonce}`). El callback solo transiciona
+  la sesión si el nonce coincide; si no, se persiste como `unmatched` sin
+  transicionar.
+- **Por qué:** hallazgo H-2. Sin el nonce, cualquiera que conozca el
+  `IdSesionAlumno` de una víctima (viaja por su navegador) podía forjar un
+  callback y forzar el cierre o error de su sesión (falsificación cross-sesión).
+  El nonce solo lo conoce el navegador de la sesión legítima. La auto-
+  falsificación (el propio alumno) es inherente al protocolo browser-mediated y
+  queda documentada como límite (§7); no se deriva "asistencia" solo del estado
+  puesto por el callback sin corroboración.
+- **Alternativas descartadas:** HMAC del cuerpo (SENCE no firma sus callbacks);
+  confiar solo en `IdSesionAlumno` (descartada: adivinable/expuesto por el
+  navegador).
+
+## D-014 — `expires_at` se ancla a la hora de RECEPCIÓN, no a la FechaHora de SENCE
+
+- **ID:** D-014
+- **Fecha:** 2026-07-15
+- **Decisión:** la ventana de 3 h (`expires_at`) se calcula desde la hora de
+  recepción del servidor (`now`), no desde la `FechaHora` del callback.
+  `opened_at` guarda la `FechaHora` acotada a no ser futura.
+- **Por qué:** hallazgo M-1. Anclar el deadline a un timestamp controlado por
+  SENCE/el cliente permitía extenderlo con una `FechaHora` futura, y el parseo
+  en la zona del servidor (UTC en el VPS vs hora de Chile) podía "nacer
+  expirada" una sesión legítima. Anclar a la recepción hace el deadline inmune a
+  manipulación y a desfases de zona horaria.
+- **Alternativas descartadas:** `expires_at = FechaHora + 3h` literal
+  (descartada por lo anterior; se preserva `opened_at` para el registro).

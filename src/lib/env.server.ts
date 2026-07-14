@@ -16,3 +16,19 @@ export function serverEnv() {
     ),
   } as const;
 }
+
+/**
+ * Config solo-servidor del motor SENCE. `SENCE_ENV` decide contra qué se habla:
+ * `mock` (dev/CI, usa `SENCE_MOCK_URL`), `test` (rcetest) o `prod` (rce).
+ */
+export function senceEnv() {
+  const senceEnvValue = (process.env.SENCE_ENV ?? "mock") as "mock" | "test" | "prod";
+  return {
+    tokenEncryptionKey: requiredEnv(
+      "SENCE_TOKEN_ENCRYPTION_KEY",
+      process.env.SENCE_TOKEN_ENCRYPTION_KEY,
+    ),
+    mode: senceEnvValue,
+    mockUrl: process.env.SENCE_MOCK_URL ?? "http://127.0.0.1:4010",
+  } as const;
+}

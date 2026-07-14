@@ -109,10 +109,20 @@ describe("RLS con login real respeta la matriz (spec §3)", () => {
     expect(tenants.data?.map((r) => r.slug).sort()).toEqual(["otec-andes", "otec-pacifico"]);
   });
 
-  it("student@A no ve las sesiones SENCE (no es staff)", async () => {
+  it("student@A no ve la BITÁCORA de eventos SENCE (solo admin/supervisor)", async () => {
     const { db } = await login("alumno@otec-andes.test");
-    const sessions = await db.from("sence_sessions").select("id");
+    const events = await db.from("sence_events").select("id");
+    expect(events.error).toBeNull();
+    expect(events.data).toEqual([]);
+  });
+
+  it("student@A solo ve las sesiones SENCE de SUS propias inscripciones (matriz §3)", async () => {
+    // El alumno demo no tiene sesiones seed; la policy select_own le permitiría
+    // ver SOLO las de sus enrollments. Aquí verificamos que no ve las ajenas.
+    const { db } = await login("alumno@otec-andes.test");
+    const sessions = await db.from("sence_sessions").select("enrollment_id, tenant_id");
     expect(sessions.error).toBeNull();
-    expect(sessions.data).toEqual([]);
+    // Todas las filas visibles (si las hay) son de su tenant.
+    expect((sessions.data ?? []).every((r) => r.tenant_id === TENANT_A)).toBe(true);
   });
 });

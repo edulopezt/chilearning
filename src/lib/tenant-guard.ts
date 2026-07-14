@@ -63,6 +63,17 @@ function serviceClient(): SupabaseClient {
 }
 
 /**
+ * Cliente service-role SIN tenant, EXCLUSIVO para el caso en que el tenant aún
+ * no se conoce y hay que descubrirlo (el callback de SENCE llega sin sesión y se
+ * correlaciona por `id_sesion_alumno`). Apenas se conoce el tenant, el llamador
+ * DEBE cambiar a `tenantGuard(tenantId)` para todo lo demás. Centralizar la
+ * creación aquí mantiene la service-role key en un solo archivo auditable.
+ */
+export function untenantedServiceClient(): SupabaseClient {
+  return serviceClient();
+}
+
+/**
  * Crea un guard atado a un tenant concreto. `tenantId` debe ser un UUID válido
  * y conocido por el llamador (ej. resuelto por subdominio o traído del callback
  * ya correlacionado). Falla si no lo es.
