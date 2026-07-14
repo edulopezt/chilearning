@@ -1,0 +1,10 @@
+# Normalizar finales de línea (evita ruido CRLF/LF entre Windows y CI Linux)
+* text=auto eol=lf
+
+# Binarios
+*.pdf binary
+*.zip binary
+*.webp binary
+*.png binary
+*.jpg binary
+*.ico binary

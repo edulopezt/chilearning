@@ -1,0 +1,4 @@
+# Builds nativos aprobados explícitamente (pnpm approve-builds; sin esto el CI falla)
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
