@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
-import { isSuperadmin } from "@/modules/core/domain/rbac";
+import { hasRole, isSuperadmin } from "@/modules/core/domain/rbac";
 import { SignOutButton } from "./sign-out-button";
 
 /**
@@ -37,6 +38,15 @@ export default async function DashboardPage() {
           <dd className="font-medium">{principal.roles.join(", ") || "—"}</dd>
         </div>
       </dl>
+
+      {hasRole(principal, "student") ? (
+        <Link
+          href="/mi-curso"
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-neutral-900 px-4 font-medium text-white dark:bg-white dark:text-neutral-900"
+        >
+          {esCL.dashboard.goToCourse}
+        </Link>
+      ) : null}
     </main>
   );
 }

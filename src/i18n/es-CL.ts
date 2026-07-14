@@ -30,6 +30,23 @@ export const esCL = {
     yourRoles: "Tus roles",
     yourTenant: "Tu organización",
     platformAdmin: "Administrador de plataforma (sin organización)",
+    goToCourse: "Ir a mi curso",
+  },
+  course: {
+    noCourse: "Aún no tienes cursos asignados.",
+    lockedTitle: "Registra tu asistencia SENCE para acceder al contenido",
+    lockedBody:
+      "Para ver este curso debes registrar tu asistencia con tu Clave Única, según exige SENCE.",
+    register: "Registrar asistencia SENCE",
+    registering: "Registrando… vuelve a esta página tras iniciar sesión con tu Clave Única.",
+    waiting: "Estamos esperando la confirmación de SENCE. Recarga en unos segundos.",
+    close: "Cerrar sesión SENCE",
+    exento: "Estás exento(a) de registro SENCE (becario/a). Puedes ver el contenido directamente.",
+    sessionActive: "Asistencia registrada. Tu sesión SENCE está activa.",
+    timeLeft: "Tiempo restante de sesión",
+    expired: "Tu sesión SENCE expiró. Vuelve a registrar tu asistencia para continuar.",
+    lessonsTitle: "Contenido del curso",
+    videoNote: "Video de la lección",
   },
   sence: {
     /**

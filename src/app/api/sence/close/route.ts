@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { tenantGuard } from "@/lib/tenant-guard";
 import { getPrincipal } from "@/modules/core/auth/session";
+import { readRequestBody } from "@/modules/sence/request-body";
 import { renderAutoSubmitForm } from "@/modules/sence/auto-submit-form";
 import { buildCloseForm } from "@/modules/sence/engine";
 import { buildEngineDeps } from "@/modules/sence/server-deps";
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  const parsed = bodySchema.safeParse(await readRequestBody(request));
   if (!parsed.success) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }

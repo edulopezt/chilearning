@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { tenantGuard } from "@/lib/tenant-guard";
 import { getPrincipal } from "@/modules/core/auth/session";
+import { readRequestBody } from "@/modules/sence/request-body";
 import { renderAutoSubmitForm } from "@/modules/sence/auto-submit-form";
 import { startSession } from "@/modules/sence/engine";
 import { buildEngineDeps } from "@/modules/sence/server-deps";
@@ -11,7 +12,8 @@ const bodySchema = z.object({ enrollmentId: z.string().uuid() });
 
 /**
  * POST /api/sence/start — inicia el registro de asistencia (T1). Solo el alumno
- * inscrito. Devuelve una página que auto-envía el form POST hacia SENCE.
+ * inscrito. Devuelve una página que auto-envía el form POST hacia SENCE. Acepta
+ * JSON o form-urlencoded (el botón del curso hace un submit nativo).
  */
 export async function POST(request: NextRequest) {
   const principal = await getPrincipal();
@@ -19,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  const parsed = bodySchema.safeParse(await readRequestBody(request));
   if (!parsed.success) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
