@@ -12,6 +12,25 @@ export const esCL = {
       "La plataforma e-learning para OTECs chilenas, con asistencia SENCE integrada.",
     status: "Plataforma en construcción — Hito 0: fundación.",
   },
+  auth: {
+    loginTitle: "Ingresar a Chilearning",
+    emailLabel: "Correo electrónico",
+    passwordLabel: "Contraseña",
+    submit: "Ingresar",
+    signingIn: "Ingresando…",
+    signOut: "Cerrar sesión",
+    invalidCredentials: "Correo o contraseña incorrectos.",
+    genericError: "No pudimos iniciar sesión. Intenta nuevamente.",
+    noAccess:
+      "Tu cuenta no tiene acceso a ninguna organización. Contacta a tu administrador.",
+  },
+  dashboard: {
+    title: "Panel",
+    welcome: "Sesión iniciada",
+    yourRoles: "Tus roles",
+    yourTenant: "Tu organización",
+    platformAdmin: "Administrador de plataforma (sin organización)",
+  },
   sence: {
     /**
      * Mensajes para el alumno ante un error del protocolo RCE.

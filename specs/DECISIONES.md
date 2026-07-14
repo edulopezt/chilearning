@@ -199,3 +199,49 @@ entrada original.
 - **Alternativas descartadas:**
   - *Confiar en que el Auth Hook siempre emite claims válidos:* descartada — la
     BD es la última línea de defensa y no debe asumir corrección aguas arriba.
+
+---
+
+## D-009 — Dominio raíz: `chilearning.cl` (Cloudflare)
+
+- **ID:** D-009
+- **Fecha:** 2026-07-14
+- **Decisión:** el dominio raíz del producto es **`chilearning.cl`**, con DNS en
+  Cloudflare. Cada OTEC vive en `{slug}.chilearning.cl`.
+- **Por qué:** resuelve el riesgo **R6** del spec. Verificada la restricción
+  crítica de SENCE (`UrlRetoma`/`UrlError` ≤ 100 caracteres): el peor caso
+  `https://{slug-de-30}.chilearning.cl/api/sence/cb` = 66 caracteres, con 34 de
+  holgura. El nombre es corto y soporta el comodín por tenant.
+- **Alternativas descartadas:** dominios más largos (arriesgaban el límite de
+  100 chars del callback SENCE) y dominios sin subdominio por tenant (rompían el
+  modelo multi-tenant white-label).
+
+## D-010 — Auth Hook con `SECURITY INVOKER`, no `DEFINER`
+
+- **ID:** D-010
+- **Fecha:** 2026-07-14
+- **Decisión:** `custom_access_token_hook` se declara **`SECURITY INVOKER`**;
+  lee `memberships`/`platform_admins` como el rol `supabase_auth_admin` que lo
+  invoca, autorizado por GRANT + policies `_select_auth_admin`.
+- **Por qué:** la revisión adversarial de la tarea 0.4 detectó que un hook
+  `SECURITY DEFINER` (dueño `postgres`) sobre tablas con `force row level
+  security` leería **0 filas en Supabase cloud** (donde `postgres` NO bypassa
+  RLS), rompiendo el login en producción aunque funcione en local. INVOKER es el
+  patrón oficial de Supabase y hace que los grants/policies sean significativos,
+  no código muerto.
+- **Alternativas descartadas:** *DEFINER + quitar `force RLS`* (reabriría el
+  bypass-por-owner para toda función del dueño); *DEFINER + policy explícita al
+  dueño* (más frágil y no documentado).
+
+## D-011 — Config de Auth: dev abierto, producción cerrado
+
+- **ID:** D-011
+- **Fecha:** 2026-07-14
+- **Decisión:** en producción/staging el `config.toml` de Supabase debe usar
+  `enable_signup = false` (el alta la hace el OTEC por invitación),
+  `enable_confirmations = true` y `minimum_password_length >= 8` + 2FA para roles
+  administrativos (RNF-2). El config local (dev) queda abierto por comodidad.
+- **Por qué:** un LMS B2B no permite auto-registro público; sin membership el
+  RLS igual niega todo, pero el signup abierto habilita creación masiva de
+  cuentas y enumeración de correos. Hallazgo LOW-5 de la revisión de 0.4.
+- **Alternativas descartadas:** dejar el signup abierto en prod (riesgo de abuso).

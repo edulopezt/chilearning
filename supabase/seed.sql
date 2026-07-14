@@ -67,6 +67,10 @@ from (values
 ) as m(tenant_id, user_id, roles)
 join public.tenants t on t.id = m.tenant_id::uuid;
 
+-- ---------- Superadmin de plataforma (NO es una membership — D-006) ----------
+insert into public.platform_admins (user_id) values
+  ('00000000-0000-4000-8000-00000000000a');
+
 -- ---------- Auditoría semilla (una por tenant, para probar lectura) ----------
 insert into public.audit_log (tenant_id, actor_user_id, action, entity, details) values
   ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000001', 'seed.created', 'tenant', '{"seed":true}'),
