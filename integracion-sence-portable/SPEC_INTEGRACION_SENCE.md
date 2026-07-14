@@ -1,3 +1,8 @@
+> ⚠ **SUPERSEDIDA (2026-07-14):** esta SPEC se basaba en el manual v1.1.3. La versión
+> vigente, congelada contra el manual oficial **v1.1.6**, vive en
+> [`docs/sence/SPEC_INTEGRACION_SENCE.md`](../docs/sence/SPEC_INTEGRACION_SENCE.md).
+> Se conserva este archivo solo como baseline del diff (`docs/sence/DIFF-SPEC-v1.1.3-a-manual-v1.1.6.md`).
+
 # Spec portable — Integración de Asistencia SENCE (RCE) para cualquier plataforma
 
 > Protocolo **agnóstico de tecnología** para registrar asistencia e-learning en SENCE.

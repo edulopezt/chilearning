@@ -31,7 +31,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 | 0.2 | L | Proyecto Supabase (dev) + migración inicial: `tenants`, `memberships`, `audit_log` con RLS activada + seeds (tenant OTEC Edu + 8 roles de prueba) | Plan §3–4 | Test de aislamiento base pasa |
 | 0.3 | L | Coolify en VPS V2Networks + deploy staging automático desde `main` + SSL wildcard | Plan §7 | Hello-tenant visible en `demo.<dominio-temporal>` |
 | 0.4 | M | Auth (Supabase) + middleware de tenant por subdominio + guard RBAC mínimo (admin/alumno) | HU-2.1, 2.3 | Login + rutas protegidas por rol |
-| 0.5 | M | ⚠ Descargar manual RCE v1.1.5/v1.1.6 y hacer **diff** contra SPEC portable; congelar contrato del motor | Plan §13.1 | Contrato SENCE escrito en `sence/README` |
+| 0.5 ✅ | M | ⚠ Descargar manual RCE v1.1.5/v1.1.6 y hacer **diff** contra SPEC portable; congelar contrato del motor | Plan §13.1 | Contrato SENCE escrito en `sence/README` — hecho 2026-07-14 contra manual **v1.1.6** (vigente); diff en `docs/sence/` |
 | 0.6 | M–X | **Mock RCE local** (contenedor): IniciarSesion/CerrarSesion + callbacks + tabla completa de errores | Plan §5, §11 | Suite de integración corre sin internet |
 | 0.7 | X–J | Motor SENCE núcleo: `/api/sence/start`, `/api/sence/cb`, `/api/sence/close`, tablas `sence_sessions`+`sence_events`, máquina de estados, cifrado del token, traducción de errores | HU-5.1, 5.3, 5.4 | Todos los casos del mock pasan (éxito, 100–310, replay, callback tardío, cierre) |
 | 0.8 | J | Curso demo mínimo (1 módulo, 2 lecciones de texto/video embed) + candado SENCE + contador 3 h | HU-5.2 | Alumno demo bloqueado hasta registrar |
