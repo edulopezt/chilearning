@@ -10,8 +10,10 @@
 | # | Fecha | Entorno | Escenario | Resultado | Tiempo |
 |---|---|---|---|---|---|
 | 1 | 2026-07-14 | dev (Supabase local) | Borrado total de `memberships` (14 filas) → restauración | ✅ 14 → 0 → 14 filas | < 1 min |
+| 2 | 2026-07-15 | dev (Supabase local) | Esquema completo Hito 0: borrado de `courses`/`actions`/`enrollments`/`lessons` → restauración | ✅ todos los conteos restaurados (tenants 2, memberships 14, courses 1, lessons 2, enrollments 1) | 34 s |
 
-> El **ensayo #2** (exigido antes del piloto, Hito 3/4) se registrará aquí.
+> RTO objetivo ≤ 4 h; en dev el restore canónico toma segundos. El **ensayo #3**
+> con backup off-site real (R2) se registrará al montar staging/prod (Hito 3).
 
 ---
 
