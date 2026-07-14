@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const SRC = join(process.cwd(), "src");
-const ALLOWED = join("modules", "core", "tenant-guard.ts");
+const ALLOWED = join("lib", "tenant-guard.ts");
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {

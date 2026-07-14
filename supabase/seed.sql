@@ -6,8 +6,8 @@
 -- =============================================================================
 
 insert into public.tenants (id, slug, name, rut, plan, status) values
-  ('11111111-1111-4111-8111-111111111111', 'otec-andes',    'OTEC Demo Andes SpA',     '76111111-1', 'standard', 'active'),
-  ('22222222-2222-4222-8222-222222222222', 'otec-pacifico', 'OTEC Demo Pacífico Ltda', '76222222-2', 'standard', 'active');
+  ('11111111-1111-4111-8111-111111111111', 'otec-andes',    'OTEC Demo Andes SpA',     '76111111-6', 'standard', 'active'),
+  ('22222222-2222-4222-8222-222222222222', 'otec-pacifico', 'OTEC Demo Pacífico Ltda', '76222222-1', 'standard', 'active');
 
 -- ---------- Usuarios ficticios (auth.users) ----------
 -- 1 superadmin de plataforma + 7 roles por tenant (el rol superadmin no es
@@ -70,6 +70,27 @@ join public.tenants t on t.id = m.tenant_id::uuid;
 -- ---------- Superadmin de plataforma (NO es una membership — D-006) ----------
 insert into public.platform_admins (user_id) values
   ('00000000-0000-4000-8000-00000000000a');
+
+-- ---------- Curso demo con candado SENCE (Hito 0) — tenant Andes ----------
+-- Datos ficticios. El token del OTEC NO va aquí (se cifra y se configura por UI/
+-- servidor con la clave AES): token_encrypted queda NULL en el seed.
+insert into public.sence_otec_config (tenant_id, rut_otec, default_environment) values
+  ('11111111-1111-4111-8111-111111111111', '76111111-6', 'rcetest');
+
+insert into public.courses (id, tenant_id, name, sence, cod_sence) values
+  ('c0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'Curso demo: Prevención de riesgos e-learning', true, '1234567890');
+
+insert into public.actions (id, tenant_id, course_id, codigo_accion, training_line, environment, attendance_lock, starts_on, ends_on) values
+  ('ac000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'c0000000-0000-4000-8000-000000000001', 'ACC-DEMO-0001', 3, 'rcetest', true,
+   '2026-07-01', '2026-12-31');
+
+-- Inscribe al alumno demo (alumno@otec-andes.test) con un RUN ficticio válido.
+insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento) values
+  ('e0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'ac000000-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000005',
+   '5126663-3', false);
 
 -- ---------- Auditoría semilla (una por tenant, para probar lectura) ----------
 insert into public.audit_log (tenant_id, actor_user_id, action, entity, details) values

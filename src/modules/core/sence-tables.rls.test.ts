@@ -65,16 +65,37 @@ function serviceClient(): SupabaseClient {
   });
 }
 
-/** UUID único por siembra (evita chocar con el índice de una sola sesión viva
- *  por inscripción, incluso entre corridas sobre la misma BD). */
-function nextEnrollment(): string {
-  return randomUUID();
+const DEMO_COURSE = "c0000000-0000-4000-8000-000000000001";
+const STUDENT_A = "aaaaaaaa-0000-4000-8000-000000000005";
+
+/** Crea una inscripción REAL (acción + enrollment) para satisfacer el FK
+ *  enrollment_id → enrollments; devuelve el id de la inscripción. */
+async function nextEnrollment(): Promise<string> {
+  const svc = serviceClient();
+  const actionId = randomUUID();
+  await svc.from("actions").insert({
+    id: actionId,
+    tenant_id: TENANT_A,
+    course_id: DEMO_COURSE,
+    codigo_accion: "ACC-RLS-TEST",
+    training_line: 3,
+    environment: "rcetest",
+  });
+  const enrollmentId = randomUUID();
+  await svc.from("enrollments").insert({
+    id: enrollmentId,
+    tenant_id: TENANT_A,
+    action_id: actionId,
+    user_id: STUDENT_A,
+    run: "5126663-3",
+  });
+  return enrollmentId;
 }
 
 /** El servidor (service_role) siembra una sesión, como haría el motor real. */
 async function seedSession(): Promise<string> {
   const svc = serviceClient();
-  const enrollmentId = nextEnrollment();
+  const enrollmentId = await nextEnrollment();
   const idSesionAlumno = `test-${randomUUID()}`;
   const { data, error } = await svc
     .from("sence_sessions")
@@ -118,7 +139,8 @@ describe("sence_sessions — aislamiento y no-escritura desde el cliente", () =>
     const db = client(await jwt({ sub: "u", tenant_id: TENANT_A, roles: ["otec_admin"] }));
     const { error } = await db.from("sence_sessions").insert({
       tenant_id: TENANT_A,
-      enrollment_id: nextEnrollment(),
+      // El insert falla por falta de grant (cliente) antes de tocar el FK.
+      enrollment_id: randomUUID(),
       action_code: "X",
       training_line: 3,
       run_alumno: "5126663-3",
@@ -130,9 +152,11 @@ describe("sence_sessions — aislamiento y no-escritura desde el cliente", () =>
 
   it("la línea 1 exige CodSence vacío (constraint del contrato I-10)", async () => {
     const svc = serviceClient();
+    // Inscripción real para que falle la CHECK de línea 1, no el FK.
+    const enrollmentId = await nextEnrollment();
     const { error } = await svc.from("sence_sessions").insert({
       tenant_id: TENANT_A,
-      enrollment_id: "aaaaaaaa-e011-4000-8000-000000000099",
+      enrollment_id: enrollmentId,
       sence_course_code: "1234567890",
       action_code: "RLAB-19-02-08-0071-1",
       training_line: 1,
@@ -181,26 +205,22 @@ describe("sence_events — INSERT-only y sin token (I-2, I-7)", () => {
     expect(withToken.error).not.toBeNull();
   });
 
-  it("idempotencia (I-3): el mismo dedupe_hash no crea dos eventos", async () => {
+  it("I-1: dos eventos con el mismo dedupe_hash SÍ persisten (el índice no es único)", async () => {
+    // Tras el hallazgo C-1: un replay legítimo debe persistir un 2º evento (I-1);
+    // la idempotencia de la TRANSICIÓN la da la máquina de estados, no la BD.
     const sessionId = await seedSession();
     const svc = serviceClient();
     const dedupe = `idem-${randomUUID()}`;
-    const first = await svc.from("sence_events").insert({
-      tenant_id: TENANT_A,
-      session_id: sessionId,
-      kind: "start_ok",
-      payload: { RunAlumno: "5126663-3" },
-      dedupe_hash: dedupe,
-    });
+    const row = { tenant_id: TENANT_A, session_id: sessionId, kind: "start_ok" as const, payload: { RunAlumno: "5126663-3" }, dedupe_hash: dedupe };
+    const first = await svc.from("sence_events").insert(row);
+    const second = await svc.from("sence_events").insert(row);
     expect(first.error).toBeNull();
-    const second = await svc.from("sence_events").insert({
-      tenant_id: TENANT_A,
-      session_id: sessionId,
-      kind: "start_ok",
-      payload: { RunAlumno: "5126663-3" },
-      dedupe_hash: dedupe,
-    });
-    expect(second.error).not.toBeNull();
+    expect(second.error).toBeNull(); // ambos se persisten (I-1)
+    const { count } = await svc
+      .from("sence_events")
+      .select("*", { count: "exact", head: true })
+      .eq("dedupe_hash", dedupe);
+    expect(count).toBe(2);
   });
 
   it("student@A no puede leer la bitácora de eventos (solo admin/supervisor)", async () => {

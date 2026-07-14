@@ -302,12 +302,17 @@ export function applyCallback(
     case "start_ok": {
       // T2 — only from iniciada_pendiente. Replay while `iniciada` is a no-op (I-3).
       if (state.status !== "iniciada_pendiente") return noChange(state, event);
-      const openedAt = eventTime;
+      // `opened_at` guarda la FechaHora del callback (registro), pero acotada a
+      // no ser futura. El DEADLINE (`expires_at`) se ancla a la hora de RECEPCIÓN
+      // del servidor (`now`), no a la FechaHora que envía SENCE: así un timestamp
+      // manipulado/desfasado (o el parseo en la zona del servidor) NO puede
+      // extender ni adelantar la ventana de 3 h (hallazgo M-1, I-13).
+      const openedAt = Math.min(eventTime, timing.now);
       const next: SessionState = {
         ...state,
         status: "iniciada",
         openedAt,
-        expiresAt: openedAt + timing.sessionMaxMs,
+        expiresAt: timing.now + timing.sessionMaxMs,
         idSesionSence: isNonEmpty(callback.idSesionSence) ? callback.idSesionSence : null,
         zonaHoraria: isNonEmpty(callback.zonaHoraria) ? callback.zonaHoraria : state.zonaHoraria,
       };
