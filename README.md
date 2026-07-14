@@ -25,16 +25,41 @@ LMS SaaS **multi-tenant** para OTECs chilenas con validación de asistencia **SE
 |---|---|
 | `pnpm dev` | App en desarrollo (requiere `supabase start`) |
 | `pnpm lint` / `pnpm typecheck` | Calidad estática |
-| `pnpm test` / `pnpm test:unit` | Tests (Vitest) |
+| `pnpm test` / `pnpm test:unit` | Tests unitarios (Vitest) |
+| `pnpm test:rls` | Suite de aislamiento multi-tenant (requiere `supabase start`) |
+| `pnpm test:integration` | Motor SENCE contra el mock (requiere `supabase start`) |
+| `pnpm sence:mock` | Mock local del RCE de SENCE (puerto 4010) |
 | `pnpm build` | Build de producción |
 
-Los scripts `test:rls`, `test:integration`, `test:e2e` y `sence:mock` nacen en sus
-tareas correspondientes (ver `specs/03-tareas.md`).
+## Desarrollo local (paso a paso)
 
-## Entorno
+La app corre contra el **Supabase local** (no la nube). Sus claves las imprime
+`supabase status` y son deterministas por máquina.
 
-Copia `.env.example` → `.env.local` y sigue `GUIA-CONFIGURAR-ENV.md`.
-**Nunca** commitear `.env*` ni secretos.
+1. Herramientas: Node ≥ 24, `npm i -g pnpm`, Docker Desktop **encendido**, Supabase CLI.
+2. `pnpm install`
+3. `supabase start` (primera vez descarga imágenes) y luego `supabase db reset`
+   (aplica migraciones + seeds: 2 OTECs × 8 roles + curso demo).
+4. **`.env.local`**: copia `.env.example` y, para desarrollo local, apunta las
+   variables de Supabase al stack LOCAL (⚠ no a un proyecto de la nube):
+   ```bash
+   supabase status   # copia API URL, anon key y service_role key
+   ```
+   Variables mínimas para levantar la app y el flujo SENCE en local:
+   - `NEXT_PUBLIC_SUPABASE_URL` = API URL local (`http://127.0.0.1:54321`)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = anon key local
+   - `SUPABASE_SERVICE_ROLE_KEY` = service_role key local
+   - `TENANT_ROOT_DOMAIN=localtest.me`
+   - `SENCE_ENV=mock` y `SENCE_MOCK_URL=http://127.0.0.1:4010`
+   - `SENCE_TOKEN_ENCRYPTION_KEY` = 32 bytes base64 (`openssl rand -base64 32`)
+5. `pnpm dev` → http://localhost:3000. Login demo: `alumno@otec-andes.test`
+   (o `admin@otec-andes.test`, `superadmin@chilearning.test`) / `Password123!`.
+6. Para probar el flujo SENCE completo: en otra terminal `pnpm sence:mock`, y
+   configura el token cifrado del OTEC demo (o hazlo desde el panel de admin
+   cuando exista). El alumno verá el curso en `/mi-curso` con candado SENCE.
+
+**Nunca** commitear `.env*` ni secretos. Guía detallada de producción en
+`GUIA-CONFIGURAR-ENV.md`.
 
 ## Arquitectura (resumen)
 
