@@ -49,6 +49,7 @@ jobs:
         run: supabase stop --no-backup
 
   # Motor SENCE contra el mock RCE local (tarea 0.6/0.7): corre SIN internet.
+  # Necesita Supabase local (la suite del motor persiste en BD).
   integration:
     runs-on: ubuntu-latest
     steps:
@@ -58,7 +59,15 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Start local Supabase (migrations + seeds)
+        run: supabase start -x realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor
       - run: pnpm test:integration
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
 
   # Job futuro: e2e (Playwright), en su tarea.
