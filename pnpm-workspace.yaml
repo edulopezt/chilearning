@@ -1,6 +1,4 @@
-allowBuilds:
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
-ignoredBuiltDependencies:
+# Builds nativos aprobados explícitamente (pnpm exige decisión; en CI es error)
+onlyBuiltDependencies:
   - sharp
   - unrs-resolver
