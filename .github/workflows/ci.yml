@@ -48,5 +48,17 @@ jobs:
         if: always()
         run: supabase stop --no-backup
 
-  # Jobs futuros los agrega su tarea: integration (0.6, requiere mock RCE),
-  # e2e (Playwright).
+  # Motor SENCE contra el mock RCE local (tarea 0.6/0.7): corre SIN internet.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:integration
+
+  # Job futuro: e2e (Playwright), en su tarea.

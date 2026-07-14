@@ -1,0 +1,324 @@
+/**
+ * Pre-flight validation of the parameters the engine is about to POST to SENCE
+ * (`IniciarSesion` / `CerrarSesion`). Pure domain (no IO).
+ *
+ * This is invariant **I-8** implemented literally: BEFORE redirecting the
+ * student's browser to SENCE, `/api/sence/start` (and `/close`) validates and
+ * rejects locally so a doomed trip to SENCE never happens. The rules, verbatim
+ * from the frozen contract (`src/modules/sence/README.md`, I-8) and the manual
+ * v1.1.6 field table:
+ *
+ *  - RUN of the student and RUT of the OTEC: `xxxxxxxx-x` shape (no dots),
+ *    correct module-11 check digit, 'k' lowercased. Because this pre-flight is
+ *    the LAST gate before the border adapter builds the SENCE POST, an
+ *    un-normalized uppercase 'K' check digit is REJECTED here (rule
+ *    `run_not_normalized`) rather than silently forwarded — the "k normalizada a
+ *    minúscula" guarantee (I-8) is enforced at the wire boundary, not assumed.
+ *    Callers must `normalizeRun` first.
+ *  - Normative maximum field lengths: `RutOtec`/`RunAlumno` 10, `Token` 36,
+ *    `CodSence` 10, `CodigoCurso` 50, `IdSesionAlumno`/`IdSesionSence` 149.
+ *  - `CodigoCurso` minimum 7 characters — EXCEPT training line 6 (FPT), and
+ *    EXCEPT the `-1` wildcard.
+ *  - `CodSence` = 10 digits, EXCEPT training line 1 (Programas Sociales) where
+ *    it is EMPTY (Anexo 5), and EXCEPT the `-1` wildcard where it applies.
+ *  - Wildcard `-1` (I-8, manual §4 / Anexo 5): disables SENCE code checks, and
+ *    is accepted ONLY when the action `environment` is `rcetest`; in `rce` it is
+ *    rejected. In line 1, `CodSence` stays EMPTY even in `rcetest` (the `-1`
+ *    goes only in `CodigoCurso`).
+ *  - `LineaCapacitacion ∈ {1, 3, 6}`.
+ *  - `UrlRetoma` / `UrlError` ≤ 100 characters (v1.1.6 limit; v1.1.3 allowed 200
+ *    — do not trust old specs).
+ *
+ * The engine uses UNAMBIGUOUS internal names (`senceCourseCode` = the course
+ * SENCE code that goes in `CodSence`; `actionCode` = the action code that goes
+ * in `CodigoCurso`) precisely because the protocol names mean the opposite of
+ * what they suggest (invariant I-10). Only the border adapter maps these to the
+ * protocol field names.
+ *
+ * The validator NEVER throws for expected violations: it returns a typed result
+ * enumerating every violation (field + rule). The OTEC token value is NEVER
+ * included in any violation (invariant I-6); only its length is measured.
+ *
+ * URL FORMAT NOTE: I-8 enumerates only the ≤ 100 character rule for the
+ * callback URLs (SENCE itself returns 202/203 for malformed URLs). To stay
+ * literal to the invariant this validator checks presence and length only, not
+ * URL syntax. See the summary/CHANGELOG if a format check is later required.
+ */
+
+import { computeDv } from "./run";
+
+/** Training lines in scope for the RCE protocol (contract §Alcance, I-8). */
+export type TrainingLine = 1 | 3 | 6;
+
+/** Which SENCE endpoint the parameters target. */
+export type PreflightPhase = "start" | "close";
+
+/** SENCE environment of the ACTION (I-11). */
+export type SenceEnvironment = "rcetest" | "rce";
+
+/** Fields the pre-flight can flag, using the engine's unambiguous names (I-10). */
+export type PreflightField =
+  | "rutOtec"
+  | "token"
+  | "senceCourseCode"
+  | "actionCode"
+  | "trainingLine"
+  | "runAlumno"
+  | "idSesionAlumno"
+  | "idSesionSence"
+  | "urlRetoma"
+  | "urlError"
+  | "environment";
+
+/** The specific rule a violation breaks. */
+export type PreflightRule =
+  | "required"
+  | "max_length"
+  | "min_length"
+  | "run_format"
+  | "run_dv"
+  | "must_be_empty"
+  | "must_be_numeric"
+  | "invalid_training_line"
+  | "invalid_environment"
+  | "wildcard_not_allowed"
+  | "run_not_normalized";
+
+/**
+ * A single pre-flight failure. `limit`/`actual` are numeric only (e.g. a length
+ * bound and the measured length) — a violation NEVER carries the token value or
+ * any other secret (I-6).
+ */
+export interface PreflightViolation {
+  readonly field: PreflightField;
+  readonly rule: PreflightRule;
+  readonly limit?: number;
+  readonly actual?: number;
+}
+
+/** Input to the pre-flight, in the engine's internal vocabulary (I-10). */
+export interface PreflightInput {
+  /** Defaults to `"start"`. `"close"` additionally requires `idSesionSence`. */
+  readonly phase?: PreflightPhase;
+  /** Action environment (I-11). Any value other than the two below is invalid. */
+  readonly environment: string;
+  /** `LineaCapacitacion`. Any value other than 1/3/6 is invalid. */
+  readonly trainingLine: number;
+  /** RUT of the OTEC → `RutOtec`. */
+  readonly rutOtec: string;
+  /** OTEC token → `Token`. Value never echoed back (I-6). */
+  readonly token: string;
+  /** Course SENCE code → `CodSence` (empty in line 1). */
+  readonly senceCourseCode: string;
+  /** Action code → `CodigoCurso`. */
+  readonly actionCode: string;
+  /** RUN of the student → `RunAlumno`. */
+  readonly runAlumno: string;
+  /** Correlator generated by the engine → `IdSesionAlumno`. */
+  readonly idSesionAlumno: string;
+  /** SENCE session id → `IdSesionSence`. Required in the `"close"` phase. */
+  readonly idSesionSence?: string;
+  /** Success callback URL → `UrlRetoma`. */
+  readonly urlRetoma: string;
+  /** Error callback URL → `UrlError`. */
+  readonly urlError: string;
+}
+
+export type PreflightResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly violations: readonly PreflightViolation[] };
+
+/** Normative maximum field lengths (manual v1.1.6 field table + I-8). */
+export const MAX_LENGTH = {
+  rutOtec: 10,
+  token: 36,
+  senceCourseCode: 10,
+  actionCode: 50,
+  runAlumno: 10,
+  idSesionAlumno: 149,
+  idSesionSence: 149,
+  urlRetoma: 100,
+  urlError: 100,
+} as const;
+
+/** Minimum length of `CodigoCurso` (except line 6 FPT and the `-1` wildcard). */
+export const MIN_ACTION_CODE_LENGTH = 7;
+
+/** The wildcard that disables SENCE code checks in `rcetest` only (I-8). */
+export const RCETEST_WILDCARD = "-1";
+
+const VALID_TRAINING_LINES: readonly number[] = [1, 3, 6];
+
+/** RUN fields validate to the same rule set (RutOtec / RunAlumno). */
+function validateRun(field: PreflightField, value: string): PreflightViolation[] {
+  if (value.length === 0) return [{ field, rule: "required" }];
+  // The strict shape also bounds length to 10 (up to 8 body digits + '-' + DV).
+  if (!/^\d{1,8}-[0-9kK]$/.test(value)) return [{ field, rule: "run_format" }];
+  const hyphen = value.indexOf("-");
+  const body = value.slice(0, hyphen);
+  const rawDv = value.slice(hyphen + 1);
+  const dv = rawDv.toLowerCase();
+  if (computeDv(body) !== dv) return [{ field, rule: "run_dv" }];
+  // I-8 "k normalizada a minúscula": this is the last gate before the border
+  // builds the SENCE POST, so a correct-but-uppercase 'K' is rejected here
+  // (fail-closed) instead of relying on an unstated assumption that the caller
+  // normalized first. `rawDv !== dv` is true only for an uppercase 'K'.
+  if (rawDv !== dv) return [{ field, rule: "run_not_normalized" }];
+  return [];
+}
+
+/** Presence + maximum length for a mandatory text field. */
+function validateRequiredMax(
+  field: PreflightField,
+  value: string,
+  max: number,
+): PreflightViolation[] {
+  if (value.length === 0) return [{ field, rule: "required" }];
+  if (value.length > max) {
+    return [{ field, rule: "max_length", limit: max, actual: value.length }];
+  }
+  return [];
+}
+
+/**
+ * Validate `senceCourseCode` → `CodSence` per line + environment.
+ *
+ *  - Line 1: MUST be empty (Anexo 5), even in `rcetest`.
+ *  - Lines 3/6: exactly 10 digits, EXCEPT the `-1` wildcard which is accepted
+ *    only in `rcetest` and rejected in `rce`.
+ */
+function validateSenceCourseCode(
+  value: string,
+  line: number,
+  isRceTest: boolean,
+): PreflightViolation[] {
+  const field: PreflightField = "senceCourseCode";
+  if (line === 1) {
+    return value.length === 0 ? [] : [{ field, rule: "must_be_empty" }];
+  }
+  if (value === RCETEST_WILDCARD) {
+    return isRceTest ? [] : [{ field, rule: "wildcard_not_allowed" }];
+  }
+  if (value.length === 0) return [{ field, rule: "required" }];
+  if (value.length > MAX_LENGTH.senceCourseCode) {
+    return [
+      { field, rule: "max_length", limit: MAX_LENGTH.senceCourseCode, actual: value.length },
+    ];
+  }
+  // CodSence is the 10-digit course SENCE code (manual: "10 dígitos"; error 204
+  // penalizes < 10 or non-numeric).
+  if (!/^\d{10}$/.test(value)) return [{ field, rule: "must_be_numeric" }];
+  return [];
+}
+
+/**
+ * Validate `actionCode` → `CodigoCurso` per line + environment.
+ *
+ *  - `-1` wildcard: accepted only in `rcetest`, rejected in `rce`.
+ *  - Otherwise: non-empty, ≤ 50 chars, and ≥ 7 chars EXCEPT line 6 (FPT).
+ */
+function validateActionCode(
+  value: string,
+  line: number,
+  isRceTest: boolean,
+): PreflightViolation[] {
+  const field: PreflightField = "actionCode";
+  if (value.length === 0) return [{ field, rule: "required" }];
+  if (value === RCETEST_WILDCARD) {
+    return isRceTest ? [] : [{ field, rule: "wildcard_not_allowed" }];
+  }
+  const violations: PreflightViolation[] = [];
+  if (value.length > MAX_LENGTH.actionCode) {
+    violations.push({
+      field,
+      rule: "max_length",
+      limit: MAX_LENGTH.actionCode,
+      actual: value.length,
+    });
+  }
+  if (line !== 6 && value.length < MIN_ACTION_CODE_LENGTH) {
+    violations.push({
+      field,
+      rule: "min_length",
+      limit: MIN_ACTION_CODE_LENGTH,
+      actual: value.length,
+    });
+  }
+  return violations;
+}
+
+/**
+ * Run the I-8 pre-flight. Pure: no IO, no throwing for expected violations.
+ *
+ * @returns `{ ok: true }` when every rule passes, otherwise
+ *   `{ ok: false, violations }` listing each broken rule (field + rule).
+ */
+export function validatePreflight(input: PreflightInput): PreflightResult {
+  const phase: PreflightPhase = input.phase ?? "start";
+  const isRceTest = input.environment === "rcetest";
+  const environmentValid =
+    input.environment === "rcetest" || input.environment === "rce";
+
+  const violations: PreflightViolation[] = [];
+
+  // environment (I-11) — decided first because wildcard rules depend on it.
+  if (!environmentValid) {
+    violations.push({ field: "environment", rule: "invalid_environment" });
+  }
+
+  // LineaCapacitacion ∈ {1, 3, 6}
+  if (!VALID_TRAINING_LINES.includes(input.trainingLine)) {
+    violations.push({ field: "trainingLine", rule: "invalid_training_line" });
+  }
+
+  // RUT OTEC + RUN alumno (format + module-11 DV, 'k' lowercased)
+  violations.push(...validateRun("rutOtec", input.rutOtec));
+  violations.push(...validateRun("runAlumno", input.runAlumno));
+
+  // Token — presence + max length only; value NEVER inspected/echoed (I-6).
+  violations.push(...validateRequiredMax("token", input.token, MAX_LENGTH.token));
+
+  // CodSence / CodigoCurso (line- and environment-dependent, I-10)
+  violations.push(
+    ...validateSenceCourseCode(input.senceCourseCode, input.trainingLine, isRceTest),
+  );
+  violations.push(
+    ...validateActionCode(input.actionCode, input.trainingLine, isRceTest),
+  );
+
+  // IdSesionAlumno
+  violations.push(
+    ...validateRequiredMax(
+      "idSesionAlumno",
+      input.idSesionAlumno,
+      MAX_LENGTH.idSesionAlumno,
+    ),
+  );
+
+  // IdSesionSence — required in the close phase; length-checked whenever present.
+  const idSesionSence = input.idSesionSence ?? "";
+  if (phase === "close") {
+    violations.push(
+      ...validateRequiredMax("idSesionSence", idSesionSence, MAX_LENGTH.idSesionSence),
+    );
+  } else if (idSesionSence.length > MAX_LENGTH.idSesionSence) {
+    violations.push({
+      field: "idSesionSence",
+      rule: "max_length",
+      limit: MAX_LENGTH.idSesionSence,
+      actual: idSesionSence.length,
+    });
+  }
+
+  // Callback URLs — presence + ≤ 100 chars (I-8).
+  violations.push(...validateRequiredMax("urlRetoma", input.urlRetoma, MAX_LENGTH.urlRetoma));
+  violations.push(...validateRequiredMax("urlError", input.urlError, MAX_LENGTH.urlError));
+
+  if (violations.length === 0) return { ok: true };
+  return { ok: false, violations };
+}
+
+/** Convenience predicate for callers that only need a boolean. */
+export function isPreflightOk(input: PreflightInput): boolean {
+  return validatePreflight(input).ok;
+}
