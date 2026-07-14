@@ -17,7 +17,17 @@ export default defineConfig({
           name: "unit",
           environment: "node",
           include: ["src/**/*.test.ts"],
-          exclude: ["src/**/*.integration.test.ts"],
+          exclude: ["src/**/*.integration.test.ts", "src/**/*.rls.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "rls",
+          environment: "node",
+          include: ["src/**/*.rls.test.ts"],
+          testTimeout: 20_000,
+          hookTimeout: 60_000,
         },
       },
     ],
