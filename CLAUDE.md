@@ -74,7 +74,7 @@ Entorno: copia `.env.example` → `.env.local`. NUNCA commitear archivos `.env` 
   `"use client"` solo con justificación.
 - Lógica de dominio pura (testeable sin IO) en `src/modules/*/domain/`; UI compartida en `src/components/`.
 - Los errores SENCE se traducen SIEMPRE con la tabla de `src/modules/sence/errors.ts`
-  (códigos 100–310); nunca mostrar códigos crudos al alumno.
+  (códigos 100–313); nunca mostrar códigos crudos al alumno.
 - UI 100% responsiva (RNF-6): Tailwind mobile-first; toda vista nueva se verifica en 360 px y
   1440 px; sin scroll horizontal; tablas colapsan a tarjetas en móvil; touch targets ≥ 44 px.
 - Conventional Commits (`feat:`, `fix:`, `docs:`…). Ramas: `feat/h<hito>-<tarea>-<descripcion>`
