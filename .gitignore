@@ -1,0 +1,43 @@
+# Secretos y entornos — NUNCA commitear
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Next.js
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Tests / cobertura
+coverage/
+playwright-report/
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Vercel / caches de build
+.vercel
+.turbo
