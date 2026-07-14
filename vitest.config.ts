@@ -30,6 +30,16 @@ export default defineConfig({
           hookTimeout: 60_000,
         },
       },
+      {
+        extends: true,
+        test: {
+          name: "integration",
+          environment: "node",
+          include: ["src/**/*.integration.test.ts", "tools/**/*.integration.test.ts"],
+          testTimeout: 20_000,
+          hookTimeout: 30_000,
+        },
+      },
     ],
   },
 });
