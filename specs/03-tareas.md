@@ -27,7 +27,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 
 | # | Día | Tarea | Trazabilidad | Hecho cuando… |
 |---|---|---|---|---|
-| 0.1 | L | Crear repo GitHub + Next.js/TS + estructura modular + lint/typecheck/Vitest en CI | Plan §2, §11 | CI verde en el primer PR |
+| 0.1 ✅ | L | Crear repo GitHub + Next.js/TS + estructura modular + lint/typecheck/Vitest en CI | Plan §2, §11 | CI verde en el primer PR — hecho 2026-07-14 |
 | 0.2 | L | Proyecto Supabase (dev) + migración inicial: `tenants`, `memberships`, `audit_log` con RLS activada + seeds (tenant OTEC Edu + 8 roles de prueba) | Plan §3–4 | Test de aislamiento base pasa |
 | 0.3 | L | Coolify en VPS V2Networks + deploy staging automático desde `main` + SSL wildcard | Plan §7 | Hello-tenant visible en `demo.<dominio-temporal>` |
 | 0.4 | M | Auth (Supabase) + middleware de tenant por subdominio + guard RBAC mínimo (admin/alumno) | HU-2.1, 2.3 | Login + rutas protegidas por rol |
