@@ -26,5 +26,27 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm build
-  # Jobs futuros los agrega su tarea: rls (0.2, requiere supabase local),
-  # integration (0.6, requiere mock RCE), e2e (Playwright).
+
+  # Aislamiento multi-tenant (RNF-1, P2): cualquier fuga rompe el build.
+  rls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Start local Supabase (migrations + seeds)
+        run: supabase start -x realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor
+      - run: pnpm test:rls
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
+
+  # Jobs futuros los agrega su tarea: integration (0.6, requiere mock RCE),
+  # e2e (Playwright).

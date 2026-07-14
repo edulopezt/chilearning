@@ -145,3 +145,57 @@ entrada original.
     terminaría mostrado como error genérico al alumno.
   - *Mantenerlos sin marca:* descartada — sin la marca `deprecated` un futuro
     diff contra el manual vigente los reportaría como discrepancia inexplicada.
+
+---
+
+## D-006 — `superadmin` jamás es una membership: vive solo en el claim del JWT
+
+- **ID:** D-006
+- **Fecha:** 2026-07-14
+- **Decisión:** la tabla `memberships` **prohíbe por constraint** el rol
+  `superadmin`, y un trigger impide que un `coordinator` otorgue `otec_admin`
+  (solo un `otec_admin` o el superadmin de plataforma pueden hacerlo).
+- **Por qué:** la revisión adversarial de la tarea 0.2 (agente distinto del
+  implementador, regla de 4 ojos) encontró una **escalada de privilegios
+  crítica**: las policies de `memberships` validaban el `tenant_id` pero no el
+  CONTENIDO de la columna `roles`, así que un `coordinator` podía ejecutar
+  `update memberships set roles = '{superadmin}'` sobre su propia fila; en el
+  siguiente login el Auth Hook (tarea 0.4) habría inyectado ese rol en el JWT y
+  `is_superadmin()` le habría abierto TODOS los tenants. La defensa vive en la
+  capa de datos, no en el Hook: el Hook puede tener bugs, el constraint no.
+- **Alternativas descartadas:**
+  - *Filtrar el rol en el Auth Hook:* descartada — deja la BD en un estado
+    inválido y la seguridad dependiendo de una sola capa (viola P2/P7).
+  - *Resolver el techo de roles solo con RLS:* imposible — una policy no puede
+    comparar el rol del actor contra el valor que está asignando; requiere
+    trigger.
+
+## D-007 — Las escrituras de plataforma (crear/editar tenants) van por el servidor
+
+- **ID:** D-007
+- **Fecha:** 2026-07-14
+- **Decisión:** el rol `authenticated` solo tiene `select` sobre `tenants`. Crear,
+  editar o suspender un tenant (HU-1.1, HU-1.4) se hace desde el servidor con el
+  `service_role` a través de `tenantGuard()`, no por PostgREST desde el navegador.
+- **Por qué:** reduce la superficie de escritura del cliente a lo estrictamente
+  necesario (mínimo privilegio, P7). Las acciones de plataforma son pocas,
+  auditadas y siempre pasan por código propio.
+- **Alternativas descartadas:**
+  - *Otorgar `insert/update/delete` sobre `tenants` a `authenticated` y confiar
+    en la policy de superadmin:* descartada — un bug en la policy (o un claim
+    `roles` mal emitido) se convertiría en escritura directa a la tabla raíz del
+    multi-tenancy.
+
+## D-008 — Los helpers de claims degradan a "deniega", nunca a "revienta"
+
+- **ID:** D-008
+- **Fecha:** 2026-07-14
+- **Decisión:** `jwt_tenant_id()` valida el formato UUID del claim antes de
+  castear y devuelve `NULL` si no calza; `jwt_roles()` devuelve `{}` si el claim
+  `roles` no es un array.
+- **Por qué:** con el cast directo, un claim malformado lanzaba `22P02` y
+  abortaba TODA consulta que evaluara la policy (superficie de caída, no de
+  fuga). Deny-by-default limpio (P7) es preferible a un error 500 en cascada.
+- **Alternativas descartadas:**
+  - *Confiar en que el Auth Hook siempre emite claims válidos:* descartada — la
+    BD es la última línea de defensa y no debe asumir corrección aguas arriba.
