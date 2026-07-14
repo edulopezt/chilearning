@@ -1,4 +1,4 @@
-# Builds nativos aprobados explícitamente (pnpm exige decisión; en CI es error)
-onlyBuiltDependencies:
-  - sharp
-  - unrs-resolver
+# Builds nativos aprobados explícitamente (pnpm approve-builds; sin esto el CI falla)
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
