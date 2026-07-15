@@ -33,13 +33,13 @@ type Access = "some" | "none"; // ≥1 fila legible | 0 filas (denegado)
  * A: 1 curso, 1 acción, 2 lecciones, 1 inscripción, 1 config SENCE, auditoría).
  */
 const EXPECTED: Record<string, Record<string, Access>> = {
-  otec_admin:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "some", audit_log: "some", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some" },
-  coordinator: { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" },
-  instructor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" }, // ve su propia membership
-  tutor:       { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" },
-  student:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" }, // enrollments/progreso/sesiones: los suyos
-  company:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "none", sence_sessions: "some", sence_events: "none", alerts: "none" },
-  supervisor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some" },
+  otec_admin:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "some", audit_log: "some", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some" },
+  coordinator: { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some" },
+  instructor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some" }, // ve su propia membership
+  tutor:       { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some" },
+  student:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "none", quiz_attempts: "some", grades: "some" }, // publicado/lo suyo; questions JAMÁS (pauta)
+  company:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "none", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "none", quiz_attempts: "none", grades: "none" },
+  supervisor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some", quizzes: "some", questions: "none", quiz_attempts: "none", grades: "some" },
 };
 
 let env: { apiUrl: string; anonKey: string; jwtSecret: string };
@@ -101,6 +101,20 @@ describe("matriz de permisos de los 8 roles (task 1.7, spec §3)", () => {
       const { data } = await db.from("platform_admins").select("*");
       expect(data ?? [], `${role} no debería ver platform_admins`).toEqual([]);
     }
+  });
+
+  it("la PAUTA del intento (answer_key) NO es seleccionable por el cliente, ni por el propio alumno", async () => {
+    // Mismo mecanismo que token_encrypted: grant de columnas (task 2.1, S7).
+    for (const [indexStr, role] of Object.entries(ROLE_BY_INDEX)) {
+      const db = await clientForRole(Number(indexStr), role);
+      const withKey = await db.from("quiz_attempts").select("answer_key");
+      expect(withKey.error, `${role} no debe poder seleccionar answer_key`).not.toBeNull();
+    }
+    // Las columnas no sensibles del intento sí se leen (el alumno ve su snapshot).
+    const student = await clientForRole(5, "student");
+    const okSel = await student.from("quiz_attempts").select("questions_snapshot, grade");
+    expect(okSel.error).toBeNull();
+    expect(okSel.data?.length ?? 0).toBeGreaterThan(0);
   });
 
   it("el token cifrado SENCE NO es seleccionable por el cliente, ni para el otec_admin (I-6)", async () => {
