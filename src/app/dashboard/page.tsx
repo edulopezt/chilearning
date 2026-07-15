@@ -62,6 +62,12 @@ export default async function DashboardPage() {
             >
               {esCL.branding.title}
             </Link>
+            <Link
+              href="/admin/correos"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.emails.title}
+            </Link>
           </>
         ) : null}
         {hasRole(principal, "otec_admin") ||
