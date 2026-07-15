@@ -129,10 +129,13 @@ describe("sence_sessions — aislamiento y no-escritura desde el cliente", () =>
   });
 
   it("otec_admin@B no ve las sesiones del tenant A", async () => {
+    // Aislamiento, no vacío: otros tests pueden sembrar sesiones legítimas del
+    // tenant B (la suite es re-ejecutable sin `db reset`); lo que JAMÁS puede
+    // aparecer es una fila del tenant A.
     const db = client(await jwt({ sub: "u", tenant_id: TENANT_B, roles: ["otec_admin"] }));
-    const { data, error } = await db.from("sence_sessions").select("id");
+    const { data, error } = await db.from("sence_sessions").select("tenant_id");
     expect(error).toBeNull();
-    expect(data).toEqual([]);
+    expect(data?.every((r) => r.tenant_id === TENANT_B)).toBe(true);
   });
 
   it("el cliente NO puede insertar sesiones (solo el servidor)", async () => {

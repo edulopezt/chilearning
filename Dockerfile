@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 # Build standalone de Next.js para deploy en Coolify (plan §7).
 # Multi-stage: deps -> build -> runner mínimo (output: "standalone").
+# La app worker (task 2.6) se construye con `--target worker` (en Coolify:
+# dockerfile_target_build=worker): imagen propia, mínima y SIN build de Next.
+# El target por defecto (último stage) sigue siendo `runner` (la app web).
 
 FROM node:24-alpine AS base
 RUN corepack disable && npm i -g pnpm@11.13.0
@@ -11,7 +14,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# ---------- build ----------
+# ---------- build (app Next) ----------
 FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -25,11 +28,26 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
-# Bundle del worker de jobs (task 2.6): mismo repo, proceso aparte. En Coolify
-# la app worker usa esta misma imagen con start command `node dist/worker/index.js`.
+
+# ---------- worker-build (bundle esbuild, sin Next) ----------
+FROM base AS worker-build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 RUN pnpm build:worker
 
-# ---------- runner ----------
+# ---------- worker (proceso de jobs, task 2.6) ----------
+# No es el stage final a propósito: el build por defecto produce `runner`.
+FROM node:24-alpine AS worker
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 worker
+COPY --from=worker-build --chown=worker:nodejs /app/dist/worker ./dist/worker
+USER worker
+CMD ["node", "dist/worker/index.js"]
+
+# ---------- runner (app web) ----------
 FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -39,7 +57,6 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=build /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=build --chown=nextjs:nodejs /app/dist/worker ./dist/worker
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0

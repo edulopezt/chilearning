@@ -82,7 +82,7 @@ export function ImportForm({ actions }: { actions: { id: string; label: string }
 }
 
 function ImportResult({ outcome }: { outcome: Extract<ImportActionState, { status: "done" }>["outcome"] }) {
-  const { imported, failed, report } = outcome;
+  const { imported, failed, report, emails } = outcome;
   const rows = [
     ...report.errors.map((e) => ({ row: e.rowNumber, field: e.field, message: e.message })),
     ...failed.map((f) => ({ row: f.rowNumber, field: "—", message: f.reason })),
@@ -102,6 +102,24 @@ function ImportResult({ outcome }: { outcome: Extract<ImportActionState, { statu
           </>
         ) : null}
       </p>
+      {emails.sent + emails.failed + emails.skipped > 0 ? (
+        <p className="text-sm">
+          <strong className="text-green-700 dark:text-green-400">{emails.sent}</strong>{" "}
+          {t.emailsSent}
+          {emails.failed > 0 ? (
+            <>
+              {" · "}
+              <strong className="text-red-600">{emails.failed}</strong> {t.emailsFailed}
+            </>
+          ) : null}
+          {emails.skipped > 0 ? (
+            <>
+              {" · "}
+              <strong>{emails.skipped}</strong> {t.emailsSkipped}
+            </>
+          ) : null}
+        </p>
+      ) : null}
 
       {rows.length === 0 ? (
         <p className="text-sm text-green-700 dark:text-green-400">{t.allGood}</p>

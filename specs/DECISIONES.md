@@ -373,3 +373,23 @@ entrada original.
   ciega la operación durante certificación/pruebas, que es cuando más se mira);
   RPC SQL con GROUP BY (válida, se difiere: la paginación basta al volumen
   actual y no agrega superficie SQL).
+
+## D-019 — Correo transaccional: Resend por REST, sin SDK, con no-op fallback
+
+- **ID:** D-019
+- **Fecha:** 2026-07-15
+- **Decisión:** el proveedor de correo es **Resend** (decidido por Edu
+  2026-07-15). La integración es un `EmailSender` propio
+  (`src/modules/comunicacion/email-sender.ts`) que llama la REST API con
+  `fetch` — sin SDK: una dependencia menos. Sin `RESEND_API_KEY`, degrada a un
+  sender no-op (`not_configured`): ningún flujo se bloquea por falta de
+  proveedor. Los servicios reciben el sender INYECTADO (tests con fake; la API
+  real jamás se llama en CI). En logs solo direcciones enmascaradas
+  (`maskEmail`, Ley 21.719). Envíos masivos futuros → cola BullMQ (follow-up).
+- **Por qué:** cierra el follow-up de 1.6 y habilita 2.2 (notificación de
+  corrección), 2.7 (guía Clave Única) y 2.6 (alertas al operador). La API de
+  Resend es un POST simple; el SDK no aporta nada que justifique la dependencia.
+- **Alternativas descartadas:** SDK oficial `resend` (innecesario); SMTP
+  genérico con nodemailer (más config y otra dependencia; Resend da API key +
+  dominio verificado en minutos); esperar al Hito 3 (descartado por Edu:
+  quiere envío real ya).

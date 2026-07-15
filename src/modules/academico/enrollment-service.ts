@@ -9,6 +9,8 @@ import {
   type ImportReport,
   type ValidEnrollmentRow,
 } from "@/modules/academico/domain/enrollment-import";
+import { emailSenderFromEnv, type EmailSender } from "@/modules/comunicacion/email-sender";
+import { renderWelcomeEmail } from "@/modules/comunicacion/domain/email-templates";
 
 /**
  * Servicio de import de inscripciones (task 1.3). Toma el reporte del validador
@@ -16,7 +18,21 @@ import {
  * `tenantGuard()`. Idempotente: reusar usuarios existentes, no duplicar
  * membresías (sin pisar roles previos), upsert de la inscripción. "Sin insertar
  * basura": las filas inválidas nunca llegan aquí (gate F1).
+ *
+ * Hito 2 (cierra el follow-up de 1.6): a cada inscripción NUEVA se le envía el
+ * correo de bienvenida con la guía Clave Única, vía `EmailSender` (Resend).
+ * Best-effort: un correo fallido NO invalida la inscripción (se cuenta y se
+ * audita). Volúmenes grandes → mover a la cola BullMQ (follow-up anotado).
  */
+
+export interface ImportEmailSummary {
+  /** Correos de bienvenida enviados (solo inscripciones nuevas). */
+  sent: number;
+  /** Envíos intentados que fallaron (proveedor caído, dirección inválida). */
+  failed: number;
+  /** Inscripciones nuevas SIN envío (proveedor no configurado o sin contexto). */
+  skipped: number;
+}
 
 export interface ImportOutcome {
   /** Filas válidas efectivamente inscritas (nuevas o actualizadas). */
@@ -25,6 +41,16 @@ export interface ImportOutcome {
   failed: { rowNumber: number; reason: string }[];
   /** Reporte de validación (filas rechazadas por formato, fila a fila). */
   report: ImportReport;
+  /** Resumen del envío de bienvenidas (HU-3.3). */
+  emails: ImportEmailSummary;
+}
+
+export interface ImportDeps {
+  /** Inyectable en tests; default: Resend según env (no-op sin API key). */
+  emailSender?: EmailSender;
+  /** URL absoluta a /mi-curso en el host del tenant (la calcula la capa app,
+   *  que conoce el request). Sin ella no se envían correos. */
+  courseUrl?: string;
 }
 
 export type ImportError = "forbidden" | "no_tenant" | "action_not_found";
@@ -42,6 +68,7 @@ export async function importEnrollmentsFromCsv(
   principal: Principal,
   actionId: string,
   csvText: string,
+  deps: ImportDeps = {},
 ): Promise<ImportOutcome | { error: ImportError }> {
   if (!principal.tenantId) return { error: "no_tenant" };
   // Matriz §3: AdminOTEC (CRUD) y Coordinador (CRU) gestionan usuarios/inscripciones.
@@ -54,29 +81,118 @@ export async function importEnrollmentsFromCsv(
   // La acción debe existir y pertenecer al tenant del actor (aislamiento).
   const { data: action } = await guard
     .from("actions")
-    .select("id")
+    .select("id, course_id")
     .eq("id", actionId)
     .maybeSingle();
   if (!action) return { error: "action_not_found" };
 
   const report = validateEnrollmentCsv(csvText);
   const failed: ImportOutcome["failed"] = [];
+  const emails: ImportEmailSummary = { sent: 0, failed: 0, skipped: 0 };
   let imported = 0;
 
   const emailToUserId = await buildEmailIndex(guard.db);
+  const sender = deps.emailSender ?? emailSenderFromEnv(process.env);
+  const welcome = await buildWelcomeContext(guard, action.course_id as string, deps.courseUrl);
 
   for (const row of report.valid) {
     try {
       const userId = await ensureUser(guard.db, emailToUserId, row);
       await ensureMembership(guard, userId);
-      await upsertEnrollment(guard, actionId, userId, row);
+      const isNew = await upsertEnrollment(guard, actionId, userId, row);
       imported++;
+      if (isNew) {
+        await sendWelcome(sender, welcome, row, emails);
+      }
     } catch (err) {
       failed.push({ rowNumber: row.rowNumber, reason: reason(err) });
     }
   }
 
-  return { imported, failed, report };
+  // Auditoría del lote de correos (P8; sin direcciones, solo conteos).
+  if (emails.sent + emails.failed + emails.skipped > 0) {
+    const { error: auditError } = await guard.db.from("audit_log").insert(
+      guard.withTenant({
+        actor_user_id: principal.userId,
+        action: "email.welcome_batch",
+        entity: "actions",
+        entity_id: actionId,
+        details: { ...emails },
+      }),
+    );
+    if (auditError) {
+      // Nunca silencioso: la auditoría es parte del contrato (P8).
+      console.error("[import] auditoría del lote de correos falló", {
+        message: auditError.message,
+      });
+    }
+  }
+
+  return { imported, failed, report, emails };
+}
+
+interface WelcomeContext {
+  courseName: string;
+  courseUrl: string | null;
+  brand: { orgName: string; primaryColor: string };
+}
+
+/** Contexto del correo de bienvenida (curso + marca), leído UNA vez por lote. */
+async function buildWelcomeContext(
+  guard: ReturnType<typeof tenantGuard>,
+  courseId: string,
+  courseUrl: string | undefined,
+): Promise<WelcomeContext> {
+  const [{ data: course }, { data: tenant }] = await Promise.all([
+    guard.db
+      .from("courses")
+      .select("name")
+      .eq("id", courseId)
+      .eq("tenant_id", guard.tenantId)
+      .maybeSingle(),
+    guard.db
+      .from("tenants")
+      .select("name, branding")
+      .eq("id", guard.tenantId)
+      .maybeSingle(),
+  ]);
+  const branding = (tenant?.branding ?? {}) as Record<string, unknown>;
+  return {
+    courseName: (course?.name as string) ?? "tu curso",
+    courseUrl: courseUrl ?? null,
+    brand: {
+      orgName: (tenant?.name as string) ?? "Tu OTEC",
+      // Las plantillas ya validan el hex y caen a su default si no calza.
+      primaryColor: typeof branding.primaryColor === "string" ? branding.primaryColor : "#1e3a8a",
+    },
+  };
+}
+
+/** Envía la bienvenida best-effort y actualiza el resumen (nunca lanza). */
+async function sendWelcome(
+  sender: EmailSender,
+  ctx: WelcomeContext,
+  row: ValidEnrollmentRow,
+  emails: ImportEmailSummary,
+): Promise<void> {
+  if (!ctx.courseUrl || !sender.configured) {
+    emails.skipped++;
+    return;
+  }
+  const rendered = renderWelcomeEmail({
+    brand: ctx.brand,
+    recipientName: row.nombre,
+    courseName: ctx.courseName,
+    courseUrl: ctx.courseUrl,
+  });
+  const result = await sender.send({
+    to: row.email,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+  });
+  if (result.ok) emails.sent++;
+  else emails.failed++;
 }
 
 function reason(err: unknown): string {
@@ -132,16 +248,26 @@ async function ensureMembership(guard: ReturnType<typeof tenantGuard>, userId: s
   if (error) throw new Error(`Membresía: ${error.message}`);
 }
 
-/** Upsert de la inscripción (re-import actualiza RUN/exento, no duplica). */
+/** Upsert de la inscripción (re-import actualiza RUN/exento, no duplica).
+ *  Devuelve `true` si la inscripción es NUEVA (gatilla la bienvenida). */
 async function upsertEnrollment(
   guard: ReturnType<typeof tenantGuard>,
   actionId: string,
   userId: string,
   row: ValidEnrollmentRow,
-): Promise<void> {
+): Promise<boolean> {
+  const { data: existing } = await guard.db
+    .from("enrollments")
+    .select("id")
+    .eq("tenant_id", guard.tenantId)
+    .eq("action_id", actionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
   const { error } = await guard.db.from("enrollments").upsert(
     guard.withTenant({ action_id: actionId, user_id: userId, run: row.run, exento: row.exento }),
     { onConflict: "action_id,user_id" },
   );
   if (error) throw new Error(`Inscripción: ${error.message}`);
+  return existing == null;
 }
