@@ -31,6 +31,9 @@ export default defineConfig({
           include: ["src/**/*.rls.test.ts"],
           testTimeout: 20_000,
           hookTimeout: 60_000,
+          // Serial: varios archivos llaman `supabase status` en su beforeAll y
+          // el CLI colisiona al escribir su telemetría si corren en paralelo.
+          fileParallelism: false,
         },
       },
       {
@@ -41,6 +44,8 @@ export default defineConfig({
           include: ["src/**/*.integration.test.ts", "tools/**/*.integration.test.ts"],
           testTimeout: 20_000,
           hookTimeout: 30_000,
+          // Serial: evita la carrera de `supabase status` y de puertos del mock.
+          fileParallelism: false,
         },
       },
     ],

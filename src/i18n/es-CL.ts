@@ -32,6 +32,28 @@ export const esCL = {
     platformAdmin: "Administrador de plataforma (sin organización)",
     goToCourse: "Ir a mi curso",
   },
+  senceAdmin: {
+    title: "Configuración SENCE",
+    intro:
+      "Configura las credenciales SENCE de tu OTEC. El token se guarda cifrado y nunca se vuelve a mostrar.",
+    rutLabel: "RUT del OTEC",
+    rutHint: "Formato: 76111111-6 (con dígito verificador).",
+    environmentLabel: "Ambiente",
+    envTest: "Pruebas (rcetest)",
+    envProd: "Producción (rce)",
+    tokenLabel: "Token SENCE",
+    tokenHintNew: "Pega el token generado en sistemas.sence.cl/rts.",
+    tokenHintConfigured:
+      "Ya hay un token configurado. Déjalo vacío para conservarlo, o pega uno nuevo para reemplazarlo.",
+    tokenConfigured: "Token configurado ✓",
+    tokenMissing: "Sin token configurado",
+    save: "Guardar configuración",
+    saved: "Configuración guardada.",
+    errorRut: "El RUT del OTEC no es válido (revisa el dígito verificador).",
+    errorToken: "El token debe tener 36 caracteres.",
+    errorForbidden: "No tienes permiso para configurar SENCE.",
+    forbidden: "Solo el administrador del OTEC puede acceder a esta página.",
+  },
   course: {
     noCourse: "Aún no tienes cursos asignados.",
     lockedTitle: "Registra tu asistencia SENCE para acceder al contenido",
