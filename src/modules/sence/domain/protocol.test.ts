@@ -74,35 +74,68 @@ describe("parseFechaHora", () => {
   });
 });
 
-describe("resolvePublicOrigin (callback detrás de proxy)", () => {
+describe("resolvePublicOrigin (callback detrás de proxy, anti-spoofing)", () => {
+  const ROOT = "chilearning.cl";
   const h = (map: Record<string, string>) => (n: string) => map[n.toLowerCase()] ?? null;
 
-  it("usa x-forwarded-proto/host cuando el proxy los envía (https)", () => {
+  it("usa x-forwarded-host cuando es un subdominio del root, forzando https", () => {
     const origin = resolvePublicOrigin(
-      h({ "x-forwarded-proto": "https", "x-forwarded-host": "otec-andes.chilearning.cl", host: "internal:3000" }),
+      h({ "x-forwarded-proto": "http", "x-forwarded-host": "otec-andes.chilearning.cl", host: "internal:3000" }),
       "http://internal:3000/api/sence/start",
+      ROOT,
+    );
+    // esquema forzado a https aunque el proxy diga http
+    expect(origin).toBe("https://otec-andes.chilearning.cl");
+  });
+
+  it("acepta el propio dominio raíz", () => {
+    expect(resolvePublicOrigin(h({ host: "chilearning.cl" }), "http://internal/x", ROOT)).toBe(
+      "https://chilearning.cl",
+    );
+  });
+
+  it("RECHAZA un host externo forjado (open-redirect) y cae al fallback", () => {
+    const origin = resolvePublicOrigin(
+      h({ "x-forwarded-host": "evil.com", "x-forwarded-proto": "https" }),
+      "https://otec-andes.chilearning.cl/api/sence/start",
+      ROOT,
     );
     expect(origin).toBe("https://otec-andes.chilearning.cl");
   });
 
+  it("no se deja engañar por userinfo (evil.com@otec...) ni por path inyectado", () => {
+    expect(
+      resolvePublicOrigin(h({ "x-forwarded-host": "evil.com@sub.chilearning.cl" }), "http://internal/x", ROOT),
+    ).toBe("https://sub.chilearning.cl");
+    expect(
+      resolvePublicOrigin(h({ "x-forwarded-host": "evil.com/path" }), "https://ok.chilearning.cl/x", ROOT),
+    ).toBe("https://ok.chilearning.cl");
+  });
+
+  it("no confunde un sufijo pegado (evilchilearning.cl) con un subdominio", () => {
+    expect(
+      resolvePublicOrigin(h({ "x-forwarded-host": "evilchilearning.cl" }), "https://ok.chilearning.cl/x", ROOT),
+    ).toBe("https://ok.chilearning.cl");
+  });
+
   it("toma el primer valor de listas separadas por coma", () => {
     const origin = resolvePublicOrigin(
-      h({ "x-forwarded-proto": "https, http", "x-forwarded-host": "otec-andes.chilearning.cl, otro" }),
-      "http://internal/api/sence/start",
+      h({ "x-forwarded-host": "otec-andes.chilearning.cl, evil.com" }),
+      "http://internal/x",
+      ROOT,
     );
     expect(origin).toBe("https://otec-andes.chilearning.cl");
   });
 
   it("cae al Host header si no hay x-forwarded-host", () => {
-    const origin = resolvePublicOrigin(
-      h({ "x-forwarded-proto": "https", host: "otec-andes.chilearning.cl" }),
-      "http://internal/api/sence/start",
-    );
-    expect(origin).toBe("https://otec-andes.chilearning.cl");
+    expect(
+      resolvePublicOrigin(h({ host: "otec-andes.chilearning.cl" }), "http://internal/x", ROOT),
+    ).toBe("https://otec-andes.chilearning.cl");
   });
 
   it("sin headers de proxy, usa el origin de la URL cruda", () => {
-    const origin = resolvePublicOrigin(h({}), "https://directo.chilearning.cl/api/sence/start");
-    expect(origin).toBe("https://directo.chilearning.cl");
+    expect(resolvePublicOrigin(h({}), "https://directo.chilearning.cl/api/sence/start", ROOT)).toBe(
+      "https://directo.chilearning.cl",
+    );
   });
 });

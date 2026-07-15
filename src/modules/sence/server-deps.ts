@@ -19,7 +19,10 @@ import { resolvePublicOrigin, type SenceEnvironment } from "@/modules/sence/doma
 export function buildEngineDeps(request: Request): EngineDeps {
   const sence = senceEnv();
   const key = parseEncryptionKey(sence.tokenEncryptionKey);
-  const origin = resolvePublicOrigin((n) => request.headers.get(n), request.url);
+  // El host reenviado se valida contra el dominio raíz (anti-spoofing del
+  // callback). Se lee directo de env para no acoplar con la config pública.
+  const rootDomain = process.env.TENANT_ROOT_DOMAIN ?? "localtest.me";
+  const origin = resolvePublicOrigin((n) => request.headers.get(n), request.url, rootDomain);
 
   const baseOverride: Partial<Record<SenceEnvironment, string>> | undefined =
     sence.mode === "mock"
