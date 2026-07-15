@@ -49,12 +49,20 @@ export default async function DashboardPage() {
           </Link>
         ) : null}
         {hasRole(principal, "otec_admin") ? (
-          <Link
-            href="/admin/sence"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-          >
-            {esCL.senceAdmin.title}
-          </Link>
+          <>
+            <Link
+              href="/admin/sence"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.senceAdmin.title}
+            </Link>
+            <Link
+              href="/admin/marca"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.branding.title}
+            </Link>
+          </>
         ) : null}
         {hasRole(principal, "otec_admin") || hasRole(principal, "coordinator") ? (
           <>
