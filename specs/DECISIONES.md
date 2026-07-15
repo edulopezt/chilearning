@@ -532,3 +532,33 @@ entrada original.
   `already_published` por borrador y por re-publicación, trigger de BD aborta la
   reversión por SQL directo, la cola expone `gradeId`+estado, y el cambio con
   motivo mantiene `published` + audit `grade.updated`.
+
+
+## D-024 — Resolución de la revisión 4-ojos del PR #40 (libro de notas 2.3)
+
+- **ID:** D-024
+- **Fecha:** 2026-07-15
+- **Contexto:** la revisión adversarial del PR #40 (task 2.3, el GATE del hito)
+  confirmó 3 defectos y refutó 2.
+- **Confirmados y corregidos:**
+  - **MED** — `loadPublishedGrades` paginaba con orden NO único (`enrollment_id`),
+    sin desempate `id`: en acciones con >1000 notas publicadas, la paginación
+    OFFSET puede saltarse una nota en el borde de página → promedio corrupto +
+    fila marcada incompleta en silencio. *Fix:* `.order("id")` como desempate
+    (convención del resto del archivo).
+  - **MED** — inyección de fórmulas en el CSV (CWE-1236): `csvCell` no
+    neutralizaba valores que empiezan con `=,+,-,@,TAB,CR`. Los nombres provienen
+    del roster importado (menor confianza) y el staff abre el CSV en Excel.
+    *Fix:* anteponer `'` a esas celdas, en el libro de notas Y en el export de
+    cumplimiento (mismo patrón heredado, #35).
+  - **LOW** — libro completo con TODOS los pesos en 0 → `finalGrade` null →
+    `rowStatus` devolvía "failed" ("Reprobado"). *Fix:* estado neutral cuando no
+    hay promedio computable (nunca reprobar sin nota final).
+- **Refutados (2, tradeoff by-design):** `getGradeHistory` lee todos los
+  `grade.updated` del tenant y filtra en memoria por la acción. Es correcto y es
+  la opción óptima-restringida: `audit_log.entity_id` es `text` SIN FK, así que
+  PostgREST no puede hacer join embebido por acción; `.in(gradeIds)` cae en el
+  "URI too long" documentado; y acotar por ventana de fecha rompería la semántica
+  del historial. El volumen es bajo (grade.updated solo se emite en correcciones
+  de nota publicada con motivo, evento raro) y el acceso es solo otec_admin. Se
+  acepta el tradeoff; no re-flaggear.

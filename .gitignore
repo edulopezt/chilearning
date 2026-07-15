@@ -42,3 +42,6 @@ Thumbs.db
 .vercel
 .turbo
 STAGING-CREDENTIALS.txt
+
+# Worktrees temporales de revisiones/agentes
+.claude/worktrees/

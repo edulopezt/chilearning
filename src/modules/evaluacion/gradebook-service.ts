@@ -145,7 +145,10 @@ async function loadPublishedGrades(
       .eq("tenant_id", tenantId)
       .eq("status", "published")
       .eq("enrollments.action_id", actionId)
+      // Desempate único `id`: sin él, la paginación OFFSET sobre enrollment_id
+      // (no único) puede saltarse una nota en el borde de página (>1000 notas).
       .order("enrollment_id", { ascending: true })
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE - 1) as unknown as PromiseLike<{
       data: { enrollment_id: string; quiz_id: string | null; assignment_id: string | null; grade: number }[] | null;
     }>,

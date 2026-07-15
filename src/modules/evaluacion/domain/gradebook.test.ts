@@ -91,6 +91,13 @@ describe("rowStatus", () => {
     expect(rowStatus(consolidate([quiz], [student("e", "A", { q1: 6 })]).rows[0]!)).toBe("passed");
     expect(rowStatus(consolidate([quiz], [student("e", "A", { q1: 2 })]).rows[0]!)).toBe("failed");
   });
+
+  it("completo con TODOS los pesos 0 → neutral (nunca 'reprobado')", () => {
+    const zero = { id: "z", kind: "quiz" as const, title: "Diagnóstico", weight: 0 };
+    const row = consolidate([zero], [student("e", "A", { z: 7.0 })]).rows[0]!;
+    expect(row.finalGrade).toBeNull();
+    expect(rowStatus(row)).toBe("none"); // NO "failed"
+  });
 });
 
 describe("gradebookToCsv", () => {
@@ -126,5 +133,15 @@ describe("gradebookToCsv", () => {
     const csv = gradebookToCsv(gb, labels);
     expect(csv).toContain('"Quiz ""A""; parte 1"');
     expect(csv).toContain('"Pérez; Juan"');
+  });
+
+  it("neutraliza inyección de fórmulas (nombre que empieza con =,+,-,@)", () => {
+    const evil = student("e1", '=HYPERLINK("http://evil","x")', { q1: 6 });
+    const csv = gradebookToCsv(consolidate([quiz], [evil]), labels);
+    // El apóstrofo va delante y, como ahora hay `=`/comillas, la celda se entrecomilla.
+    expect(csv).toContain(`"'=HYPERLINK(""http://evil"",""x"")"`);
+    // Una fórmula con @ (sin separador) igual queda neutralizada con el apóstrofo.
+    const at = student("e2", "@sum(A1)", { q1: 6 });
+    expect(gradebookToCsv(consolidate([quiz], [at]), labels)).toContain("'@sum(A1)");
   });
 });

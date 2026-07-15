@@ -115,13 +115,20 @@ export function rowStatus(row: GradebookRow): "passed" | "failed" | "incomplete"
   const hasAny = row.cells.some((c) => c.grade !== null);
   if (!hasAny) return "none";
   if (row.incomplete) return "incomplete";
+  // Completo pero sin promedio computable (p.ej. todos los pesos en 0): neutral,
+  // NUNCA "reprobado" — no hay nota final que reprobar.
+  if (row.passed === null || row.finalGrade === null) return "none";
   return row.passed ? "passed" : "failed";
 }
 
 function csvCell(value: string): string {
+  // Neutraliza inyección de fórmulas (CWE-1236): si el valor empieza con
+  // =,+,-,@,TAB o CR, antepone un apóstrofo para que la planilla lo trate como
+  // texto (los nombres provienen del roster importado, de menor confianza).
+  let v = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   // Separador `;` para Excel es-CL; entrecomilla si trae `;`, comillas o saltos.
-  if (/[";\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
+  if (/[";\r\n]/.test(v)) v = `"${v.replace(/"/g, '""')}"`;
+  return v;
 }
 
 /** CSV con BOM UTF-8 y separador `;` (abre directo en Excel es-CL). */
