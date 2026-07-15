@@ -15,7 +15,7 @@ const t = esCL.actions;
 export default async function ActivateActionPage({
   params,
 }: {
-  params: Promise<{ actionId: string }>;
+  params: Promise<{ id: string }>;
 }) {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
@@ -27,7 +27,7 @@ export default async function ActivateActionPage({
     );
   }
 
-  const { actionId } = await params;
+  const { id: actionId } = await params;
   const guard = tenantGuard(principal.tenantId);
   const { data: action } = await guard.db
     .from("actions")
