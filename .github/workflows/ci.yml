@@ -74,8 +74,11 @@ jobs:
         with:
           version: latest
       - run: pnpm install --frozen-lockfile
+      # storage-api ON: las tareas (task 2.2) suben archivos a un bucket y la
+      # suite ejerce upload + signed URL. imgproxy queda fuera (solo lo usan las
+      # transformaciones de imagen, que no tocamos).
       - name: Start local Supabase (migrations + seeds)
-        run: supabase start -x realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor
+        run: supabase start -x realtime,imgproxy,studio,edge-runtime,logflare,vector,supavisor
       - run: pnpm test:integration
       - name: Stop Supabase
         if: always()
