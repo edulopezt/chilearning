@@ -93,13 +93,13 @@ insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento) 
    '5126663-3', false);
 
 -- Dos lecciones del curso demo (texto + video embed).
-insert into public.lessons (tenant_id, course_id, title, kind, content, position) values
+insert into public.lessons (tenant_id, course_id, title, kind, content, position, status) values
   ('11111111-1111-4111-8111-111111111111', 'c0000000-0000-4000-8000-000000000001',
    'Introducción a la prevención de riesgos', 'text',
    'La prevención de riesgos laborales es el conjunto de actividades orientadas a proteger la salud de las personas trabajadoras. En esta lección revisaremos los conceptos básicos: peligro, riesgo, y las medidas de control. Registrar tu asistencia SENCE es obligatorio para validar tu participación.',
-   1),
+   1, 'published'),
   ('11111111-1111-4111-8111-111111111111', 'c0000000-0000-4000-8000-000000000001',
-   'Elementos de protección personal (EPP)', 'video', 'dQw4w9WgXcQ', 2);
+   'Elementos de protección personal (EPP)', 'video', 'dQw4w9WgXcQ', 2, 'published');
 
 -- ---------- Auditoría semilla (una por tenant, para probar lectura) ----------
 insert into public.audit_log (tenant_id, actor_user_id, action, entity, details) values
