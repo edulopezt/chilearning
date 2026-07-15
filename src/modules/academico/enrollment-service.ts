@@ -53,7 +53,7 @@ export interface ImportDeps {
   courseUrl?: string;
 }
 
-export type ImportError = "forbidden" | "no_tenant" | "action_not_found";
+export type ImportError = "forbidden" | "no_tenant" | "action_not_found" | "action_not_active";
 
 /** Password aleatorio de un solo uso: el alumno accederá por magic link (1.9). */
 function throwawayPassword(): string {
@@ -81,10 +81,13 @@ export async function importEnrollmentsFromCsv(
   // La acción debe existir y pertenecer al tenant del actor (aislamiento).
   const { data: action } = await guard
     .from("actions")
-    .select("id, course_id")
+    .select("id, course_id, status")
     .eq("id", actionId)
     .maybeSingle();
   if (!action) return { error: "action_not_found" };
+  // Solo se inscribe en acciones ACTIVAS (task 2.8): una acción en borrador aún
+  // no tiene código/fechas confirmados ante SENCE.
+  if (action.status !== "active") return { error: "action_not_active" };
 
   const report = validateEnrollmentCsv(csvText);
   const failed: ImportOutcome["failed"] = [];

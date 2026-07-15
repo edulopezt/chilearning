@@ -182,7 +182,8 @@ describe("correo de bienvenida al inscribir (Hito 2, cierra follow-up de 1.6)", 
     };
   }
 
-  /** Acción fresca por test: las inscripciones siempre son NUEVAS. */
+  /** Acción fresca por test: las inscripciones siempre son NUEVAS. Debe estar
+   * ACTIVA (con fechas) — solo se inscribe en acciones activas (task 2.8). */
   async function freshAction(): Promise<string> {
     const id = randomUUID();
     const { error } = await svc.from("actions").insert({
@@ -192,6 +193,9 @@ describe("correo de bienvenida al inscribir (Hito 2, cierra follow-up de 1.6)", 
       codigo_accion: "ACC-EMAIL-TEST",
       training_line: 3,
       environment: "rcetest",
+      starts_on: "2026-07-01",
+      ends_on: "2026-12-31",
+      status: "active",
     });
     if (error) throw new Error(error.message);
     return id;

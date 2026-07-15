@@ -6,6 +6,7 @@ import { listCourses } from "@/modules/academico/course-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { CourseForm } from "./course-form";
+import { CloneButton } from "./clone-button";
 
 export const dynamic = "force-dynamic";
 
@@ -67,9 +68,12 @@ export default async function CoursesPage() {
                     <td className="py-2 pr-3">{c.hours}</td>
                     <td className="py-2 pr-3">{STATUS_LABEL[c.status] ?? c.status}</td>
                     <td className="py-2">
-                      <Link href={`/admin/cursos/${c.id}/lecciones`} className="text-sm underline">
-                        {esCL.lessons.title}
-                      </Link>
+                      <span className="flex flex-wrap items-center gap-3">
+                        <Link href={`/admin/cursos/${c.id}/lecciones`} className="text-sm underline">
+                          {esCL.lessons.title}
+                        </Link>
+                        <CloneButton courseId={c.id} />
+                      </span>
                     </td>
                   </tr>
                 ))}

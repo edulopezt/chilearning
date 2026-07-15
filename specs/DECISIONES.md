@@ -562,3 +562,33 @@ entrada original.
   del historial. El volumen es bajo (grade.updated solo se emite en correcciones
   de nota publicada con motivo, evento raro) y el acceso es solo otec_admin. Se
   acepta el tradeoff; no re-flaggear.
+
+
+## D-025 — Estado de la acción (draft/active) y clonado de curso (task 2.8)
+
+- **ID:** D-025
+- **Fecha:** 2026-07-15
+- **Decisión:**
+  - **Estado de la acción:** enum `action_status` (draft/active). Una acción NACE
+    en borrador (o activa si `createAction` ya recibe ambas fechas). Solo pasa a
+    activa por `activateAction`, que exige fechas y, si es re-ejecución
+    (`cloned_from` no nulo), un código DISTINTO al de origen. Gate a nivel BD:
+    CHECK `actions_active_needs_dates` (una activa siempre tiene fechas). El
+    "código nuevo ≠ origen" no es expresable como CHECK entre filas → se valida
+    en el servicio (`validateActivation`) + test.
+  - **Diente:** `importEnrollmentsFromCsv` rechaza acciones en borrador
+    (`action_not_active`): no se inscribe hasta activar.
+  - **Clonado de curso:** RPC transaccional `clone_course(tenant, course)`
+    SECURITY DEFINER + `search_path=''` + EXECUTE solo service_role (invocado vía
+    `guard.db.rpc`). Copia courses (→ draft, nombre + " (copia)") + lessons +
+    quizzes(+questions) + assignments al MISMO tenant. NUNCA copia actions,
+    enrollments, grades, submissions ni sesiones SENCE. El curso draft sin
+    acciones deja el contenido inalcanzable hasta re-ejecutar.
+  - **Re-ejecución de acción:** INSERT simple vía guard (sin RPC): copia config,
+    `attendance_lock=true`, fechas NULL, status draft, `cloned_from`=origen.
+- **Por qué:** re-usar un curso/acción es lo normal en OTECs (misma malla, nueva
+  cohorte), pero SENCE exige código y fechas nuevos por ejecución; el estado
+  draft evita inscribir/operar una acción a medio configurar. Auditoría:
+  `course.cloned`, `action.reexecuted`, `action.activated`.
+- **Backfill:** las acciones existentes CON fechas → active (ya operaban); las
+  demás quedan draft.
