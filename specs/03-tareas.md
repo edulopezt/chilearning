@@ -44,7 +44,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 ## Hito 1 — Gestión académica y contenido (semanas 2–3)
 
 - 1.1 CRUD cursos con modalidad y reglas de completitud — HU-3.1, 4.4
-- 1.2 Acciones SENCE (código, línea, fechas, ambiente, candado, cierre opcional) + panel de configuración SENCE del tenant (RUT y token cifrado write-only, probar en rcetest) — HU-3.2, 5.4
+- 1.2 🔶 Acciones SENCE + panel de configuración SENCE del tenant (RUT y token cifrado write-only) — HU-3.2, 5.4 — **Panel hecho 2026-07-15** (RUT con DV, token cifrado AES write-only, solo otec_admin, verificado en runtime); falta CRUD de acciones
 - 1.3 Inscripciones + import CSV/Excel con validación RUN/DV + exentos — HU-2.2, 3.2, 3.3
 - 1.4 Constructor nativo v1 (módulos/lecciones: texto, video Bunny, archivo, embed; reordenar; borrador/publicado) — HU-4.1
 - 1.5 Progreso del alumno + "retomar donde quedé" — HU-4.3

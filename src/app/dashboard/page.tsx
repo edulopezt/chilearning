@@ -39,14 +39,24 @@ export default async function DashboardPage() {
         </div>
       </dl>
 
-      {hasRole(principal, "student") ? (
-        <Link
-          href="/mi-curso"
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-neutral-900 px-4 font-medium text-white dark:bg-white dark:text-neutral-900"
-        >
-          {esCL.dashboard.goToCourse}
-        </Link>
-      ) : null}
+      <nav className="flex flex-wrap gap-3">
+        {hasRole(principal, "student") ? (
+          <Link
+            href="/mi-curso"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-neutral-900 px-4 font-medium text-white dark:bg-white dark:text-neutral-900"
+          >
+            {esCL.dashboard.goToCourse}
+          </Link>
+        ) : null}
+        {hasRole(principal, "otec_admin") ? (
+          <Link
+            href="/admin/sence"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+          >
+            {esCL.senceAdmin.title}
+          </Link>
+        ) : null}
+      </nav>
     </main>
   );
 }
