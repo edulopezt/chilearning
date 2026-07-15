@@ -42,12 +42,14 @@ export default async function LessonsPage({ params }: { params: Promise<{ course
         <p className="text-muted-foreground text-sm">
           {(course?.name as string) ?? ""} · {esCL.lessons.intro}
         </p>
-        <Link
-          href={`/admin/cursos/${courseId}/evaluaciones`}
-          className="mt-1 text-sm underline"
-        >
-          {esCL.quizzes.title} →
-        </Link>
+        <span className="mt-1 flex gap-4 text-sm">
+          <Link href={`/admin/cursos/${courseId}/evaluaciones`} className="underline">
+            {esCL.quizzes.title} →
+          </Link>
+          <Link href={`/admin/cursos/${courseId}/tareas`} className="underline">
+            {esCL.assignments.title} →
+          </Link>
+        </span>
       </header>
 
       <section className="flex flex-col gap-3">

@@ -103,6 +103,26 @@ const BUSINESS_TABLES: Record<string, Record<string, unknown>> = {
     quiz_id: "a0000000-0000-4000-8000-000000000001",
     grade: 7.0,
   },
+  assignments: {
+    tenant_id: TENANT_A,
+    course_id: "c0000000-0000-4000-8000-000000000001",
+    title: "Tarea pirata",
+  },
+  submissions: {
+    tenant_id: TENANT_A,
+    assignment_id: "f0000000-0000-4000-8000-000000000001",
+    enrollment_id: "e0000000-0000-4000-8000-000000000001",
+    version: 99,
+    file_path: "x",
+    file_name: "x.pdf",
+    file_size: 1,
+    mime_type: "application/pdf",
+  },
+  notifications: {
+    tenant_id: TENANT_A,
+    user_id: SUPERVISOR_ID,
+    kind: "grade.published",
+  },
 };
 
 let db: SupabaseClient;

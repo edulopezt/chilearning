@@ -166,3 +166,16 @@ insert into public.quiz_attempts (id, tenant_id, quiz_id, enrollment_id, attempt
 insert into public.grades (tenant_id, enrollment_id, source_kind, quiz_id, grade, status, published_at) values
   ('11111111-1111-4111-8111-111111111111', 'e0000000-0000-4000-8000-000000000001', 'quiz',
    'a0000000-0000-4000-8000-000000000001', 7.0, 'published', now());
+
+-- Tarea demo con nota directa (task 2.2) + entrega del alumno.
+insert into public.assignments (id, tenant_id, course_id, title, instructions, status, passing_pct) values
+  ('f0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'c0000000-0000-4000-8000-000000000001', 'Informe: identificación de riesgos',
+   'Sube un informe (PDF) identificando 3 riesgos de tu lugar de trabajo.', 'published', 60);
+
+insert into public.submissions (id, tenant_id, assignment_id, enrollment_id, version, comment,
+  file_path, file_name, file_size, mime_type, late) values
+  ('e1000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'f0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 1,
+   'Adjunto mi informe.', '11111111-1111-4111-8111-111111111111/demo/entrega.pdf',
+   'informe-demo.pdf', 12345, 'application/pdf', false);
