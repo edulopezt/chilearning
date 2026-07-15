@@ -7,6 +7,39 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-15 — Pre-flight masivo de acción + alerta día-1 (tarea 2.7, HU-5.8)
+
+Sin cambio de contrato: compone los validadores YA congelados. Ataca en origen
+los errores 207/208 (RUN mal digitado) y la peor sorpresa operativa (nadie
+registró asistencia el día 1).
+
+- **Sub-validadores de `preflight.ts` exportados sin cambio de comportamiento**
+  (`validateRunField` — antes `validateRun` privado —, `validateSenceCourseCode`,
+  `validateActionCode`): una sola fuente de reglas para el pre-flight
+  por-registro (I-8) y el masivo.
+- **`domain/action-preflight.ts`**: checklist de 8 ítems (token/RUT del OTEC,
+  CodSence, CodigoCurso, ambiente, fechas, RUNs del roster, guía CU) con
+  estados ok/warning/error. Normaliza ANTES de validar (como el import CSV).
+  RUN inválido en exento = warning (no viaja a SENCE, I-14). **Límite honesto
+  documentado:** 207/208 por nómina SENCE no son verificables localmente.
+- **El token nunca entra al dominio** (I-6/I-7): `preflight-service.ts` lo
+  descifra UNA vez, deriva `tokenOk` (¿descifrable tras rotación de clave?
+  ¿largo normativo?) y lo descarta. Como el motor, el servicio recibe un
+  `TenantGuard` ya autorizado por la capa app (I-16).
+- **Guía Clave Única**: el envío vive en `comunicacion/guide-service.ts` (este
+  módulo NO importa de otros, I-16) y deja marca en `audit_log`
+  (`sence.guide_sent` / `sence.guide_marked_sent`); el checklist solo la LEE.
+- **Alerta día-1** (`domain/day1.ts` + `runDay1Check` en el tick del worker):
+  acciones que parten HOY (America/Santiago) evaluadas desde la hora de corte;
+  ratio de inscritos no exentos con sesión `iniciada|cerrada` hoy < umbral →
+  fila en `alerts` (`sence_day1_low_attendance`, cooldown 24 h por acción).
+  Knobs `SENCE_DAY1_*` (D-020). Join embebido a `enrollments` (jamás `.in()`
+  con listas de ids — lección del PR #32).
+- UI: `/admin/acciones/[id]/preflight` (checklist, tabla de RUN inválidos,
+  guía, día-1) + enlace por fila en `/admin/acciones`.
+
+---
+
 ## 2026-07-15 — Worker de expiración T4/T6/T9 + alertas de tasa de error (tarea 2.6, Hito 2)
 
 Cierra el pendiente anotado el 2026-07-15 ("worker de expiración") y el gap

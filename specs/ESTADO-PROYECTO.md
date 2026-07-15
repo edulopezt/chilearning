@@ -150,8 +150,11 @@ edición inline de contenido de lección desde la UI (1.4, hoy: crear/reordenar/
   app `chilearning-worker` (target Docker `worker`, llega con el Dockerfile del PR de
   EmailSender). Dev local: `docker run -d --name chilearning-redis-dev -p 6379:6379
   redis:7-alpine` + `pnpm worker`.
-- ⬜ **2.7** Pre-flight de acción SENCE: validación masiva RUN/DV, guía Clave Única, check de
-  configuración, alerta día 1 — HU-5.8. *(Reusa `preflight.ts` del motor.)*
+- 🔶 **2.7** Pre-flight de acción SENCE — HU-5.8 — **en PR**: checklist masivo de 8 ítems
+  (`/admin/acciones/[id]/preflight`) que reusa los validadores congelados de `preflight.ts`
+  (RUN/DV de todo el roster, token descifrable, códigos, ambiente, fechas), envío REAL de la
+  guía Clave Única (comunicacion → audit) con marca manual de respaldo, y alerta día-1 en el
+  tick del worker (D-020: umbral 50%, corte 13:00 Chile, cooldown 24 h).
 - ⬜ **2.8** Clonado de cursos y re-ejecución de acciones (exige fechas y código nuevos) — HU-3.6.
 
 **Gate del Hito 2:** libro de notas con auditoría · export Excel del panel SENCE · pre-flight
