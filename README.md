@@ -5,6 +5,7 @@ LMS SaaS **multi-tenant** para OTECs chilenas con validación de asistencia **SE
 
 ## Documentación (leer en este orden)
 
+0. **`specs/ESTADO-PROYECTO.md`** — tablero vivo: qué está hecho, qué falta, cómo retomar (empieza aquí)
 1. `specs/00-constitucion.md` — los 10 principios innegociables
 2. `specs/01-especificacion.md` — el QUÉ (módulos, roles, historias de usuario)
 3. `specs/02-plan-tecnico.md` — el CÓMO (stack, arquitectura, ADRs)
