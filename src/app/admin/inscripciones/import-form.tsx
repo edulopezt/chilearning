@@ -16,9 +16,9 @@ const ERROR_TEXT: Record<string, string> = {
 };
 
 const TEMPLATE_CSV =
-  "nombre,email,run,exento\n" +
-  "Ana Díaz,ana@ejemplo.cl,16032460-0,No\n" +
-  "Juan Soto,juan@ejemplo.cl,9876543-3,Sí\n";
+  "nombre,apellidos,email,run,exento\n" +
+  "Ana,Díaz Rojas,ana@ejemplo.cl,16032460-0,No\n" +
+  "Juan,Soto Pinto,juan@ejemplo.cl,9876543-3,Sí\n";
 
 function templateHref(): string {
   return `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE_CSV)}`;

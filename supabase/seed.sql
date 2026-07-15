@@ -87,10 +87,10 @@ insert into public.actions (id, tenant_id, course_id, codigo_accion, training_li
    '2026-07-01', '2026-12-31');
 
 -- Inscribe al alumno demo (alumno@otec-andes.test) con un RUN ficticio válido.
-insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento) values
+insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento, first_names, last_names) values
   ('e0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
    'ac000000-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000005',
-   '5126663-3', false);
+   '5126663-3', false, 'María José', 'Pérez Soto');
 
 -- Dos lecciones del curso demo (texto + video embed).
 insert into public.lessons (tenant_id, course_id, title, kind, content, position, status) values

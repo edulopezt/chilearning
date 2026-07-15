@@ -37,6 +37,28 @@ describe("validateEnrollmentCsv", () => {
     expect(r.valid[0]?.exento).toBe(false);
   });
 
+  it("columna apellidos opcional (task 2.4): presente se lee, ausente queda vacía", () => {
+    const con = validateEnrollmentCsv(
+      "nombre,apellidos,email,run\nAna,Díaz Rojas,ana@otec.cl,5126663-3\n",
+    );
+    expect(con.errors).toEqual([]);
+    expect(con.valid[0]).toMatchObject({ nombre: "Ana", apellidos: "Díaz Rojas" });
+
+    // Sin la columna, JAMÁS se parte el nombre compuesto de forma heurística.
+    const sin = validateEnrollmentCsv("nombre,email,run\nMaría José Pérez,mj@otec.cl,16032460-0\n");
+    expect(sin.errors).toEqual([]);
+    expect(sin.valid[0]).toMatchObject({ nombre: "María José Pérez", apellidos: "" });
+  });
+
+  it("nombre/apellidos sobre 150 caracteres se rechazan (check de la columna)", () => {
+    const long = "x".repeat(151);
+    const r = validateEnrollmentCsv(
+      `nombre,apellidos,email,run\n${long},${long},a@x.cl,5126663-3\n`,
+    );
+    expect(r.valid).toEqual([]);
+    expect(r.errors.map((e) => e.field).sort()).toEqual(["apellidos", "nombre"]);
+  });
+
   it("marca exento con Sí/x/1", () => {
     const r = validateEnrollmentCsv("nombre,email,run,exento\nA,a@x.cl,5126663-3,Sí\n");
     expect(r.valid[0]?.exento).toBe(true);

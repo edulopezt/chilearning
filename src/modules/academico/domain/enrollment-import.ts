@@ -8,23 +8,31 @@ import { isValidRun, MAX_RUN_LENGTH, normalizeRun } from "@/modules/sence/domain
  * las válidas.
  *
  * Columnas esperadas (encabezado, insensible a mayúsculas/acentos):
- *   nombre, email, run, exento (exento es opcional)
+ *   nombre, email, run, exento (opcional), apellidos (opcional — task 2.4:
+ *   el export SENCE separa NOMBRES/APELLIDOS; jamás se parte un nombre
+ *   compuesto de forma heurística, así que si falta la columna, apellidos
+ *   queda vacío).
  */
 
-export const IMPORT_COLUMNS = ["nombre", "email", "run", "exento"] as const;
+export const IMPORT_COLUMNS = ["nombre", "apellidos", "email", "run", "exento"] as const;
 export type ImportColumn = (typeof IMPORT_COLUMNS)[number];
+
+/** Largo máximo de nombre/apellidos (check de la columna en enrollments). */
+export const MAX_NAME_LENGTH = 150;
 
 export interface ValidEnrollmentRow {
   /** Número de fila en el archivo (1-based, sin contar el encabezado). */
   rowNumber: number;
   nombre: string;
+  /** Vacío si el archivo no trae la columna (nunca se parte el nombre). */
+  apellidos: string;
   email: string;
   /** RUN normalizado (sin puntos, con guión, DV en minúscula si es k). */
   run: string;
   exento: boolean;
 }
 
-export type RowErrorField = "nombre" | "email" | "run" | "exento" | "row";
+export type RowErrorField = "nombre" | "apellidos" | "email" | "run" | "exento" | "row";
 
 export interface RowError {
   rowNumber: number;
@@ -126,6 +134,7 @@ export function validateEnrollmentCsv(text: string): ImportReport {
   const header = (rows[0] ?? []).map(canonicalHeader);
   const idx = {
     nombre: header.indexOf("nombre"),
+    apellidos: header.indexOf("apellidos"),
     email: header.indexOf("email"),
     run: header.indexOf("run"),
     exento: header.indexOf("exento"),
@@ -156,13 +165,29 @@ export function validateEnrollmentCsv(text: string): ImportReport {
     const cell = (c: number): string => (c >= 0 ? (cells[c] ?? "").trim() : "");
 
     const nombre = cell(idx.nombre);
+    const apellidos = idx.apellidos >= 0 ? cell(idx.apellidos) : "";
     const email = cell(idx.email);
     const runRaw = cell(idx.run);
     const exentoRaw = idx.exento >= 0 ? cell(idx.exento) : "";
 
     const rowErrors: RowError[] = [];
 
-    if (nombre === "") rowErrors.push({ rowNumber, field: "nombre", message: "El nombre es obligatorio." });
+    if (nombre === "") {
+      rowErrors.push({ rowNumber, field: "nombre", message: "El nombre es obligatorio." });
+    } else if (nombre.length > MAX_NAME_LENGTH) {
+      rowErrors.push({
+        rowNumber,
+        field: "nombre",
+        message: `El nombre supera los ${MAX_NAME_LENGTH} caracteres.`,
+      });
+    }
+    if (apellidos.length > MAX_NAME_LENGTH) {
+      rowErrors.push({
+        rowNumber,
+        field: "apellidos",
+        message: `Los apellidos superan los ${MAX_NAME_LENGTH} caracteres.`,
+      });
+    }
 
     if (email === "") {
       rowErrors.push({ rowNumber, field: "email", message: "El correo es obligatorio." });
@@ -206,7 +231,7 @@ export function validateEnrollmentCsv(text: string): ImportReport {
     // ocurrencia queda registrada y la segunda es la que se reporta duplicada.
     seenRuns.set(run, rowNumber);
     seenEmails.set(emailKey, rowNumber);
-    valid.push({ rowNumber, nombre, email, run, exento: exento ?? false });
+    valid.push({ rowNumber, nombre, apellidos, email, run, exento: exento ?? false });
   }
 
   return { valid, errors, totalRows: rows.length - 1 };
