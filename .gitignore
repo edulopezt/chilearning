@@ -41,3 +41,4 @@ Thumbs.db
 # Vercel / caches de build
 .vercel
 .turbo
+STAGING-CREDENTIALS.txt

@@ -65,6 +65,12 @@ export default async function DashboardPage() {
               {esCL.courses.title}
             </Link>
             <Link
+              href="/admin/acciones"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.actions.title}
+            </Link>
+            <Link
               href="/admin/inscripciones"
               className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
             >
