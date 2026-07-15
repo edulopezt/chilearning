@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
@@ -41,6 +42,12 @@ export default async function LessonsPage({ params }: { params: Promise<{ course
         <p className="text-muted-foreground text-sm">
           {(course?.name as string) ?? ""} · {esCL.lessons.intro}
         </p>
+        <Link
+          href={`/admin/cursos/${courseId}/evaluaciones`}
+          className="mt-1 text-sm underline"
+        >
+          {esCL.quizzes.title} →
+        </Link>
       </header>
 
       <section className="flex flex-col gap-3">

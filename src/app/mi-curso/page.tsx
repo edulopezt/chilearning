@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 
+import Link from "next/link";
+
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getStudentCourseView } from "@/modules/academico/course-view";
 import { computeLock } from "@/modules/academico/domain/attendance-lock";
 import { summarizeProgress } from "@/modules/academico/domain/progress";
+import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
 import { LessonComplete } from "./lesson-complete";
 import { SessionCountdown } from "./session-countdown";
 
@@ -43,6 +46,9 @@ export default async function MiCursoPage() {
   });
 
   const completedSet = new Set(view.completedLessonIds);
+  // Evaluaciones del curso (task 2.1): visibles solo con el candado abierto,
+  // como las lecciones.
+  const quizzes = lock.unlocked ? await listStudentQuizzes(principal) : [];
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
@@ -181,6 +187,36 @@ export default async function MiCursoPage() {
           </div>
         )}
       </section>
+
+      {/* Evaluaciones del curso (task 2.1, HU-6.1) */}
+      {lock.unlocked && quizzes.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold">{esCL.quizStudent.sectionTitle}</h2>
+          <ul className="flex flex-col gap-3">
+            {quizzes.map((q) => (
+              <li key={q.quizId}>
+                <Link
+                  href={`/mi-curso/quiz/${q.quizId}`}
+                  className="flex flex-col gap-1 rounded-lg border p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                >
+                  <span className="font-medium">{q.title}</span>
+                  {q.description ? (
+                    <span className="text-muted-foreground text-sm">{q.description}</span>
+                  ) : null}
+                  <span className="text-muted-foreground text-sm">
+                    {q.attemptsUsed}
+                    {q.maxAttempts !== null ? `/${q.maxAttempts}` : ""}{" "}
+                    {esCL.quizStudent.attemptsUsed}
+                    {" · "}
+                    {esCL.quizStudent.bestGrade}:{" "}
+                    <strong>{q.officialGrade !== null ? q.officialGrade.toFixed(1) : esCL.quizStudent.noGrade}</strong>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </main>
   );
 }

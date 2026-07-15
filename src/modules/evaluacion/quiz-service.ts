@@ -81,20 +81,35 @@ function quizToRow(v: ReturnType<typeof parseQuizInput> & { ok: true }): Record<
   };
 }
 
+const QUIZ_COLUMNS =
+  "id, course_id, title, description, status, time_limit_minutes, max_attempts, attempt_scoring, passing_pct, pool_size, shuffle_questions, shuffle_choices, review_policy, opens_at, closes_at, weight";
+
 export async function listQuizzesByCourse(
   principal: Principal,
   courseId: string,
-): Promise<QuizRow[]> {
+): Promise<(QuizRow & { questionCount: number })[]> {
   if (!canManage(principal)) return [];
   const guard = tenantGuard(principal.tenantId!);
-  const { data } = await guard
-    .from("quizzes")
-    .select(
-      "id, course_id, title, description, status, time_limit_minutes, max_attempts, attempt_scoring, passing_pct, pool_size, shuffle_questions, shuffle_choices, review_policy, opens_at, closes_at, weight",
-    )
-    .eq("course_id", courseId)
-    .order("created_at", { ascending: true });
-  return (data ?? []) as QuizRow[];
+  const [{ data: quizzes }, { data: questions }] = await Promise.all([
+    guard.from("quizzes").select(QUIZ_COLUMNS).eq("course_id", courseId).order("created_at", { ascending: true }),
+    guard.from("questions").select("quiz_id"),
+  ]);
+  const countByQuiz = new Map<string, number>();
+  for (const q of (questions ?? []) as { quiz_id: string }[]) {
+    countByQuiz.set(q.quiz_id, (countByQuiz.get(q.quiz_id) ?? 0) + 1);
+  }
+  return ((quizzes ?? []) as QuizRow[]).map((q) => ({
+    ...q,
+    questionCount: countByQuiz.get(q.id) ?? 0,
+  }));
+}
+
+/** Un quiz por id (para el editor). */
+export async function getQuiz(principal: Principal, quizId: string): Promise<QuizRow | null> {
+  if (!canManage(principal)) return null;
+  const guard = tenantGuard(principal.tenantId!);
+  const { data } = await guard.from("quizzes").select(QUIZ_COLUMNS).eq("id", quizId).maybeSingle();
+  return (data as QuizRow | null) ?? null;
 }
 
 export async function createQuiz(
