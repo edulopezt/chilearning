@@ -93,6 +93,12 @@ export default async function DashboardPage() {
             >
               {esCL.grading.title}
             </Link>
+            <Link
+              href="/tablero/notas"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.gradebook.title}
+            </Link>
           </>
         ) : null}
         {hasRole(principal, "supervisor") ? (

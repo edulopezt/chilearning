@@ -26,13 +26,18 @@
 
 - **Fecha:** 2026-07-15
 - **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10)
-- **Hito en curso:** **Hito 2** — 2.6 ✅ (PR #31 mergeado: worker BullMQ+Redis, revisión
-  adversarial multi-agente aplicada R-1..R-6; migración `alerts` YA aplicada al cloud; Redis
-  `chilearning-redis` creado en Coolify). EmailSender+Resend en PR. Plan aprobado por Edu:
-  BullMQ+Redis ya · export Excel = plugin verbatim + col. extra `ID SESION SENCE` · **Resend
-  AHORA** (Edu debe crear cuenta + verificar dominio + pasar `RESEND_API_KEY`) · nota final =
+- **Hito en curso:** **Hito 2** — 7/9 tareas mergeadas. ✅ 2.6 (#31 worker BullMQ+Redis)
+  · ✅ correo EmailSender+Resend (#32) · ✅ 2.7 pre-flight (#33) · ✅ 2.4a nombres (#34) ·
+  ✅ 2.4b panel cumplimiento + export xlsx (#35) · ✅ 2.5 portal supervisor solo-lectura (#36)
+  · ✅ 2.1a quizzes esquema/dominio/servicios (#37) · ✅ 2.1b quiz UI + intento alumno (#38)
+  · ✅ **2.2 tareas + corrección + Storage (#39)** — revisión adversarial 4-ojos aplicada
+  (3 HIGH máquina de estados de notas + audit atómico, 1 MED, 1 LOW; ver D-023); M2+M3
+  aplicadas al cloud + bucket `submissions` creado + RPC/trigger verificados.
+  **Falta:** ⬜ 2.3 libro de notas (GATE) · ⬜ 2.8 clonado.
+  Decisiones de Edu vigentes: BullMQ+Redis · export = plugin verbatim + col. `ID SESION SENCE`
+  · **Resend AHORA** (🔒 Edu: cuenta + verificar dominio + `RESEND_API_KEY`) · nota final =
   promedio parcial + "incompleta".
-- **PRs mergeados a `main`:** 31 · **Tests:** 535 verdes (323 unit + 138 RLS + 74 integración)
+- **PRs mergeados a `main`:** 39 · **Tests:** 780 verdes (392 unit + 271 RLS + 117 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -134,28 +139,39 @@ edición inline de contenido de lección desde la UI (1.4, hoy: crear/reordenar/
 
 ---
 
-## HITO 2 — Evaluación y panel SENCE ⬜ (siguiente)
+## HITO 2 — Evaluación y panel SENCE 🔶 (7/9 mergeadas; falta 2.3 GATE + 2.8)
 
-- ⬜ **2.1** Quizzes autocorregidos: 3 tipos (opción múltiple, V/F, ...), intentos, banco de
-  preguntas, escala 1.0–7.0 — HU-6.1. *(Nuevas tablas: `quizzes`/`questions`/`attempts`.)*
-- ⬜ **2.2** Tareas con entrega y corrección (relator/tutor) — HU-6.2. *(`assignments`/`submissions`/`grades`.)*
-- ⬜ **2.3** Libro de notas por acción + **auditoría de cambios de nota** — HU-6.4.
-- ⬜ **2.4** Panel de cumplimiento SENCE + **export Excel** (columnas del reporte del plugin actual) — HU-5.5.
-- ⬜ **2.5** Portal Supervisor v1: rol de **solo lectura** para fiscalizador SENCE (tests de que NO escribe) — HU-5.5, M12.
+- ✅ **2.1** Quizzes autocorregidos: 3 tipos (opción múltiple, V/F, pareados), intentos, banco
+  de preguntas, escala 1.0–7.0 — HU-6.1 — **#37 (esquema/dominio/servicios) + #38 (UI + intento
+  del alumno)**. `quizzes`/`questions`/`quiz_attempts`/`grades`; pauta (`answer_key`) sin grant a
+  authenticated; finalización perezosa del intento vencido (D-022 S1–S7).
+- ✅ **2.2** Tareas con entrega y corrección (relator/tutor) — HU-6.2 — **#39**.
+  `assignments`/`submissions` (INSERT-only) + bucket privado `submissions` + `notifications`.
+  Revisión adversarial 4-ojos aplicada (D-023): nota publicada blindada (no se revierte a
+  borrador ni se re-publica sin motivo — trigger `grades_no_unpublish` + guardias de servicio),
+  cambio de nota + auditoría ATÓMICOS vía RPC `write_assignment_grade`, cola paginada, sin
+  huérfanos en Storage.
+- ⬜ **2.3** Libro de notas por acción + **auditoría de cambios de nota** — HU-6.4. **(SIGUIENTE
+  — GATE.)** Consolida quizzes+tareas por inscripción con promedio ponderado parcial + fila
+  "incompleta" (D-022 S10). El motor de cambio-con-motivo ya existe (grade-change + RPC de 2.2).
+- ✅ **2.4** Panel de cumplimiento SENCE + **export Excel** (columnas del plugin verbatim +
+  `ID SESION SENCE`) — HU-5.5 — **#34 (nombres/apellidos snapshot en enrollments) + #35 (panel
+  + export xlsx con exceljs, D-021)**.
+- ✅ **2.5** Portal Supervisor v1: rol de **solo lectura** para fiscalizador SENCE — HU-5.5, M12
+  — **#36**: `/supervisor` reusa el compliance-panel; suites de NO-escritura (RLS + servicios).
 - ✅ **2.6** **Cron/worker**: expiración 3 h, inactividad 60 min, alertas de tasa de error —
-  Plan §5.6 — **PR #31 mergeado 2026-07-15** (revisión adversarial multi-agente aplicada,
-  hallazgos R-1..R-6): worker BullMQ+Redis dispara T4/T6/T9 (cierra el brick del índice único
-  parcial), tabla `alerts` + tasa de error por tenant×ambiente (D-015/016/017/017b). Migración
-  `alerts` aplicada al cloud ✔ · Redis `chilearning-redis` creado en Coolify ✔ · ⚠ falta la
-  app `chilearning-worker` (target Docker `worker`, llega con el Dockerfile del PR de
-  EmailSender). Dev local: `docker run -d --name chilearning-redis-dev -p 6379:6379
-  redis:7-alpine` + `pnpm worker`.
-- 🔶 **2.7** Pre-flight de acción SENCE — HU-5.8 — **en PR**: checklist masivo de 8 ítems
-  (`/admin/acciones/[id]/preflight`) que reusa los validadores congelados de `preflight.ts`
+  Plan §5.6 — **#31** (revisión adversarial R-1..R-6): worker BullMQ+Redis dispara T4/T6/T9
+  (cierra el brick del índice único parcial), tabla `alerts` + tasa de error por tenant×ambiente
+  (D-015/016/017/017b). Migración `alerts` en cloud ✔ · Redis `chilearning-redis` en Coolify ✔
+  · ⚠ falta desplegar la app `chilearning-worker` en Coolify (target Docker `worker`). Dev
+  local: `docker run -d --name chilearning-redis-dev -p 6379:6379 redis:7-alpine` + `pnpm worker`.
+- ✅ **2.7** Pre-flight de acción SENCE — HU-5.8 — **#33**: checklist masivo de 8 ítems
+  (`/admin/acciones/[id]/preflight`) reusando los validadores congelados de `preflight.ts`
   (RUN/DV de todo el roster, token descifrable, códigos, ambiente, fechas), envío REAL de la
   guía Clave Única (comunicacion → audit) con marca manual de respaldo, y alerta día-1 en el
   tick del worker (D-020: umbral 50%, corte 13:00 Chile, cooldown 24 h).
 - ⬜ **2.8** Clonado de cursos y re-ejecución de acciones (exige fechas y código nuevos) — HU-3.6.
+  **(Último del hito — incluye clonar quizzes/tareas ya existentes.)**
 
 **Gate del Hito 2:** libro de notas con auditoría · export Excel del panel SENCE · pre-flight
 detecta RUN inválidos plantados · clonado exige fechas/código nuevos · portal supervisor v1

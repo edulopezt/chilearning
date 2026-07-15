@@ -227,8 +227,12 @@ export function topErrors(
 
 /** CSV con BOM UTF-8 y separador `;` (Excel es-CL abre coma como una columna). */
 export function toCsv(headers: readonly string[], rows: readonly string[][]): string {
-  const escape = (value: string): string =>
-    /[";\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  const escape = (value: string): string => {
+    // Neutraliza inyección de fórmulas (CWE-1236): antepone `'` si el valor
+    // empieza con =,+,-,@,TAB o CR (los nombres vienen del roster importado).
+    const v = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+    return /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  };
   const lines = [headers.map(escape).join(";"), ...rows.map((r) => r.map(escape).join(";"))];
   return `﻿${lines.join("\r\n")}\r\n`;
 }
