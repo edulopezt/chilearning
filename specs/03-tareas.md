@@ -67,7 +67,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 
 ## Hito 3 — Cierre del ciclo formativo + endurecimiento (semanas 5–6)
 
-- 3.1 Encuesta de satisfacción (plantilla, requisito de completitud, agregados) — HU-6.3
+- 3.1 ✅ Encuesta de satisfacción (plantilla, requisito de completitud, agregados) — HU-6.3 — **hecho 2026-07-16** (#45): anonimato estructural (2 tablas + RPC atómico), agregados por acción, `hasCompletedSurvey` para el gate de certificados; revisión 4-ojos (HIGH de re-identificación corregido)
 - 3.2 Certificados PDF con plantilla SENCE (folio, QR, verificación pública, revocación, umbral de asistencia SENCE) — HU-7.1, 7.2 (+ verificar campos normados, spec §7-R7)
 - 3.3 Checklist DJ/GCA con recordatorios (n8n) + nómina exportable — HU-5.6
 - 3.4 Anuncios + foro de consultas + mensajería + calendario (mínimos SENCE) — M9

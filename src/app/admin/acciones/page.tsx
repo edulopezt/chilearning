@@ -91,6 +91,9 @@ export default async function ActionsPage() {
                         <Link href={`/admin/acciones/${a.id}/cumplimiento`} className="underline">
                           {esCL.cumplimiento.linkLabel}
                         </Link>
+                        <Link href={`/admin/acciones/${a.id}/encuesta`} className="underline">
+                          {esCL.surveys.resultsLink}
+                        </Link>
                       </span>
                     </td>
                   </tr>
