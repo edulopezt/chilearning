@@ -19,6 +19,8 @@ import { setLessonProgress } from "@/modules/academico/progress-service";
 import { markGuideSent, sendClaveUnicaGuide } from "@/modules/comunicacion/guide-service";
 import { saveBranding } from "@/modules/core/branding-service";
 import type { Principal } from "@/modules/core/domain/rbac";
+import { createQuestion, createQuiz, deleteQuiz, publishQuiz, updateQuiz } from "@/modules/evaluacion/quiz-service";
+import { startAttempt } from "@/modules/evaluacion/attempt-service";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
 const DEMO_COURSE = "c0000000-0000-4000-8000-000000000001";
@@ -100,6 +102,29 @@ describe("supervisor: toda mutación de servicio → forbidden (task 2.5)", () =
         rut: "",
       }),
     ).toEqual({ ok: false, error: "forbidden" });
+  });
+
+  it("evaluación (task 2.1): ni crear/editar/publicar quizzes ni rendirlos", async () => {
+    const DEMO_QUIZ = "a0000000-0000-4000-8000-000000000001";
+    expect(await createQuiz(supervisor, DEMO_COURSE, { title: "X" })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect(await updateQuiz(supervisor, DEMO_QUIZ, { title: "X" })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect(await publishQuiz(supervisor, DEMO_QUIZ, false)).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect(await deleteQuiz(supervisor, DEMO_QUIZ)).toEqual({ ok: false, error: "forbidden" });
+    expect(
+      await createQuestion(supervisor, DEMO_QUIZ, { kind: "true_false", prompt: "X", correct: true }),
+    ).toEqual({ ok: false, error: "forbidden" });
+    // No está inscrito: tampoco puede rendir.
+    const start = await startAttempt(supervisor, DEMO_QUIZ);
+    expect(start.ok).toBe(false);
   });
 
   it("guía Clave Única: ni enviar ni marcar", async () => {

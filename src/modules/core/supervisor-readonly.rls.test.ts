@@ -75,6 +75,34 @@ const BUSINESS_TABLES: Record<string, Record<string, unknown>> = {
     kind: "sence_error_rate",
     message: "pirata",
   },
+  quizzes: {
+    tenant_id: TENANT_A,
+    course_id: "c0000000-0000-4000-8000-000000000001",
+    title: "Quiz pirata",
+  },
+  questions: {
+    tenant_id: TENANT_A,
+    quiz_id: "a0000000-0000-4000-8000-000000000001",
+    kind: "true_false",
+    prompt: "pirata",
+    body: { correct: true },
+  },
+  quiz_attempts: {
+    tenant_id: TENANT_A,
+    quiz_id: "a0000000-0000-4000-8000-000000000001",
+    enrollment_id: "e0000000-0000-4000-8000-000000000001",
+    attempt_number: 99,
+    questions_snapshot: [],
+    answer_key: {},
+    max_score: 1,
+  },
+  grades: {
+    tenant_id: TENANT_A,
+    enrollment_id: "e0000000-0000-4000-8000-000000000001",
+    source_kind: "quiz",
+    quiz_id: "a0000000-0000-4000-8000-000000000001",
+    grade: 7.0,
+  },
 };
 
 let db: SupabaseClient;

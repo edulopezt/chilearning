@@ -130,3 +130,39 @@ where l.course_id = 'c0000000-0000-4000-8000-000000000001' and l.position = 1;
 insert into public.alerts (tenant_id, kind, severity, message, details) values
   ('11111111-1111-4111-8111-111111111111', 'sence_error_rate', 'info',
    'Alerta demo del seed (sin efecto operativo).', '{"seed": true}');
+
+-- ---------- Evaluación demo (task 2.1: matriz RLS + UI en dev) ----------
+-- Quiz publicado con una pregunta de cada tipo, un intento ENVIADO del alumno
+-- demo y su nota oficial publicada.
+insert into public.quizzes (id, tenant_id, course_id, title, description, status, passing_pct) values
+  ('a0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'c0000000-0000-4000-8000-000000000001', 'Quiz demo: conceptos de prevención',
+   'Evalúa los conceptos de la lección 1.', 'published', 60);
+
+insert into public.questions (id, tenant_id, quiz_id, kind, prompt, body, points, position) values
+  ('b0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'a0000000-0000-4000-8000-000000000001', 'multiple_choice',
+   '¿Qué es un peligro?',
+   '{"choices":[{"id":"a","text":"Una fuente con potencial de daño","correct":true},{"id":"b","text":"Un accidente ya ocurrido","correct":false},{"id":"c","text":"Una sanción de la inspección","correct":false}]}',
+   2, 1),
+  ('b0000000-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111',
+   'a0000000-0000-4000-8000-000000000001', 'true_false',
+   'El uso de EPP elimina el riesgo por completo.',
+   '{"correct": false}', 1, 2),
+  ('b0000000-0000-4000-8000-000000000003', '11111111-1111-4111-8111-111111111111',
+   'a0000000-0000-4000-8000-000000000001', 'matching',
+   'Une cada concepto con su definición.',
+   '{"pairs":[{"id":"p1","left":"Peligro","right":"Fuente potencial de daño"},{"id":"p2","left":"Riesgo","right":"Probabilidad por consecuencia"}]}',
+   3, 3);
+
+insert into public.quiz_attempts (id, tenant_id, quiz_id, enrollment_id, attempt_number, status,
+  questions_snapshot, answer_key, answers, score, max_score, grade, submitted_at) values
+  ('d0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'a0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 1, 'submitted',
+   '[{"id":"b0000000-0000-4000-8000-000000000002","kind":"true_false","prompt":"El uso de EPP elimina el riesgo por completo.","points":1}]',
+   '{"b0000000-0000-4000-8000-000000000002":{"kind":"true_false","correct":false}}',
+   '{"b0000000-0000-4000-8000-000000000002":false}', 1, 1, 7.0, now());
+
+insert into public.grades (tenant_id, enrollment_id, source_kind, quiz_id, grade, status, published_at) values
+  ('11111111-1111-4111-8111-111111111111', 'e0000000-0000-4000-8000-000000000001', 'quiz',
+   'a0000000-0000-4000-8000-000000000001', 7.0, 'published', now());

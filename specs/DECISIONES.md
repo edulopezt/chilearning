@@ -442,3 +442,43 @@ entrada original.
 - **Alternativas descartadas:** replicar el plugin sin la columna extra
   (pierde el dato pedido); corregir los rótulos según la semántica real
   (rompe el formato que fiscalización reconoce).
+
+## D-022 — Spec del módulo de evaluación (Hito 2: 2.1/2.2/2.3) — defaults S1–S13
+
+- **ID:** D-022
+- **Fecha:** 2026-07-15
+- **Decisión:** los vacíos de HU-6.1/6.2/6.4 se cierran con estos defaults,
+  aprobados por Edu junto con el plan del Hito 2 (P1 satisfecho):
+  - **S1 Nota:** escala chilena lineal por tramos con exigencia configurable
+    (`passing_pct`, default 60): si `p ≥ E·pmax` → `nota = 4 + 3·(p−E·pmax)/(pmax−E·pmax)`;
+    si no → `nota = 1 + 3·p/(E·pmax)`. Redondeo a 1 decimal, clamp [1.0, 7.0].
+  - **S2 Intentos:** cuenta la MEJOR (`attempt_scoring: best|last|average`,
+    default best). `max_attempts` default 1; NULL = ilimitados.
+  - **S3 Banco:** todas las preguntas del quiz; `pool_size` NULL = todas, N =
+    submuestra aleatoria por intento. `shuffle_questions`/`shuffle_choices`
+    default true. La selección/orden quedan CONGELADOS en el snapshot del intento.
+  - **S4 Puntaje:** pareados proporcional (pares buenos / total × puntos);
+    alternativas y V/F todo-o-nada. **S5:** alternativas v1 con UNA correcta.
+  - **S6 Tiempo:** `expires_at = started_at + time_limit` (+60 s de gracia);
+    vencido → finalización PEREZOSA server-side con lo autosalvado (sin cron).
+  - **S7 Revisión:** `review_policy: never|after_submit|after_close` (default
+    after_submit); la pauta jamás viaja al cliente antes de tiempo.
+  - **S8 Rúbrica:** jsonb `{criteria:[{id,title,levels:[{id,label,points}]}]}`
+    o nota directa 1.0–7.0. **S9 Fechas:** `due_at` + `grace_hours` (default 0);
+    dentro de gracia = aceptada con `late=true`; después, rechazada; historial
+    de entregas INSERT-only con `version` incremental.
+  - **S10 Ponderación:** `weight` por instrumento (nivel curso); nota final de
+    la acción = Σ(nota·peso)/Σ(peso) sobre instrumentos CON nota publicada;
+    fila marcada "incompleta" mientras falten (decisión explícita de Edu:
+    promedio parcial, NO castigar con 1.0 durante el curso).
+  - **S11 Cambio de nota:** editar una nota `published` exige MOTIVO y escribe
+    `audit_log` (`grade.updated {old,new,motivo}`); solo el relator (la publica
+    él, matriz §3). **S12 Notificación:** outbox `notifications` + aviso in-app
+    + correo real vía EmailSender. **S13:** `completion_rules.minGrade`
+    (default 4.0) para HU-4.4/certificados.
+- **Por qué:** HU-6.x fija el QUÉ (3 tipos, intentos, banco, escala 1.0–7.0,
+  ponderaciones, auditoría con motivo) sin cuantificar el CÓMO; estos son los
+  usos estándar en OTECs chilenas y todos los parámetros quedan configurables.
+- **Alternativas descartadas:** exigencia fija 60% sin knob (hay cursos al
+  70%); "último intento cuenta" como default (castiga reintentos legítimos);
+  pendientes = 1.0 durante el curso (descartada por Edu).
