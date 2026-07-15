@@ -1,5 +1,6 @@
 import "server-only";
 
+import { writeAudit } from "@/lib/audit";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
 import { parseCourseInput, type CourseInput, type FieldError } from "@/modules/academico/domain/course";
@@ -52,6 +53,48 @@ export async function listCourses(principal: Principal): Promise<CourseRow[]> {
     .from("courses")
     .select("id, name, modality, hours, sence, cod_sence, status, completion_rules");
   return (data ?? []) as CourseRow[];
+}
+
+/**
+ * Clona un curso completo (contenido + instrumentos) en el mismo tenant vía el
+ * RPC transaccional `clone_course` (task 2.8, HU-3.6). La copia nace en borrador
+ * y SIN acciones/inscripciones. Devuelve el id del curso nuevo.
+ */
+export async function cloneCourse(
+  principal: Principal,
+  courseId: string,
+): Promise<MutationResult> {
+  if (!principal.tenantId) return { ok: false, error: "no_tenant" };
+  if (!canManage(principal)) return { ok: false, error: "forbidden" };
+  const guard = tenantGuard(principal.tenantId);
+
+  // El curso debe existir en el tenant (el RPC lo re-verifica; esto da un error
+  // limpio y evita invocar el RPC en vano).
+  const { data: course } = await guard
+    .from("courses")
+    .select("id")
+    .eq("id", courseId)
+    .maybeSingle();
+  if (!course) return { ok: false, error: "not_found" };
+
+  const { data, error } = await guard.db.rpc("clone_course", {
+    p_tenant_id: principal.tenantId,
+    p_course_id: courseId,
+  });
+  if (error || !data) {
+    if (error) console.error("[course] clone_course falló", { message: error.message });
+    return { ok: false, error: "not_found" };
+  }
+  const newCourseId = data as string;
+
+  await writeAudit(guard, {
+    actorUserId: principal.userId,
+    action: "course.cloned",
+    entity: "courses",
+    entityId: newCourseId,
+    details: { source: courseId },
+  });
+  return { ok: true, id: newCourseId };
 }
 
 export async function createCourse(

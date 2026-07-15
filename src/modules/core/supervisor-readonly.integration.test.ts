@@ -11,8 +11,8 @@ import { execSync } from "node:child_process";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { createCourse, updateCourse } from "@/modules/academico/course-service";
-import { createAction, updateAction } from "@/modules/academico/action-service";
+import { cloneCourse, createCourse, updateCourse } from "@/modules/academico/course-service";
+import { activateAction, createAction, reexecuteAction, updateAction } from "@/modules/academico/action-service";
 import { createLesson, deleteLesson, moveLesson, updateLesson } from "@/modules/academico/lesson-service";
 import { importEnrollmentsFromCsv } from "@/modules/academico/enrollment-service";
 import { setLessonProgress } from "@/modules/academico/progress-service";
@@ -58,6 +58,12 @@ describe("supervisor: toda mutación de servicio → forbidden (task 2.5)", () =
       ok: false,
       error: "forbidden",
     });
+  });
+
+  it("clonado/activación/re-ejecución (task 2.8): forbidden", async () => {
+    expect(await cloneCourse(supervisor, DEMO_COURSE)).toEqual({ ok: false, error: "forbidden" });
+    expect(await activateAction(supervisor, DEMO_ACTION)).toEqual({ ok: false, error: "forbidden" });
+    expect(await reexecuteAction(supervisor, DEMO_ACTION)).toEqual({ ok: false, error: "forbidden" });
   });
 
   it("lecciones: crear/editar/mover/borrar", async () => {

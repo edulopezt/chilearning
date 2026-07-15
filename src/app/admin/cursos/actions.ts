@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createCourse, type MutationResult } from "@/modules/academico/course-service";
+import { cloneCourse, createCourse, type MutationResult } from "@/modules/academico/course-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 
 /** Server Action para crear un curso (task 1.1). */
@@ -27,6 +27,15 @@ export async function createCourseAction(
     },
   });
 
+  if (result.ok) revalidatePath("/admin/cursos");
+  return result;
+}
+
+/** Server Action para clonar un curso completo (task 2.8): copia en borrador. */
+export async function cloneCourseAction(courseId: string): Promise<MutationResult> {
+  const principal = await getPrincipal();
+  if (!principal) return { ok: false, error: "forbidden" };
+  const result = await cloneCourse(principal, courseId);
   if (result.ok) revalidatePath("/admin/cursos");
   return result;
 }

@@ -81,10 +81,10 @@ insert into public.courses (id, tenant_id, name, sence, cod_sence) values
   ('c0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
    'Curso demo: Prevención de riesgos e-learning', true, '1234567890');
 
-insert into public.actions (id, tenant_id, course_id, codigo_accion, training_line, environment, attendance_lock, starts_on, ends_on) values
+insert into public.actions (id, tenant_id, course_id, codigo_accion, training_line, environment, attendance_lock, starts_on, ends_on, status) values
   ('ac000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
    'c0000000-0000-4000-8000-000000000001', 'ACC-DEMO-0001', 3, 'rcetest', true,
-   '2026-07-01', '2026-12-31');
+   '2026-07-01', '2026-12-31', 'active');
 
 -- Inscribe al alumno demo (alumno@otec-andes.test) con un RUN ficticio válido.
 insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento, first_names, last_names) values
