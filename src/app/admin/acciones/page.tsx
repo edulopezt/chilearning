@@ -70,9 +70,14 @@ export default async function ActionsPage() {
                       {a.starts_on ?? "—"} → {a.ends_on ?? "—"}
                     </td>
                     <td className="py-2">
-                      <Link href={`/admin/acciones/${a.id}/preflight`} className="underline">
-                        {esCL.preflight.linkLabel}
-                      </Link>
+                      <span className="flex gap-3">
+                        <Link href={`/admin/acciones/${a.id}/preflight`} className="underline">
+                          {esCL.preflight.linkLabel}
+                        </Link>
+                        <Link href={`/admin/acciones/${a.id}/cumplimiento`} className="underline">
+                          {esCL.cumplimiento.linkLabel}
+                        </Link>
+                      </span>
                     </td>
                   </tr>
                 ))}

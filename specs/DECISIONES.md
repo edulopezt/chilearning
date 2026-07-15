@@ -418,3 +418,27 @@ entrada original.
   matinal garantizado); tabla propia de marcas de guía (audit_log ya es
   INSERT-only y auditable por diseño); plantilla de correo separada para la
   guía (la de bienvenida ya la contiene; duplicarla = divergencia).
+
+## D-021 — Export de cumplimiento: columnas del plugin VERBATIM + ID SESION SENCE; definición de "huecos"
+
+- **ID:** D-021
+- **Fecha:** 2026-07-15
+- **Decisión:** (1) el export Excel/CSV del panel (HU-5.5) replica las 7
+  columnas del plugin Moodle original con sus rótulos y CONTENIDO históricos —
+  incluido el quirk I-10: "CODIGO CURSO" = CodSence del curso e "ID SENCE" =
+  código de la ACCIÓN — y AGREGA la columna "ID SESION SENCE" con el id real.
+  Decidido por Edu (2026-07-15): compatibilidad de fiscalización + el dato que
+  la HU pide. Fila = sesión con inicio confirmado (`opened_at` no nulo, incluye
+  `iniciada` y `cerrada`), orden `opened_at` DESC, fechas d-m-Y H:i:s
+  América/Santiago (todo como el plugin). (2) **"Huecos"** = días hábiles L–V
+  dentro de [starts_on, min(ends_on, hoy)] sin ninguna sesión CERRADA del
+  alumno; exentos sin huecos (I-14). Sin feriados chilenos en v1 (follow-up).
+  (3) Librería: exceljs solo-escritura (ADR-008).
+- **Por qué:** la HU dice "columnas del reporte del plugin actual (…
+  IdSesionSence …)" pero el plugin JAMÁS exportó IdSesionSence — su columna
+  "ID SENCE" trae el código de acción. Mantener el formato conocido y sumar la
+  columna extra satisface ambas lecturas sin romper la que usan los
+  fiscalizadores hace años.
+- **Alternativas descartadas:** replicar el plugin sin la columna extra
+  (pierde el dato pedido); corregir los rótulos según la semántica real
+  (rompe el formato que fiscalización reconoce).
