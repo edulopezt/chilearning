@@ -39,11 +39,13 @@
   rutas del #41, corregido en el hotfix **#43**. (Corrección: el CI **sí** corre `next build` desde
   0.1 (`ci.yml:28`); el hueco real es que un conflicto de slug de rutas es error de RUNTIME que
   `next build` no caza — lo cubre el E2E de 3.8.)
-- **Hito 3 EN CURSO** (turno autónomo 2026-07-16, plan aprobado, alcance A/B/C): ✅ **3.1 encuesta de
-  satisfacción** (#45, HU-6.3) — anonimato ESTRUCTURAL (ledger + respuestas en 2 tablas, RPC atómico
-  `submit_survey`); 4-ojos cazó y corrigió un HIGH (join por `submitted_at` re-vinculaba respuestas
-  anónimas → columna eliminada) + supresión de muestra anónima <3.
-- **PRs mergeados a `main`:** 45 · **Tests:** 840 verdes (424 unit + 278 RLS + 138 integración)
+- **Hito 3 EN CURSO** (turno autónomo 2026-07-16, plan aprobado, alcance A/B/C): ✅ **3.1 encuesta**
+  (#45, HU-6.3) — anonimato ESTRUCTURAL; 4-ojos corrigió HIGH (join por `submitted_at`) + supresión
+  <3. ✅ **3.2 certificados PDF** (#46, HU-7.1/7.2) — folio + QR + verificación pública (RUN
+  enmascarado, RPC anon), snapshot congelado inmutable, revocación; 4-ojos corrigió HIGH (descarga
+  del PDF sin chequeo de dueño → fuga de RUN) + MED (revocado descargable, supervisor con RUN vía
+  RLS). **pdf-lib/qrcode = ADR-009.**
+- **PRs mergeados a `main`:** 46 · **Tests:** ~865 verdes (436 unit + 285 RLS + 144 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -204,8 +206,12 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   `enrollment_id` NULL en anónima) + RPC atómico `submit_survey`; `hasCompletedSurvey` alimenta el
   gate de 3.2. Revisión 4-ojos (HIGH: eliminado `submitted_at` que permitía re-identificar por join;
   MEDIUM: supresión de muestra anónima <3).
-- ⬜ **3.2** **Certificados PDF** con plantilla SENCE (folio, QR, verificación pública, revocación,
-  umbral de asistencia) — HU-7.1/7.2. *(Verificar campos normados, spec §7-R7.)*
+- ✅ **3.2** **Certificados PDF** con plantilla SENCE (folio, QR, verificación pública, revocación,
+  umbral de asistencia) — HU-7.1/7.2 — **#46**: `certificates` (ledger) + `certificate_counters`
+  (folio atómico) + `min_attendance_pct_override`; snapshot §7-R7 CONGELADO (inmutable en BD); RPCs
+  `issue`/`revoke`/`verify_certificate` (público anon, RUN enmascarado); pdf-lib+qrcode (ADR-009);
+  elegibilidad reusa gradebook+cumplimiento+encuesta. Revisión 4-ojos (HIGH descarga sin dueño +
+  MED revocado/supervisor). **Handoff Edu:** confirmar §7-R7 + firma real + umbral por defecto.
 - ⬜ **3.3** Checklist DJ/GCA con recordatorios (n8n) + nómina exportable — HU-5.6.
 - ⬜ **3.4** Anuncios + foro + mensajería + calendario (mínimos SENCE) — M9.
 - ⬜ **3.5** Derechos Ley 21.719 en UI (export/supresión con retenciones) + consentimiento — HU-2.4, RNF-3.

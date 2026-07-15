@@ -65,13 +65,17 @@ beforeAll(async () => {
 });
 
 describe("certificates — lecturas por rol", () => {
-  it("el staff del tenant A (otec_admin/coordinator/instructor/supervisor) lo lee", async () => {
-    for (const role of ["otec_admin", "coordinator", "instructor", "supervisor"]) {
+  it("el staff académico (otec_admin/coordinator/instructor) lo lee; el supervisor NO (snapshot con RUN)", async () => {
+    for (const role of ["otec_admin", "coordinator", "instructor"]) {
       const c = client(await jwt({ sub: STUDENT_A, tenant_id: TENANT_A, roles: [role] }));
       const { data, error } = await c.from("certificates").select("id").eq("id", CERT_ID);
       expect(error).toBeNull();
       expect((data ?? []).length).toBe(1);
     }
+    // El supervisor no lee la tabla directamente (evita fuga cross-company del RUN);
+    // ve datos curados por el servicio y verifica por /verificar (RUN enmascarado).
+    const sup = client(await jwt({ sub: "aaaaaaaa-0000-4000-8000-000000000007", tenant_id: TENANT_A, roles: ["supervisor"] }));
+    expect((await sup.from("certificates").select("id").eq("id", CERT_ID)).data ?? []).toHaveLength(0);
   });
 
   it("el alumno dueño lo ve; otro alumno del tenant NO", async () => {
@@ -123,6 +127,10 @@ describe("certificates — inmutabilidad", () => {
       is_sence: true, snapshot: {},
     });
     expect(dup.error).not.toBeNull();
+
+    // El snapshot es inmutable tras la emisión (D-112, 4-ojos L2).
+    const mutate = await svc.from("certificates").update({ snapshot: { studentName: "Otro" } }).eq("id", CERT_ID).select("id");
+    expect(mutate.error).not.toBeNull();
 
     // Revocar (permitido) y luego intentar reactivar (abortado por el trigger).
     await svc.from("certificates").update({ status: "revoked", revoked_reason: "prueba", revoked_at: new Date().toISOString() }).eq("id", CERT_ID);

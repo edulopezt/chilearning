@@ -59,7 +59,9 @@ create index certificates_enrollment_idx on public.certificates (enrollment_id);
 create trigger certificates_touch before update on public.certificates
   for each row execute function public.touch_updated_at();
 
--- Guardia: un certificado revocado no se reactiva (patrón grades_no_unpublish).
+-- Guardia: un certificado revocado no se reactiva (patrón grades_no_unpublish) y
+-- el snapshot es INMUTABLE tras la emisión (D-112, 4-ojos L2): el documento legal
+-- no cambia aunque cambien los datos vivos.
 create or replace function public.certificates_status_guard()
 returns trigger
 language plpgsql
@@ -67,6 +69,9 @@ as $$
 begin
   if old.status = 'revoked' and new.status = 'issued' then
     raise exception 'un certificado revocado no puede reactivarse' using errcode = '42501';
+  end if;
+  if new.snapshot is distinct from old.snapshot then
+    raise exception 'el snapshot del certificado es inmutable (D-112)' using errcode = '42501';
   end if;
   return new;
 end;
@@ -78,8 +83,11 @@ create trigger certificates_status_guard_trg
 alter table public.certificates enable row level security;
 alter table public.certificates force row level security;
 
--- Lectura: staff del tenant (otec_admin/coordinator/instructor/supervisor) +
--- el alumno dueño. La verificación PÚBLICA no pasa por aquí (usa el RPC).
+-- Lectura DIRECTA: staff académico (otec_admin/coordinator/instructor) + el
+-- alumno dueño. El `snapshot` trae el RUN completo → el `supervisor` NO lo lee
+-- de la tabla (evita fuga cross-company; 4-ojos MEDIUM-3). El fiscalizador ve la
+-- lista CURADA (sin RUN) por el servicio y puede validar por /verificar (RUN
+-- enmascarado). La verificación PÚBLICA no pasa por aquí (usa el RPC).
 create policy certificates_select on public.certificates
   for select to authenticated
   using (
@@ -88,7 +96,7 @@ create policy certificates_select on public.certificates
       tenant_id = public.jwt_tenant_id()
       and (
         public.has_role('otec_admin') or public.has_role('coordinator')
-        or public.has_role('instructor') or public.has_role('supervisor')
+        or public.has_role('instructor')
         or exists (
           select 1 from public.enrollments e
           where e.id = certificates.enrollment_id and e.user_id = (select auth.uid())
@@ -138,12 +146,14 @@ begin
   if p_tenant_id is null or p_enrollment_id is null then
     raise exception 'tenant_id y enrollment_id son obligatorios';
   end if;
-  -- Consistencia de tenant (defensa en profundidad).
+  -- Consistencia de tenant + que la acción sea del curso indicado (4-ojos L1).
   if not exists (
     select 1 from public.enrollments e
-    where e.id = p_enrollment_id and e.tenant_id = p_tenant_id and e.action_id = p_action_id
+    join public.actions a on a.id = e.action_id
+    where e.id = p_enrollment_id and e.tenant_id = p_tenant_id
+      and e.action_id = p_action_id and a.course_id = p_course_id
   ) then
-    raise exception 'inscripcion/accion no consistente con el tenant';
+    raise exception 'inscripcion/accion/curso no consistente con el tenant';
   end if;
 
   v_year := extract(year from (now() at time zone 'America/Santiago'))::int;

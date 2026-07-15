@@ -13,6 +13,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { Principal } from "@/modules/core/domain/rbac";
 import {
   getActionEligibility,
+  getCertificateDownloadUrl,
   issueBatch,
   issueCertificate,
   revokeCertificate,
@@ -104,6 +105,18 @@ describe("emisión + verificación pública + revocación", () => {
     // Tras revocar se puede re-emitir (nuevo certificado vigente).
     const reissued = await issueCertificate(admin, enrollmentId);
     expect(reissued.ok).toBe(true);
+  });
+
+  it("solo el dueño (o staff) descarga el PDF; otro alumno NO (fuga de RUN)", async () => {
+    const { actionId, enrollmentId } = await makeAction({ rules: { requireAllLessons: false, requireSurvey: false, minAttendancePct: 0 }, sence: false });
+    await getActionEligibility(admin, actionId);
+    const issued = await issueCertificate(admin, enrollmentId);
+    if (!issued.ok) return;
+    // Dueño y staff: OK. Otro alumno del tenant: null.
+    expect(await getCertificateDownloadUrl(student, issued.certificateId)).not.toBeNull();
+    expect(await getCertificateDownloadUrl(admin, issued.certificateId)).not.toBeNull();
+    const intruder: Principal = { userId: "aaaaaaaa-0000-4000-8000-000000000004", tenantId: TENANT_A, roles: ["student"] };
+    expect(await getCertificateDownloadUrl(intruder, issued.certificateId)).toBeNull();
   });
 
   it("el motivo de revocación es obligatorio", async () => {

@@ -496,9 +496,25 @@ export async function getCertificateDownloadUrl(principal: Principal, certificat
   if (!principal.tenantId) return null;
   const tenantId = principal.tenantId;
   const guard = tenantGuard(tenantId);
-  // La RLS de `certificates` ya restringe a dueño/staff; si no lo ve, no existe.
-  const { data: cert } = await guard.db.from("certificates").select("id, pdf_path, folio, verification_token, snapshot").eq("tenant_id", tenantId).eq("id", certificateId).maybeSingle();
+  const { data: cert } = await guard.db.from("certificates").select("id, enrollment_id, status, pdf_path, folio, verification_token, snapshot").eq("tenant_id", tenantId).eq("id", certificateId).maybeSingle();
   if (!cert) return null;
+  // Un certificado revocado es un documento nulo y el PDF no lleva marca de
+  // revocación → no se sirve (4-ojos MEDIUM-2). Su estado se ve en /verificar.
+  if (cert.status !== "issued") return null;
+  // El PDF trae el RUN completo. `guard.db` es service-role (bypassa RLS), así que
+  // la autorización se comprueba EXPLÍCITAMENTE aquí: staff del tenant O el alumno
+  // dueño de la inscripción. Sin esto un alumno podría bajar el cert de otro.
+  const isStaff = authorize(principal, tenantId, VIEWERS_STAFF);
+  if (!isStaff) {
+    const { data: owned } = await guard.db
+      .from("enrollments")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("id", cert.enrollment_id)
+      .eq("user_id", principal.userId)
+      .maybeSingle();
+    if (!owned) return null;
+  }
   const path = (cert.pdf_path as string | null) ?? `${tenantId}/${certificateId}.pdf`;
 
   let signed = await guard.db.storage.from("certificates").createSignedUrl(path, 3600);
