@@ -13,7 +13,13 @@ Nombre del producto: "Chilearning".
 
 Lectura obligatoria antes de implementar (en este orden):
 `specs/00-constitucion.md` → `specs/01-especificacion.md` → `specs/02-plan-tecnico.md` → `specs/03-tareas.md`.
-Protocolo SENCE: `docs/sence/SPEC_INTEGRACION_SENCE.md` + manual oficial vigente (v1.1.5+).
+Protocolo SENCE: `docs/sence/SPEC_INTEGRACION_SENCE.md` + manual oficial vigente (v1.1.6).
+
+**`specs/ESTADO-PROYECTO.md` es un documento VIVO — léelo al empezar cada sesión y
+ACTUALÍZALO al cerrar trabajo.** Es el tablero global mutable (estado por tarea con PRs de
+todos los hitos, bloqueos, deuda, cómo retomar). Regla: toda sesión que cierre trabajo
+actualiza su "Snapshot actual" y las marcas de estado (por PR, `main` protegida). Nunca
+marcar ✅ algo que no pasó su Definición de Hecho.
 
 ## Flujo de trabajo (SDD — innegociable)
 
