@@ -482,3 +482,53 @@ entrada original.
 - **Alternativas descartadas:** exigencia fija 60% sin knob (hay cursos al
   70%); "último intento cuenta" como default (castiga reintentos legítimos);
   pendientes = 1.0 durante el curso (descartada por Edu).
+
+
+## D-023 — Integridad del registro de notas: RPC atómico + trigger anti-despublicación (revisión 4-ojos del PR #39)
+
+- **ID:** D-023
+- **Fecha:** 2026-07-15
+- **Contexto:** la revisión adversarial 4-ojos del PR #39 (task 2.2) confirmó
+  **3 hallazgos HIGH** en la máquina de estados de `grades` — el gate del hito —
+  y 2 menores (1 MED, 1 LOW); refutó 6 (ver abajo).
+- **Hallazgos HIGH confirmados y su corrección:**
+  - **R#39-1** — `saveDraftGrade` pisaba una nota PUBLICADA y la revertía a
+    borrador (alcanzable por un tutor): pérdida silenciosa del registro oficial
+    (desaparece de la vista del alumno por RLS `status='published'`), sin motivo
+    ni auditoría. *Fix:* la ruta de borrador rechaza con `already_published` si
+    la nota ya está publicada; **trigger de BD `grades_no_unpublish`** que aborta
+    cualquier transición `published → draft` en cualquier ruta de escritura.
+  - **R#39-2** — `publishGrade` re-publicaba una nota ya publicada con otro
+    valor saltándose el gate de motivo; `updatePublishedGrade` (el gate real)
+    era código muerto: la UI nunca lo cableaba. *Fix:* `publishGrade` rechaza
+    `already_published`; la fila de corrección, cuando la nota está publicada,
+    muestra el formulario de edición con MOTIVO obligatorio cableado a
+    `updateGradeAction` (solo el relator; el tutor la ve bloqueada). La BD además
+    solo permite mutar una publicada cuando la auditoría es `grade.updated`.
+  - **R#39-3** — el cambio de nota y su auditoría NO eran atómicos (dos
+    statements HTTP separados vía PostgREST): un fallo del insert de auditoría
+    dejaba la nota cambiada SIN rastro y devolvía `ok:true`. *Fix:* toda
+    escritura de nota de tarea pasa por el **RPC transaccional
+    `write_assignment_grade`** (SECURITY DEFINER, `search_path=''`, EXECUTE solo
+    service_role) que hace el upsert de la nota + el insert de auditoría en UNA
+    transacción; si la auditoría falla, el cambio se revierte. La lógica de
+    estado y la validación del motivo siguen en dominio/servicio; la BD es el
+    cinturón. También MED (paginación de la cola de corrección para no truncar
+    en `max_rows=1000`, con JOIN embebido en vez de `.in()`) y LOW (limpieza del
+    objeto huérfano en Storage si el INSERT de la entrega falla tras subir).
+- **Por qué así:** supabase-js no tiene transacciones multi-statement en el
+  cliente; la ÚNICA forma de garantizar atomicidad nota+auditoría (Ley 21.719 /
+  P8, "las notas no se borran" y "todo cambio deja rastro") es un RPC de Postgres.
+  El trigger da defensa en profundidad independiente de la capa app.
+- **Hallazgos refutados (6, con razón):** predicado tenant en `notifications`
+  (el scoping por `user_id` es completo — es un outbox por-usuario); FKs
+  `grades→assignments/submissions` sin tenant compuesto (patrón de todo el repo:
+  aislamiento por RLS, inalcanzable cross-tenant); rúbrica siempre 1.0 por UI
+  (no hay UI que cree tareas con rúbrica — feature intencionalmente incompleto);
+  `notifyStudent` marca todas las pendientes (mejorado igual a marcar por id, sin
+  worker de reintento que lo haga dañino); MIME del cliente sin sniffing (la
+  allowlist del bucket excluye tipos ejecutables; defensa en profundidad real).
+- **Regresiones que lo fijan:** `assignment-service.integration.test.ts` —
+  `already_published` por borrador y por re-publicación, trigger de BD aborta la
+  reversión por SQL directo, la cola expone `gradeId`+estado, y el cambio con
+  motivo mantiene `published` + audit `grade.updated`.

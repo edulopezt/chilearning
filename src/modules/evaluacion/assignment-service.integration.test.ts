@@ -176,6 +176,14 @@ describe("corrección — draft/publish y auditoría (S11/S12 — el gate del hi
     });
     expect(withMotivo.ok).toBe(true);
 
+    // La nota se actualizó pero SIGUE publicada (el cambio no la despublica).
+    const { data: grade } = await svc
+      .from("grades")
+      .select("grade, status")
+      .eq("id", published.gradeId)
+      .single();
+    expect(grade).toMatchObject({ grade: 6.5, status: "published" });
+
     const { data: audit } = await svc
       .from("audit_log")
       .select("details")
@@ -183,6 +191,60 @@ describe("corrección — draft/publish y auditoría (S11/S12 — el gate del hi
       .eq("action", "grade.updated")
       .single();
     expect(audit?.details).toMatchObject({ old: 4, new: 6.5, motivo: "Error en la suma de la pauta original" });
+  });
+
+  it("una nota publicada NO se pisa por borrador/publicación (already_published) — R#39-1/2", async () => {
+    const assignmentId = await publishedAssignment();
+    const sub = await submitAssignment(student, assignmentId, { file: pdf(), comment: "" });
+    if (!sub.ok) throw new Error(sub.error);
+    const published = await publishGrade(instructor, sub.id, { directGrade: 5.0, feedback: "" });
+    if (!published.ok) throw new Error(JSON.stringify(published));
+
+    // Tutor intenta revertir a borrador con otro valor → rechazado.
+    expect(await saveDraftGrade(tutor, sub.id, { directGrade: 2.0, feedback: "hack" })).toEqual({
+      ok: false,
+      error: "already_published",
+    });
+    // Relator intenta re-publicar con otro valor saltándose el motivo → rechazado.
+    expect(await publishGrade(instructor, sub.id, { directGrade: 2.0, feedback: "hack" })).toEqual({
+      ok: false,
+      error: "already_published",
+    });
+
+    // La nota oficial sigue intacta (5.0, publicada) y sin auditoría espuria.
+    const { data: grade } = await svc.from("grades").select("grade, status").eq("id", published.gradeId).single();
+    expect(grade).toMatchObject({ grade: 5, status: "published" });
+    const { data: updated } = await svc
+      .from("audit_log")
+      .select("action")
+      .eq("entity_id", published.gradeId)
+      .eq("action", "grade.updated");
+    expect(updated ?? []).toHaveLength(0);
+  });
+
+  it("backstop de BD: revertir una nota publicada a borrador aborta (trigger) — R#39-1", async () => {
+    const assignmentId = await publishedAssignment();
+    const sub = await submitAssignment(student, assignmentId, { file: pdf(), comment: "" });
+    if (!sub.ok) throw new Error(sub.error);
+    const published = await publishGrade(instructor, sub.id, { directGrade: 5.0, feedback: "" });
+    if (!published.ok) throw new Error(JSON.stringify(published));
+
+    // Ni siquiera el service_role puede despublicar por SQL directo.
+    const { error } = await svc.from("grades").update({ status: "draft" }).eq("id", published.gradeId);
+    expect(error).not.toBeNull();
+  });
+
+  it("la cola expone gradeId + estado publicado (para editar con motivo) — R#39-2", async () => {
+    const assignmentId = await publishedAssignment();
+    const sub = await submitAssignment(student, assignmentId, { file: pdf(), comment: "" });
+    if (!sub.ok) throw new Error(sub.error);
+    const published = await publishGrade(instructor, sub.id, { directGrade: 6.0, feedback: "" });
+    if (!published.ok) throw new Error(JSON.stringify(published));
+
+    const pending = await listPendingSubmissions(instructor, actionId);
+    const mine = pending.find((p) => p.assignmentId === assignmentId);
+    expect(mine?.gradeStatus).toBe("published");
+    expect(mine?.gradeId).toBe(published.gradeId);
   });
 
   it("cola de corrección: lista la última versión con su estado", async () => {

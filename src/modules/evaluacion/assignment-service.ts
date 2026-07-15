@@ -260,7 +260,13 @@ export async function submitAssignment(
     )
     .select("id")
     .single();
-  if (error || !data) return { ok: false, error: "upload_failed" };
+  if (error || !data) {
+    // El archivo ya subió pero la fila no se creó (p.ej. colisión de versión por
+    // entrega concurrente, o error transitorio): borra el objeto para no dejar
+    // huérfanos en el bucket. La entrega se reintenta limpia.
+    await guard.db.storage.from(BUCKET).remove([path]);
+    return { ok: false, error: "upload_failed" };
+  }
   return { ok: true, id: data.id as string, late: late === "late" };
 }
 

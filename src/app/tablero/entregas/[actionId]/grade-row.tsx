@@ -8,12 +8,18 @@ import {
   downloadSubmissionAction,
   publishGradeAction,
   saveDraftGradeAction,
+  updateGradeAction,
   type GradeState,
 } from "../actions";
 
 const t = esCL.grading;
 
-/** Fila de corrección: descarga, nota directa + feedback, guardar/publicar. */
+/**
+ * Fila de corrección. El control depende del estado de la nota:
+ *  - sin nota / borrador → guardar borrador (tutor o relator) + publicar (relator);
+ *  - PUBLICADA → solo el relator la edita, y SIEMPRE con motivo (el gate del
+ *    hito: `updateGradeAction`). El tutor ve la publicada bloqueada.
+ */
 export function GradeRow({
   submission,
   actionId,
@@ -31,9 +37,19 @@ export function GradeRow({
     publishGradeAction,
     { status: "idle" },
   );
+  const [updState, updAction, updating] = useActionState<GradeState, FormData>(
+    updateGradeAction,
+    { status: "idle" },
+  );
   const [downloading, startDownload] = useTransition();
 
-  const state = pubState.status !== "idle" ? pubState : draftState;
+  const isPublished = submission.gradeStatus === "published";
+  const state =
+    updState.status !== "idle"
+      ? updState
+      : pubState.status !== "idle"
+        ? pubState
+        : draftState;
   const validationMsg =
     state.status === "invalid" ? state.errors.map((e) => e.message).join(" · ") : null;
 
@@ -53,12 +69,12 @@ export function GradeRow({
         {submission.gradeStatus ? (
           <span
             className={`rounded px-2 py-0.5 text-xs ${
-              submission.gradeStatus === "published"
+              isPublished
                 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                 : "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
             }`}
           >
-            {submission.gradeStatus === "published" ? t.publishedBadge : t.draftBadge}
+            {isPublished ? t.publishedBadge : t.draftBadge}
             {submission.currentGrade !== null ? ` · ${submission.currentGrade.toFixed(1)}` : ""}
           </span>
         ) : (
@@ -80,60 +96,123 @@ export function GradeRow({
         </button>
       </div>
 
-      <form className="flex flex-col gap-3">
-        <input type="hidden" name="submissionId" value={submission.submissionId} />
-        <input type="hidden" name="actionId" value={actionId} />
-        <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+      {isPublished && !canPublish ? (
+        // Tutor frente a una nota ya publicada: no la puede tocar.
+        <p className="text-muted-foreground text-sm">{t.publishedLocked}</p>
+      ) : isPublished && submission.gradeId ? (
+        // Relator edita una publicada: SIEMPRE con motivo (gate del hito).
+        <form className="flex flex-col gap-3">
+          <input type="hidden" name="gradeId" value={submission.gradeId} />
+          <input type="hidden" name="actionId" value={actionId} />
+          <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+            <label className="flex flex-col gap-1 text-sm">
+              {t.directGradeLabel}
+              <input
+                name="grade"
+                type="number"
+                min={1}
+                max={7}
+                step="0.1"
+                defaultValue={submission.currentGrade ?? ""}
+                className="input"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              {t.feedbackLabel}
+              <textarea name="feedback" rows={2} className="input" />
+            </label>
+          </div>
           <label className="flex flex-col gap-1 text-sm">
-            {t.directGradeLabel}
-            <input
-              name="grade"
-              type="number"
-              min={1}
-              max={7}
-              step="0.1"
-              defaultValue={submission.currentGrade ?? ""}
-              className="input"
-            />
+            {t.motivoLabel}
+            <textarea name="motivo" rows={2} required className="input" />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {t.feedbackLabel}
-            <textarea name="feedback" rows={2} className="input" />
-          </label>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="submit"
-            formAction={draftAction}
-            disabled={savingDraft || publishing}
-            className="min-h-11 rounded-md border px-4 text-sm font-medium disabled:opacity-60"
-          >
-            {t.saveDraft}
-          </button>
-          {canPublish ? (
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="submit"
-              formAction={pubAction}
-              disabled={savingDraft || publishing}
+              formAction={updAction}
+              disabled={updating}
               className="min-h-11 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
             >
-              {t.publishGrade}
+              {t.updateGrade}
             </button>
-          ) : (
-            <span className="text-muted-foreground text-xs">{t.onlyInstructorPublishes}</span>
-          )}
-          {draftState.status === "draft" ? (
-            <span className="text-sm text-green-700 dark:text-green-400">{t.savedDraft}</span>
-          ) : null}
-          {pubState.status === "published" ? (
-            <span className="text-sm text-green-700 dark:text-green-400">{t.published}</span>
-          ) : null}
-          {validationMsg ? <span role="alert" className="text-sm text-red-600">{validationMsg}</span> : null}
-          {state.status === "error" ? (
-            <span role="alert" className="text-sm text-red-600">{t.genericError}</span>
-          ) : null}
-        </div>
-      </form>
+            {updState.status === "published" ? (
+              <span className="text-sm text-green-700 dark:text-green-400">{t.updated}</span>
+            ) : null}
+            {validationMsg ? (
+              <span role="alert" className="text-sm text-red-600">
+                {validationMsg}
+              </span>
+            ) : null}
+            {state.status === "error" ? (
+              <span role="alert" className="text-sm text-red-600">
+                {t.genericError}
+              </span>
+            ) : null}
+          </div>
+        </form>
+      ) : (
+        // Sin nota o borrador: guardar borrador + (relator) publicar.
+        <form className="flex flex-col gap-3">
+          <input type="hidden" name="submissionId" value={submission.submissionId} />
+          <input type="hidden" name="actionId" value={actionId} />
+          <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+            <label className="flex flex-col gap-1 text-sm">
+              {t.directGradeLabel}
+              <input
+                name="grade"
+                type="number"
+                min={1}
+                max={7}
+                step="0.1"
+                defaultValue={submission.currentGrade ?? ""}
+                className="input"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              {t.feedbackLabel}
+              <textarea name="feedback" rows={2} className="input" />
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              formAction={draftAction}
+              disabled={savingDraft || publishing}
+              className="min-h-11 rounded-md border px-4 text-sm font-medium disabled:opacity-60"
+            >
+              {t.saveDraft}
+            </button>
+            {canPublish ? (
+              <button
+                type="submit"
+                formAction={pubAction}
+                disabled={savingDraft || publishing}
+                className="min-h-11 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
+              >
+                {t.publishGrade}
+              </button>
+            ) : (
+              <span className="text-muted-foreground text-xs">{t.onlyInstructorPublishes}</span>
+            )}
+            {draftState.status === "draft" ? (
+              <span className="text-sm text-green-700 dark:text-green-400">{t.savedDraft}</span>
+            ) : null}
+            {pubState.status === "published" ? (
+              <span className="text-sm text-green-700 dark:text-green-400">{t.published}</span>
+            ) : null}
+            {validationMsg ? (
+              <span role="alert" className="text-sm text-red-600">
+                {validationMsg}
+              </span>
+            ) : null}
+            {state.status === "error" ? (
+              <span role="alert" className="text-sm text-red-600">
+                {t.genericError}
+              </span>
+            ) : null}
+          </div>
+        </form>
+      )}
     </li>
   );
 }
