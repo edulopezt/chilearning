@@ -21,6 +21,8 @@ import { saveBranding } from "@/modules/core/branding-service";
 import type { Principal } from "@/modules/core/domain/rbac";
 import { createQuestion, createQuiz, deleteQuiz, publishQuiz, updateQuiz } from "@/modules/evaluacion/quiz-service";
 import { startAttempt } from "@/modules/evaluacion/attempt-service";
+import { createAssignment, publishAssignment, submitAssignment } from "@/modules/evaluacion/assignment-service";
+import { publishGrade, saveDraftGrade } from "@/modules/evaluacion/grading-service";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
 const DEMO_COURSE = "c0000000-0000-4000-8000-000000000001";
@@ -125,6 +127,33 @@ describe("supervisor: toda mutación de servicio → forbidden (task 2.5)", () =
     // No está inscrito: tampoco puede rendir.
     const start = await startAttempt(supervisor, DEMO_QUIZ);
     expect(start.ok).toBe(false);
+  });
+
+  it("tareas (task 2.2): ni crear/publicar tareas ni corregirlas", async () => {
+    const DEMO_ASSIGNMENT = "f0000000-0000-4000-8000-000000000001";
+    const DEMO_SUBMISSION = "e1000000-0000-4000-8000-000000000001";
+    expect(await createAssignment(supervisor, DEMO_COURSE, { title: "X" })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect(await publishAssignment(supervisor, DEMO_ASSIGNMENT, false)).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect(await saveDraftGrade(supervisor, DEMO_SUBMISSION, { directGrade: 7, feedback: "" })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect(await publishGrade(supervisor, DEMO_SUBMISSION, { directGrade: 7, feedback: "" })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    // No inscrito: tampoco entrega.
+    const sub = await submitAssignment(supervisor, DEMO_ASSIGNMENT, {
+      file: { name: "x.pdf", size: 10, type: "application/pdf", bytes: new ArrayBuffer(10) },
+      comment: "",
+    });
+    expect(sub.ok).toBe(false);
   });
 
   it("guía Clave Única: ni enviar ni marcar", async () => {

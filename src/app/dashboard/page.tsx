@@ -80,12 +80,20 @@ export default async function DashboardPage() {
         hasRole(principal, "coordinator") ||
         hasRole(principal, "instructor") ||
         hasRole(principal, "tutor") ? (
-          <Link
-            href="/tablero"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-          >
-            {esCL.board.title}
-          </Link>
+          <>
+            <Link
+              href="/tablero"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.board.title}
+            </Link>
+            <Link
+              href="/tablero/entregas"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.grading.title}
+            </Link>
+          </>
         ) : null}
         {hasRole(principal, "supervisor") ? (
           <Link

@@ -8,6 +8,7 @@ import { getStudentCourseView } from "@/modules/academico/course-view";
 import { computeLock } from "@/modules/academico/domain/attendance-lock";
 import { summarizeProgress } from "@/modules/academico/domain/progress";
 import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
+import { listStudentAssignments } from "@/modules/evaluacion/assignment-service";
 import { LessonComplete } from "./lesson-complete";
 import { SessionCountdown } from "./session-countdown";
 
@@ -49,6 +50,7 @@ export default async function MiCursoPage() {
   // Evaluaciones del curso (task 2.1): visibles solo con el candado abierto,
   // como las lecciones.
   const quizzes = lock.unlocked ? await listStudentQuizzes(principal) : [];
+  const assignments = lock.unlocked ? await listStudentAssignments(principal) : [];
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
@@ -210,6 +212,40 @@ export default async function MiCursoPage() {
                     {" · "}
                     {esCL.quizStudent.bestGrade}:{" "}
                     <strong>{q.officialGrade !== null ? q.officialGrade.toFixed(1) : esCL.quizStudent.noGrade}</strong>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* Tareas del curso (task 2.2, HU-6.2) */}
+      {lock.unlocked && assignments.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold">{esCL.assignmentStudent.sectionTitle}</h2>
+          <ul className="flex flex-col gap-3">
+            {assignments.map((a) => (
+              <li key={a.assignmentId}>
+                <Link
+                  href={`/mi-curso/tarea/${a.assignmentId}`}
+                  className="flex flex-col gap-1 rounded-lg border p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                >
+                  <span className="font-medium">{a.title}</span>
+                  <span className="text-muted-foreground text-sm">
+                    {a.dueAt
+                      ? `${esCL.assignmentStudent.due}: ${new Date(a.dueAt).toLocaleDateString("es-CL")}`
+                      : esCL.assignmentStudent.noDue}
+                    {" · "}
+                    {a.grade !== null ? (
+                      <>
+                        {esCL.assignmentStudent.yourGrade}: <strong>{a.grade.toFixed(1)}</strong>
+                      </>
+                    ) : a.submissionCount > 0 ? (
+                      esCL.assignmentStudent.pending
+                    ) : (
+                      esCL.assignmentStudent.notSubmitted
+                    )}
                   </span>
                 </Link>
               </li>
