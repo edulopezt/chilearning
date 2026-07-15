@@ -114,17 +114,30 @@ export default async function MiCursoPage() {
                 <h3 className="mb-2 font-medium">
                   {lesson.position}. {lesson.title}
                 </h3>
-                {lesson.kind === "video" ? (
+                {lesson.kind === "video" || lesson.kind === "embed" ? (
                   <div className="aspect-video w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
                     <iframe
                       className="h-full w-full"
-                      src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(lesson.content)}`}
+                      src={
+                        lesson.content.startsWith("http")
+                          ? lesson.content
+                          : `https://www.youtube-nocookie.com/embed/${encodeURIComponent(lesson.content)}`
+                      }
                       title={lesson.title}
                       allowFullScreen
                     />
                   </div>
+                ) : lesson.kind === "file" ? (
+                  <a
+                    href={lesson.content}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-md border px-4 text-sm font-medium"
+                  >
+                    📎 {esCL.course.openFile}
+                  </a>
                 ) : (
-                  <p className="text-sm leading-relaxed">{lesson.content}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{lesson.content}</p>
                 )}
               </li>
             ))}

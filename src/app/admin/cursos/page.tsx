@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
@@ -51,7 +52,8 @@ export default async function CoursesPage() {
                   <th className="py-2 pr-3">{esCL.courses.colName}</th>
                   <th className="py-2 pr-3">{esCL.courses.colModality}</th>
                   <th className="py-2 pr-3">{esCL.courses.colHours}</th>
-                  <th className="py-2">{esCL.courses.colStatus}</th>
+                  <th className="py-2 pr-3">{esCL.courses.colStatus}</th>
+                  <th className="py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -63,7 +65,12 @@ export default async function CoursesPage() {
                     </td>
                     <td className="py-2 pr-3">{MODALITY_LABEL[c.modality] ?? c.modality}</td>
                     <td className="py-2 pr-3">{c.hours}</td>
-                    <td className="py-2">{STATUS_LABEL[c.status] ?? c.status}</td>
+                    <td className="py-2 pr-3">{STATUS_LABEL[c.status] ?? c.status}</td>
+                    <td className="py-2">
+                      <Link href={`/admin/cursos/${c.id}/lecciones`} className="text-sm underline">
+                        {esCL.lessons.title}
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>

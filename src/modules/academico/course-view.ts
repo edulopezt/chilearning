@@ -12,7 +12,7 @@ import type { SenceSessionStatus } from "@/modules/academico/domain/attendance-l
 export interface Lesson {
   id: string;
   title: string;
-  kind: "text" | "video";
+  kind: "text" | "video" | "file" | "embed";
   content: string;
   position: number;
 }
@@ -60,6 +60,7 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
     .from("lessons")
     .select("id, title, kind, content, position")
     .eq("course_id", course.id)
+    .eq("status", "published") // el alumno solo ve lecciones publicadas (1.4)
     .order("position", { ascending: true });
 
   const { data: session } = await supabase
