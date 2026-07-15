@@ -206,6 +206,15 @@ export const esCL = {
     emailsSkipped:
       "inscripciones nuevas sin correo (proveedor de correo no configurado)",
   },
+  supervisorPortal: {
+    title: "Portal de fiscalización",
+    intro:
+      "Vista de solo lectura para el fiscalizador SENCE: asistencia por acción, día a día, con export en un clic.",
+    forbidden: "No tienes acceso al portal de fiscalización.",
+    empty: "No hay acciones de capacitación para mostrar.",
+    enrolled: "inscritos",
+    dashboardLink: "Panel de fiscalización",
+  },
   cumplimiento: {
     title: "Panel de cumplimiento SENCE",
     intro:

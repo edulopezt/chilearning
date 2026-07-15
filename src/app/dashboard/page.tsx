@@ -15,6 +15,12 @@ export default async function DashboardPage() {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
 
+  // El fiscalizador puro va directo a su portal simplificado (task 2.5,
+  // HU-12.2 "sin el ruido del LMS"); con roles mixtos, ve el panel normal.
+  if (principal.roles.length === 1 && principal.roles[0] === "supervisor") {
+    redirect("/supervisor");
+  }
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 p-6">
       <header className="flex items-center justify-between gap-4">
@@ -79,6 +85,14 @@ export default async function DashboardPage() {
             className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
           >
             {esCL.board.title}
+          </Link>
+        ) : null}
+        {hasRole(principal, "supervisor") ? (
+          <Link
+            href="/supervisor"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+          >
+            {esCL.supervisorPortal.dashboardLink}
           </Link>
         ) : null}
         {hasRole(principal, "otec_admin") || hasRole(principal, "coordinator") ? (
