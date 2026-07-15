@@ -64,6 +64,17 @@ export default async function DashboardPage() {
             </Link>
           </>
         ) : null}
+        {hasRole(principal, "otec_admin") ||
+        hasRole(principal, "coordinator") ||
+        hasRole(principal, "instructor") ||
+        hasRole(principal, "tutor") ? (
+          <Link
+            href="/tablero"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+          >
+            {esCL.board.title}
+          </Link>
+        ) : null}
         {hasRole(principal, "otec_admin") || hasRole(principal, "coordinator") ? (
           <>
             <Link
