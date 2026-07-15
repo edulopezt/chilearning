@@ -57,12 +57,20 @@ export default async function DashboardPage() {
           </Link>
         ) : null}
         {hasRole(principal, "otec_admin") || hasRole(principal, "coordinator") ? (
-          <Link
-            href="/admin/inscripciones"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-          >
-            {esCL.enrollmentImport.title}
-          </Link>
+          <>
+            <Link
+              href="/admin/cursos"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.courses.title}
+            </Link>
+            <Link
+              href="/admin/inscripciones"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+            >
+              {esCL.enrollmentImport.title}
+            </Link>
+          </>
         ) : null}
       </nav>
     </main>
