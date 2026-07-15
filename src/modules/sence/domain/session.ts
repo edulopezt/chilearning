@@ -427,3 +427,34 @@ export function expireSession(
 
   return noChange(state, null);
 }
+
+/**
+ * Column projection of a `sence_sessions` row that the state mapping needs.
+ * Shared by the engine (callbacks) and the expiry worker (task 2.6).
+ */
+export interface SessionStateColumns {
+  readonly status: SenceSessionStatus;
+  readonly error_origin: ErrorOrigin | null;
+  readonly created_at: string;
+  readonly opened_at: string | null;
+  readonly expires_at: string | null;
+  readonly closed_at: string | null;
+  readonly id_sesion_sence: string | null;
+  readonly zona_horaria: string | null;
+  readonly error_codes: string[] | null;
+}
+
+/** Map a `sence_sessions` row to the pure domain state (no IO, no clock). */
+export function rowToState(row: SessionStateColumns): SessionState {
+  return {
+    status: row.status,
+    errorOrigin: row.error_origin,
+    createdAt: Date.parse(row.created_at),
+    openedAt: row.opened_at ? Date.parse(row.opened_at) : null,
+    expiresAt: row.expires_at ? Date.parse(row.expires_at) : null,
+    closedAt: row.closed_at ? Date.parse(row.closed_at) : null,
+    idSesionSence: row.id_sesion_sence,
+    zonaHoraria: row.zona_horaria,
+    errorCodes: row.error_codes ?? [],
+  };
+}

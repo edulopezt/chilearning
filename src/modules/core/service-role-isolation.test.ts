@@ -13,6 +13,11 @@ import { describe, expect, it } from "vitest";
 
 const SRC = join(process.cwd(), "src");
 const ALLOWED = join("lib", "tenant-guard.ts");
+// El worker de jobs (task 2.6) es la 2ª excepción SANCIONADA por la regla dura
+// de CLAUDE.md ("service-role SOLO en worker y callbacks SENCE"): corre fuera
+// de Next (no puede importar tenant-guard, que es `server-only`) y construye su
+// propio client. SOLO el entry point exacto; nada más del árbol src/worker.
+const ALLOWED_WORKER = join("worker", "index.ts");
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -28,6 +33,7 @@ describe("aislamiento del cliente service-role", () => {
   it("solo tenant-guard.ts referencia SUPABASE_SERVICE_ROLE_KEY", () => {
     const offenders = files.filter((f) => {
       if (f.endsWith(ALLOWED) || f.endsWith(join("lib", "env.server.ts"))) return false;
+      if (f.endsWith(ALLOWED_WORKER)) return false;
       return readFileSync(f, "utf8").includes("SUPABASE_SERVICE_ROLE_KEY");
     });
     expect(offenders, `Archivos que tocan la service-role key fuera de tenant-guard: ${offenders.join(", ")}`).toEqual(

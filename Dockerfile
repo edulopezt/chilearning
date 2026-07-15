@@ -25,6 +25,9 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
+# Bundle del worker de jobs (task 2.6): mismo repo, proceso aparte. En Coolify
+# la app worker usa esta misma imagen con start command `node dist/worker/index.js`.
+RUN pnpm build:worker
 
 # ---------- runner ----------
 FROM node:24-alpine AS runner
@@ -36,6 +39,7 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=build /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/dist/worker ./dist/worker
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0

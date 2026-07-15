@@ -1,0 +1,78 @@
+/**
+ * Task 2.6 — parseo de la configuración operativa del motor/worker SENCE
+ * (I-13, D-003): puro y defensivo. Un valor ausente o inválido cae al default
+ * documentado en el contrato (3 h / 60 min) sin lanzar: el worker jamás debe
+ * morir por una env mal escrita (el default es seguro; el valor raro se
+ * reporta en el resultado para que el llamador lo loguee).
+ *
+ * Lo consumen `env.server.ts` (lado Next: `sessionMaxMs` del motor) y el
+ * worker (`src/worker/index.ts`), leyendo cada uno su propio `env`.
+ */
+
+export interface SenceTiming {
+  /** T4: deadline de abandono de Clave Única (ms). */
+  readonly pendingTimeoutMs: number;
+  /** T2 ancla `expires_at = recepción + sessionMaxMs` (ms). */
+  readonly sessionMaxMs: number;
+  /** Ventana de la tasa de error (ms). */
+  readonly alertWindowMs: number;
+  /** Umbral de la tasa de error, 0..1 (borde inclusivo). */
+  readonly alertErrorRateThreshold: number;
+  /** Mínimo de eventos en la ventana para evaluar la tasa. */
+  readonly alertMinEvents: number;
+  /** Claves de env cuyo valor era inválido y cayó al default. */
+  readonly invalidKeys: readonly string[];
+}
+
+export const SENCE_TIMING_DEFAULTS = {
+  pendingTimeoutMinutes: 60,
+  sessionMaxHours: 3,
+  alertWindowMinutes: 60,
+  alertErrorRateThreshold: 0.2,
+  alertMinEvents: 5,
+} as const;
+
+function parsePositiveInt(raw: string | undefined, fallback: number): number | null {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) return null;
+  return value;
+}
+
+function parseRatio(raw: string | undefined, fallback: number): number | null {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0 || value > 1) return null;
+  return value;
+}
+
+/** Lee los knobs desde un env plano (inyectable: `process.env` o un fixture). */
+export function senceTimingFromEnv(env: Record<string, string | undefined>): SenceTiming {
+  const invalidKeys: string[] = [];
+  const int = (key: string, fallback: number): number => {
+    const parsed = parsePositiveInt(env[key], fallback);
+    if (parsed === null) {
+      invalidKeys.push(key);
+      return fallback;
+    }
+    return parsed;
+  };
+  const ratio = (key: string, fallback: number): number => {
+    const parsed = parseRatio(env[key], fallback);
+    if (parsed === null) {
+      invalidKeys.push(key);
+      return fallback;
+    }
+    return parsed;
+  };
+
+  const d = SENCE_TIMING_DEFAULTS;
+  return {
+    pendingTimeoutMs: int("SENCE_PENDING_TIMEOUT_MINUTES", d.pendingTimeoutMinutes) * 60_000,
+    sessionMaxMs: int("SENCE_SESSION_MAX_HOURS", d.sessionMaxHours) * 3_600_000,
+    alertWindowMs: int("SENCE_ALERT_WINDOW_MINUTES", d.alertWindowMinutes) * 60_000,
+    alertErrorRateThreshold: ratio("SENCE_ALERT_ERROR_RATE_THRESHOLD", d.alertErrorRateThreshold),
+    alertMinEvents: int("SENCE_ALERT_MIN_EVENTS", d.alertMinEvents),
+    invalidKeys,
+  };
+}

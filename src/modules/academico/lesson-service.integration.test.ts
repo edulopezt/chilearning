@@ -42,6 +42,10 @@ describe("constructor de lecciones (task 1.4, HU-4.1)", () => {
   });
 
   it("crea, edita, publica y aparece en el listado ordenado", async () => {
+    // Posición relativa al estado actual (el curso demo acumula lecciones si la
+    // suite se repite sin `db reset`): la nueva SIEMPRE entra al final.
+    const before = await listLessons(adminA, COURSE_A);
+
     const r = await createLesson(adminA, COURSE_A, { title: "Nueva 3", kind: "embed", content: "https://x.cl/e", status: "draft" });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -55,7 +59,7 @@ describe("constructor de lecciones (task 1.4, HU-4.1)", () => {
     const created = lessons.find((l) => l.id === r.id);
     expect(created?.title).toBe("Nueva 3 editada");
     expect(created?.status).toBe("published");
-    expect(created?.position).toBe(3); // al final (había 2 demo)
+    expect(created?.position).toBe(before.length + 1); // al final
   });
 
   it("reordena: mover la última hacia arriba intercambia posiciones", async () => {

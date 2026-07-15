@@ -52,6 +52,12 @@ describe("tablero del relator (task 1.8, HU-3.4)", () => {
     await svc.from("actions").upsert({ id: actionId, tenant_id: TENANT_A, course_id: courseId, codigo_accion: "BOARD-1", training_line: 3, environment: "rcetest", attendance_lock: false });
     await svc.from("lessons").upsert({ id: lessonId, tenant_id: TENANT_A, course_id: courseId, title: "L1", kind: "text", content: "x", position: 1, status: "published" });
     await svc.from("enrollments").upsert({ id: enrollmentId, tenant_id: TENANT_A, action_id: actionId, user_id: studentId, run: "5126663-3", exento: false });
+    // Resetea el progreso del fixture (persiste si la suite se repite sin
+    // `db reset`); no hay grant de DELETE, así que se marca no-completada.
+    await svc.from("lesson_progress").upsert(
+      { tenant_id: TENANT_A, enrollment_id: enrollmentId, lesson_id: lessonId, completed: false, completed_at: null },
+      { onConflict: "enrollment_id,lesson_id" },
+    );
 
     const before = (await getInstructorBoard(instructor)).find((r) => r.actionId === actionId)!;
     expect(before.avgProgressPct).toBe(0);

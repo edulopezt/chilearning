@@ -38,6 +38,7 @@ export function buildEngineDeps(request: Request): EngineDeps {
     // Nonce corto (16 chars base64url) para caber en el límite de 100 chars de
     // UrlRetoma/UrlError junto con el origin (I-8).
     newNonce: () => randomBytes(12).toString("base64url"),
+    sessionMaxMs: sence.timing.sessionMaxMs,
   };
 }
 

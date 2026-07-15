@@ -17,10 +17,12 @@ import {
   applyCallback,
   classifyCallback,
   DEFAULT_SESSION_MAX_MS,
+  rowToState,
   type RawCallback,
   type SenceEventKind,
   type SenceSessionStatus,
   type SessionState,
+  type SessionStateColumns,
 } from "@/modules/sence/domain/session";
 
 /**
@@ -45,6 +47,9 @@ export interface EngineDeps {
   newUuid: () => string;
   /** Genera el nonce de callback por sesión (corto, ~16 chars, H-2). */
   newNonce: () => string;
+  /** Ventana operativa de sesión en ms (I-13, `SENCE_SESSION_MAX_HOURS`);
+   *  T2 ancla `expires_at = recepción + sessionMaxMs`. Default: 3 h. */
+  sessionMaxMs?: number;
 }
 
 export type StartResult =
@@ -251,7 +256,10 @@ export async function handleCallback(
   const now = deps.now();
   const state = correlated ? rowToState(correlated) : null;
   const transition = state
-    ? applyCallback(state, callback, { now, sessionMaxMs: DEFAULT_SESSION_MAX_MS })
+    ? applyCallback(state, callback, {
+        now,
+        sessionMaxMs: deps.sessionMaxMs ?? DEFAULT_SESSION_MAX_MS,
+      })
     : null;
 
   // Clasificación: sin sesión correlacionada, el dominio la marca `unmatched`.
@@ -336,31 +344,9 @@ async function readOne<T>(
   return row as T;
 }
 
-interface SessionRow {
-  status: SenceSessionStatus;
-  error_origin: "start" | "close" | null;
-  created_at: string;
-  opened_at: string | null;
-  expires_at: string | null;
-  closed_at: string | null;
-  id_sesion_sence: string | null;
-  zona_horaria: string | null;
-  error_codes: string[];
-}
-
-function rowToState(row: SessionRow): SessionState {
-  return {
-    status: row.status,
-    errorOrigin: row.error_origin,
-    createdAt: Date.parse(row.created_at),
-    openedAt: row.opened_at ? Date.parse(row.opened_at) : null,
-    expiresAt: row.expires_at ? Date.parse(row.expires_at) : null,
-    closedAt: row.closed_at ? Date.parse(row.closed_at) : null,
-    idSesionSence: row.id_sesion_sence,
-    zonaHoraria: row.zona_horaria,
-    errorCodes: row.error_codes ?? [],
-  };
-}
+// El mapeo fila→estado vive en el dominio (`rowToState`): lo comparten este
+// motor y el worker de expiración (task 2.6).
+type SessionRow = SessionStateColumns;
 
 async function persistState(
   db: SupabaseClient,
