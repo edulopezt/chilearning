@@ -25,19 +25,18 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-15
-- **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10)
-- **Hito en curso:** **Hito 2** — 7/9 tareas mergeadas. ✅ 2.6 (#31 worker BullMQ+Redis)
-  · ✅ correo EmailSender+Resend (#32) · ✅ 2.7 pre-flight (#33) · ✅ 2.4a nombres (#34) ·
-  ✅ 2.4b panel cumplimiento + export xlsx (#35) · ✅ 2.5 portal supervisor solo-lectura (#36)
-  · ✅ 2.1a quizzes esquema/dominio/servicios (#37) · ✅ 2.1b quiz UI + intento alumno (#38)
-  · ✅ **2.2 tareas + corrección + Storage (#39)** — revisión adversarial 4-ojos aplicada
-  (3 HIGH máquina de estados de notas + audit atómico, 1 MED, 1 LOW; ver D-023); M2+M3
-  aplicadas al cloud + bucket `submissions` creado + RPC/trigger verificados.
-  **Falta:** ⬜ 2.3 libro de notas (GATE) · ⬜ 2.8 clonado.
-  Decisiones de Edu vigentes: BullMQ+Redis · export = plugin verbatim + col. `ID SESION SENCE`
-  · **Resend AHORA** (🔒 Edu: cuenta + verificar dominio + `RESEND_API_KEY`) · nota final =
-  promedio parcial + "incompleta".
-- **PRs mergeados a `main`:** 39 · **Tests:** 780 verdes (392 unit + 271 RLS + 117 integración)
+- **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · **Hito 2 ✅ (9/9)**
+- **Hito 2 CERRADO** — las 9 tareas mergeadas (#31–#41), cada una con revisión adversarial
+  4-ojos aplicada; migraciones M1–M4 + bucket `submissions` en el cloud; worker VIVO en staging.
+  ✅ 2.6 worker (#31) · ✅ correo Resend (#32) · ✅ 2.7 pre-flight (#33) · ✅ 2.4 panel+export
+  (#34/#35) · ✅ 2.5 supervisor (#36) · ✅ 2.1 quizzes (#37/#38) · ✅ **2.2 tareas** (#39, D-023:
+  3 HIGH máquina de notas + audit atómico) · ✅ **2.3 libro de notas / GATE** (#40, D-024:
+  paginación + anti-inyección CSV) · ✅ **2.8 clonado** (#41, D-025: RPC `clone_course` + estado
+  draft/active + re-ejecución; HIGH corregido: activación por UI).
+  🔒 No bloquean el hito pero necesitan a Edu: `RESEND_API_KEY` (correo real en staging) y la
+  certificación rcetest (P3, con Edu presente).
+- **Hito en curso:** **Hito 3** (cierre del ciclo formativo + endurecimiento) — por planificar.
+- **PRs mergeados a `main`:** 41 · **Tests:** 812 verdes (411 unit + 271 RLS + 130 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -139,7 +138,7 @@ edición inline de contenido de lección desde la UI (1.4, hoy: crear/reordenar/
 
 ---
 
-## HITO 2 — Evaluación y panel SENCE 🔶 (7/9 mergeadas; falta 2.3 GATE + 2.8)
+## HITO 2 — Evaluación y panel SENCE ✅ (9/9 mergeadas, #31–#41)
 
 - ✅ **2.1** Quizzes autocorregidos: 3 tipos (opción múltiple, V/F, pareados), intentos, banco
   de preguntas, escala 1.0–7.0 — HU-6.1 — **#37 (esquema/dominio/servicios) + #38 (UI + intento
@@ -151,9 +150,10 @@ edición inline de contenido de lección desde la UI (1.4, hoy: crear/reordenar/
   borrador ni se re-publica sin motivo — trigger `grades_no_unpublish` + guardias de servicio),
   cambio de nota + auditoría ATÓMICOS vía RPC `write_assignment_grade`, cola paginada, sin
   huérfanos en Storage.
-- ⬜ **2.3** Libro de notas por acción + **auditoría de cambios de nota** — HU-6.4. **(SIGUIENTE
-  — GATE.)** Consolida quizzes+tareas por inscripción con promedio ponderado parcial + fila
-  "incompleta" (D-022 S10). El motor de cambio-con-motivo ya existe (grade-change + RPC de 2.2).
+- ✅ **2.3** Libro de notas por acción + **auditoría de cambios de nota** — HU-6.4 — **#40 (el
+  GATE del hito)**: consolida quizzes+tareas por inscripción con promedio ponderado parcial + fila
+  "incompleta" (D-022 S10); export CSV; historial de cambios de nota (`grade.updated`) para el
+  admin. Revisión 4-ojos (D-024): desempate de paginación + anti-inyección de fórmulas CSV.
 - ✅ **2.4** Panel de cumplimiento SENCE + **export Excel** (columnas del plugin verbatim +
   `ID SESION SENCE`) — HU-5.5 — **#34 (nombres/apellidos snapshot en enrollments) + #35 (panel
   + export xlsx con exceljs, D-021)**.
@@ -170,12 +170,17 @@ edición inline de contenido de lección desde la UI (1.4, hoy: crear/reordenar/
   (RUN/DV de todo el roster, token descifrable, códigos, ambiente, fechas), envío REAL de la
   guía Clave Única (comunicacion → audit) con marca manual de respaldo, y alerta día-1 en el
   tick del worker (D-020: umbral 50%, corte 13:00 Chile, cooldown 24 h).
-- ⬜ **2.8** Clonado de cursos y re-ejecución de acciones (exige fechas y código nuevos) — HU-3.6.
-  **(Último del hito — incluye clonar quizzes/tareas ya existentes.)**
+- ✅ **2.8** Clonado de cursos y re-ejecución de acciones (exige fechas y código nuevos) — HU-3.6
+  — **#41**: RPC transaccional `clone_course` (copia curso+lecciones+quizzes(+preguntas)+tareas a
+  borrador, NUNCA runtime), estado `action_status` draft/active + CHECK, `reexecuteAction` +
+  activación por UI (`/admin/acciones/[id]/activar`). Revisión 4-ojos (D-025): HIGH corregido
+  (la re-ejecución era inactivable por la UI) + MED (clone copiaba mal `description`).
 
-**Gate del Hito 2:** libro de notas con auditoría · export Excel del panel SENCE · pre-flight
-detecta RUN inválidos plantados · clonado exige fechas/código nuevos · portal supervisor v1
-solo-lectura verificado.
+**Gate del Hito 2 — ✅ verificado por tests (812 verdes) + CI + revisión 4-ojos por PR:**
+libro de notas con auditoría (`grade.updated` con motivo, atómico) ✔ · export Excel/CSV del panel
+SENCE ✔ · pre-flight detecta RUN inválidos plantados ✔ · clonado a borrador sin runtime + activación
+exige fechas/código nuevos ✔ · portal supervisor v1 solo-lectura (suites de no-escritura) ✔.
+Falta solo verificación humana en staging del **correo real** (needs `RESEND_API_KEY` de Edu).
 
 ---
 
