@@ -4,6 +4,8 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getStudentCourseView } from "@/modules/academico/course-view";
 import { computeLock } from "@/modules/academico/domain/attendance-lock";
+import { summarizeProgress } from "@/modules/academico/domain/progress";
+import { LessonComplete } from "./lesson-complete";
 import { SessionCountdown } from "./session-countdown";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +41,8 @@ export default async function MiCursoPage() {
     expiresAtMs: view.session?.expiresAtMs ?? null,
     nowMs: serverNowMs,
   });
+
+  const completedSet = new Set(view.completedLessonIds);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
@@ -102,6 +106,31 @@ export default async function MiCursoPage() {
         </section>
       ) : null}
 
+      {/* Progreso del alumno (task 1.5) */}
+      {lock.unlocked && view.lessons.length > 0 ? (() => {
+        const p = summarizeProgress(view.lessons, completedSet);
+        return (
+          <section className="flex flex-col gap-2 rounded-lg border p-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">{esCL.course.progressLabel}</span>
+              <span className="text-muted-foreground">
+                {p.completed} {esCL.course.progressOf} {p.total} {esCL.course.lessonsWord} · {p.percent}%
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
+              <div className="h-full rounded-full bg-green-600 transition-all" style={{ width: `${p.percent}%` }} />
+            </div>
+            {p.done ? (
+              <p className="text-sm text-green-700 dark:text-green-400">{esCL.course.courseDone}</p>
+            ) : p.resumeLessonId ? (
+              <a href={`#leccion-${p.resumeLessonId}`} className="text-sm font-medium underline">
+                {esCL.course.resume}
+              </a>
+            ) : null}
+          </section>
+        );
+      })() : null}
+
       {/* Contenido del curso (candado) */}
       <section aria-labelledby="lessons-title" className="flex flex-col gap-4">
         <h2 id="lessons-title" className="text-lg font-semibold">
@@ -110,7 +139,7 @@ export default async function MiCursoPage() {
         {lock.unlocked ? (
           <ol className="flex flex-col gap-4">
             {view.lessons.map((lesson) => (
-              <li key={lesson.id} className="rounded-lg border p-4">
+              <li key={lesson.id} id={`leccion-${lesson.id}`} className="scroll-mt-4 rounded-lg border p-4">
                 <h3 className="mb-2 font-medium">
                   {lesson.position}. {lesson.title}
                 </h3>
@@ -139,6 +168,7 @@ export default async function MiCursoPage() {
                 ) : (
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{lesson.content}</p>
                 )}
+                <LessonComplete lessonId={lesson.id} completed={completedSet.has(lesson.id)} />
               </li>
             ))}
           </ol>

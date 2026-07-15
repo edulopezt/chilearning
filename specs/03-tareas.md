@@ -47,7 +47,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 1.2 ✅ Acciones SENCE + panel de configuración SENCE del tenant — HU-3.2, 5.4 — **hecho 2026-07-15**: panel /admin/sence (token cifrado write-only) + CRUD de acciones /admin/acciones (código/línea/ambiente por-acción, comodín -1 solo en rcetest, candado, fechas); verificado en runtime
 - 1.3 ✅ Inscripciones + import CSV con validación RUN/DV + exentos — HU-2.2, 3.2, 3.3 — **hecho 2026-07-15** (parser+validador fila a fila, import idempotente vía tenantGuard, reporte fila a fila, plantilla; verificado en runtime 360/1440)
 - 1.4 ✅ Constructor de lecciones — HU-4.1 — **hecho 2026-07-15**: tipos texto/video/archivo/embed, reordenar (↑↓), borrador/publicado; /admin/cursos/[id]/lecciones; el alumno solo ve publicadas; verificado en runtime
-- 1.5 Progreso del alumno + "retomar donde quedé" — HU-4.3
+- 1.5 ✅ Progreso del alumno + "retomar donde quedé" — HU-4.3 — **hecho 2026-07-15**: tabla lesson_progress + RLS, marcar lección completada (verificando propiedad), barra de % y "retomar" en /mi-curso; verificado en runtime
 - 1.6 Correos transaccionales (invitación, bienvenida con guía Clave Única) — HU-3.3
 - 1.7 ✅ Roles restantes en RBAC + tests matriz completa — HU-2.3 — **hecho 2026-07-15**: suite data-driven de los 8 roles × tablas de negocio (deny-by-default verificado); cazó y corrigió una fuga: token_encrypted era legible por el cliente (grant de columna arreglado)
 - 1.8 Tablero relator con avance y semáforo — HU-3.4

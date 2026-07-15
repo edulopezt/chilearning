@@ -23,6 +23,8 @@ export interface CourseView {
   exento: boolean;
   attendanceLock: boolean;
   lessons: Lesson[];
+  /** ids de lecciones que el alumno ya completó (task 1.5). */
+  completedLessonIds: string[];
   session: {
     id: string;
     status: SenceSessionStatus;
@@ -71,12 +73,20 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
     .limit(1)
     .maybeSingle();
 
+  // Progreso: lecciones completadas por esta inscripción (RLS = propias).
+  const { data: progress } = await supabase
+    .from("lesson_progress")
+    .select("lesson_id")
+    .eq("enrollment_id", enrollment.id)
+    .eq("completed", true);
+
   return {
     enrollmentId: enrollment.id,
     courseName: course.name,
     exento: enrollment.exento,
     attendanceLock: action.attendance_lock,
     lessons: (lessons ?? []) as Lesson[],
+    completedLessonIds: (progress ?? []).map((r) => r.lesson_id as string),
     session: session
       ? {
           id: session.id,

@@ -202,6 +202,14 @@ export const esCL = {
   course: {
     noCourse: "Aún no tienes cursos asignados.",
     openFile: "Abrir archivo",
+    progressLabel: "Tu avance",
+    progressOf: "de",
+    lessonsWord: "lecciones",
+    resume: "Retomar donde quedé",
+    markComplete: "Marcar como completada",
+    markIncomplete: "Marcar como pendiente",
+    completed: "Completada ✓",
+    courseDone: "¡Felicitaciones! Completaste todas las lecciones.",
     lockedTitle: "Registra tu asistencia SENCE para acceder al contenido",
     lockedBody:
       "Para ver este curso debes registrar tu asistencia con tu Clave Única, según exige SENCE.",
