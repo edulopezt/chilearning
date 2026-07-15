@@ -89,6 +89,78 @@ export interface AttemptDeps {
   readonly rng?: () => number;
 }
 
+export interface StudentQuizSummary {
+  readonly quizId: string;
+  readonly title: string;
+  readonly description: string;
+  readonly timeLimitMinutes: number | null;
+  readonly maxAttempts: number | null;
+  readonly attemptsUsed: number;
+  readonly officialGrade: number | null;
+}
+
+/** Quizzes PUBLICADOS del curso del alumno + su estado (para /mi-curso). */
+export async function listStudentQuizzes(
+  principal: Principal,
+  deps?: AttemptDeps,
+): Promise<StudentQuizSummary[]> {
+  if (!principal.tenantId) return [];
+  const guard = tenantGuard(principal.tenantId);
+
+  // Cursos donde el alumno está inscrito (join acotado, sin listas grandes).
+  const { data: enr } = await guard.db
+    .from("enrollments")
+    .select("id, actions!inner(course_id)")
+    .eq("tenant_id", principal.tenantId)
+    .eq("user_id", principal.userId);
+  const rows = (enr ?? []) as unknown as { id: string; actions: { course_id: string } }[];
+  const enrollmentByCourse = new Map<string, string>();
+  for (const r of rows) enrollmentByCourse.set(r.actions.course_id, r.id);
+  if (enrollmentByCourse.size === 0) return [];
+
+  interface StudentQuizConfigRow extends QuizConfigRow {
+    title: string;
+    description: string;
+  }
+  const { data: quizzes } = await guard.db
+    .from("quizzes")
+    .select("id, course_id, title, description, time_limit_minutes, max_attempts, attempt_scoring")
+    .eq("tenant_id", principal.tenantId)
+    .eq("status", "published")
+    .in("course_id", [...enrollmentByCourse.keys()])
+    .order("created_at", { ascending: true });
+
+  const now = clockOf(deps)();
+  const out: StudentQuizSummary[] = [];
+  for (const q of (quizzes ?? []) as unknown as StudentQuizConfigRow[]) {
+    const enrollmentId = enrollmentByCourse.get(q.course_id as string);
+    if (!enrollmentId) continue;
+    await finalizeExpiredAttempts(guard, q.id, enrollmentId, q, now);
+    const { data: attempts } = await guard.db
+      .from("quiz_attempts")
+      .select("grade, status")
+      .eq("tenant_id", principal.tenantId)
+      .eq("quiz_id", q.id)
+      .eq("enrollment_id", enrollmentId);
+    const finished = ((attempts ?? []) as { grade: number | null; status: string }[]).filter(
+      (a) => a.status !== "in_progress",
+    );
+    out.push({
+      quizId: q.id,
+      title: (q as { title: string }).title,
+      description: (q as { description: string }).description,
+      timeLimitMinutes: q.time_limit_minutes,
+      maxAttempts: q.max_attempts,
+      attemptsUsed: finished.length,
+      officialGrade: selectQuizGrade(
+        finished.map((a) => a.grade).filter((g: number | null): g is number => g !== null),
+        q.attempt_scoring,
+      ),
+    });
+  }
+  return out;
+}
+
 function clockOf(deps?: AttemptDeps): () => number {
   return deps?.now ?? (() => Date.now());
 }
