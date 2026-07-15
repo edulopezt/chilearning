@@ -9,6 +9,7 @@ import { computeLock } from "@/modules/academico/domain/attendance-lock";
 import { summarizeProgress } from "@/modules/academico/domain/progress";
 import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
 import { listStudentAssignments } from "@/modules/evaluacion/assignment-service";
+import { listStudentSurveys } from "@/modules/evaluacion/survey-service";
 import { LessonComplete } from "./lesson-complete";
 import { SessionCountdown } from "./session-countdown";
 
@@ -51,6 +52,7 @@ export default async function MiCursoPage() {
   // como las lecciones.
   const quizzes = lock.unlocked ? await listStudentQuizzes(principal) : [];
   const assignments = lock.unlocked ? await listStudentAssignments(principal) : [];
+  const surveys = lock.unlocked ? await listStudentSurveys(principal) : [];
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
@@ -246,6 +248,34 @@ export default async function MiCursoPage() {
                     ) : (
                       esCL.assignmentStudent.notSubmitted
                     )}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* Encuesta de satisfacción (task 3.1, HU-6.3) */}
+      {lock.unlocked && surveys.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold">{esCL.surveyStudent.sectionTitle}</h2>
+          <ul className="flex flex-col gap-3">
+            {surveys.map((s) => (
+              <li key={s.surveyId}>
+                <Link
+                  href={`/mi-curso/encuesta/${s.surveyId}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                >
+                  <span className="font-medium">{s.title}</span>
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs ${
+                      s.alreadySubmitted
+                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                    }`}
+                  >
+                    {s.alreadySubmitted ? esCL.surveyStudent.done : esCL.surveyStudent.pending}
                   </span>
                 </Link>
               </li>
