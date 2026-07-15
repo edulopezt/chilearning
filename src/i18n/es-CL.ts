@@ -187,7 +187,8 @@ export const esCL = {
     fileLabel: "Archivo CSV",
     submit: "Revisar e importar",
     downloadTemplate: "Descargar plantilla CSV",
-    templateHint: "Columnas: nombre, email, run, exento (Sí/No).",
+    templateHint:
+      "Columnas: nombre, apellidos (opcional pero recomendado para los reportes SENCE), email, run, exento (Sí/No).",
     noActions: "Primero crea una acción de capacitación para poder inscribir alumnos.",
     forbidden: "No tienes permiso para importar alumnos.",
     resultTitle: "Resultado del import",

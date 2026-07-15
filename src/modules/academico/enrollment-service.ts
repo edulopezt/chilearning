@@ -230,7 +230,7 @@ async function ensureUser(
     email: row.email,
     email_confirm: true,
     password: throwawayPassword(),
-    user_metadata: { full_name: row.nombre },
+    user_metadata: { full_name: `${row.nombre} ${row.apellidos}`.trim() },
   });
   if (error || !data?.user) {
     throw new Error(`No se pudo crear el usuario ${row.email}: ${error?.message ?? "sin id"}`);
@@ -265,7 +265,16 @@ async function upsertEnrollment(
     .maybeSingle();
 
   const { error } = await guard.db.from("enrollments").upsert(
-    guard.withTenant({ action_id: actionId, user_id: userId, run: row.run, exento: row.exento }),
+    guard.withTenant({
+      action_id: actionId,
+      user_id: userId,
+      run: row.run,
+      exento: row.exento,
+      // Snapshot para reportes SENCE (NOMBRES/APELLIDOS del export, task 2.4).
+      // Jamás se parte un nombre: sin columna apellidos, last_names queda NULL.
+      first_names: row.nombre,
+      last_names: row.apellidos === "" ? null : row.apellidos,
+    }),
     { onConflict: "action_id,user_id" },
   );
   if (error) throw new Error(`Inscripción: ${error.message}`);

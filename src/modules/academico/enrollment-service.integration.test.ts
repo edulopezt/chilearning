@@ -117,6 +117,40 @@ describe("import de inscripciones (task 1.3, HU-2.2/3.2/3.3)", () => {
     expect(after.count).toBe(before.count); // sin duplicados
   });
 
+  it("persiste nombres/apellidos como snapshot en enrollments (task 2.4)", async () => {
+    createdEmails.push("nombres.import@otec.cl");
+    const csv =
+      "nombre,apellidos,email,run,exento\n" +
+      "Rosa,Fuentes Lagos,nombres.import@otec.cl,6786126-4,no\n";
+    const r = await importEnrollmentsFromCsv(admin, DEMO_ACTION, csv);
+    if ("error" in r) throw new Error(`inesperado: ${r.error}`);
+    expect(r.imported).toBe(1);
+
+    const { data } = await svc
+      .from("enrollments")
+      .select("first_names, last_names")
+      .eq("action_id", DEMO_ACTION)
+      .eq("run", "6786126-4")
+      .single();
+    expect(data).toEqual({ first_names: "Rosa", last_names: "Fuentes Lagos" });
+
+    // Sin columna apellidos: first_names completo, last_names NULL (jamás partir).
+    createdEmails.push("soloonombre.import@otec.cl");
+    const r2 = await importEnrollmentsFromCsv(
+      admin,
+      DEMO_ACTION,
+      "nombre,email,run\nPedro Pablo Rojas,soloonombre.import@otec.cl,1000005-k\n",
+    );
+    if ("error" in r2) throw new Error(`inesperado: ${r2.error}`);
+    const { data: d2 } = await svc
+      .from("enrollments")
+      .select("first_names, last_names")
+      .eq("action_id", DEMO_ACTION)
+      .eq("run", "1000005-k")
+      .single();
+    expect(d2).toEqual({ first_names: "Pedro Pablo Rojas", last_names: null });
+  });
+
   it("el alumno importado recibe rol student sin pisar roles existentes", async () => {
     const { data: users } = await svc.auth.admin.listUsers({ page: 1, perPage: 200 });
     const ana = users.users.find((u) => u.email?.toLowerCase() === "ana.import@otec.cl");
