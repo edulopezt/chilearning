@@ -24,7 +24,7 @@
 
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
-- **Fecha:** 2026-07-15
+- **Fecha:** 2026-07-16
 - **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · **Hito 2 ✅ (9/9)**
 - **Hito 2 CERRADO** — las 9 tareas mergeadas (#31–#41), cada una con revisión adversarial
   4-ojos aplicada; migraciones M1–M4 + bucket `submissions` en el cloud; worker VIVO en staging.
@@ -36,9 +36,14 @@
   Pendientes que NO bloquean el hito: `RESEND_API_KEY` para correo real (necesita a Edu); cert
   rcetest **parqueada** (bloqueo de SENCE — su rcetest usa Clave SENCE deprecada; Edu decidió no
   escalar → validación al primer curso real; ver §Bloqueos). Staging tuvo un 500 por conflicto de
-  rutas del #41, corregido en el hotfix **#43** (deuda: el CI no corre `next build`).
-- **Hito en curso:** **Hito 3** (cierre del ciclo formativo + endurecimiento) — por planificar.
-- **PRs mergeados a `main`:** 43 · **Tests:** 812 verdes (411 unit + 271 RLS + 130 integración)
+  rutas del #41, corregido en el hotfix **#43**. (Corrección: el CI **sí** corre `next build` desde
+  0.1 (`ci.yml:28`); el hueco real es que un conflicto de slug de rutas es error de RUNTIME que
+  `next build` no caza — lo cubre el E2E de 3.8.)
+- **Hito 3 EN CURSO** (turno autónomo 2026-07-16, plan aprobado, alcance A/B/C): ✅ **3.1 encuesta de
+  satisfacción** (#45, HU-6.3) — anonimato ESTRUCTURAL (ledger + respuestas en 2 tablas, RPC atómico
+  `submit_survey`); 4-ojos cazó y corrigió un HIGH (join por `submitted_at` re-vinculaba respuestas
+  anónimas → columna eliminada) + supresión de muestra anónima <3.
+- **PRs mergeados a `main`:** 45 · **Tests:** 840 verdes (424 unit + 278 RLS + 138 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -194,7 +199,11 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 
 ## HITO 3 — Cierre del ciclo + endurecimiento ⬜
 
-- ⬜ **3.1** Encuesta de satisfacción (requisito de completitud, agregados) — HU-6.3.
+- ✅ **3.1** Encuesta de satisfacción (requisito de completitud, agregados) — HU-6.3 — **#45**:
+  anonimato ESTRUCTURAL (`surveys` + `survey_submissions` ledger + `survey_responses` con
+  `enrollment_id` NULL en anónima) + RPC atómico `submit_survey`; `hasCompletedSurvey` alimenta el
+  gate de 3.2. Revisión 4-ojos (HIGH: eliminado `submitted_at` que permitía re-identificar por join;
+  MEDIUM: supresión de muestra anónima <3).
 - ⬜ **3.2** **Certificados PDF** con plantilla SENCE (folio, QR, verificación pública, revocación,
   umbral de asistencia) — HU-7.1/7.2. *(Verificar campos normados, spec §7-R7.)*
 - ⬜ **3.3** Checklist DJ/GCA con recordatorios (n8n) + nómina exportable — HU-5.6.
