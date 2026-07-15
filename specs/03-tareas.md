@@ -50,7 +50,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 1.5 ✅ Progreso del alumno + "retomar donde quedé" — HU-4.3 — **hecho 2026-07-15**: tabla lesson_progress + RLS, marcar lección completada (verificando propiedad), barra de % y "retomar" en /mi-curso; verificado en runtime
 - 1.6 Correos transaccionales (invitación, bienvenida con guía Clave Única) — HU-3.3
 - 1.7 ✅ Roles restantes en RBAC + tests matriz completa — HU-2.3 — **hecho 2026-07-15**: suite data-driven de los 8 roles × tablas de negocio (deny-by-default verificado); cazó y corrigió una fuga: token_encrypted era legible por el cliente (grant de columna arreglado)
-- 1.8 Tablero relator con avance y semáforo — HU-3.4
+- 1.8 ✅ Tablero relator con avance y semáforo — HU-3.4 — **hecho 2026-07-15**: /tablero con avance promedio + asistencia SENCE + semáforo (verde/amarillo/rojo) por acción, ordenado por riesgo; verificado en runtime. (Acotado "sus cursos" del relator = follow-up con asignación por curso)
 - 1.9 ✅ Magic links de acceso para alumnos (Supabase Auth) — HU-2.1 — **hecho 2026-07-15**: login con pestaña "enlace por correo" (signInWithOtp) + ruta /auth/callback (exchange code, redirect relativo anti-open-redirect); verificado end-to-end con MailPit local
 - 1.10 ✅ Editor de marca del tenant — HU-1.2 — **hecho 2026-07-15**: /admin/marca con colores + datos legales + URL de logo, **chequeo de contraste WCAG en vivo** con sugerencia de ajuste, y **vista previa en vivo** del portal; cambios en audit_log. (Subida de archivos de logo: follow-up)
 
