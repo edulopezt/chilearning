@@ -61,7 +61,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 2.3 Libro de notas por acción + auditoría de cambios — HU-6.4
 - 2.4 Panel de cumplimiento SENCE + export Excel (columnas del reporte del plugin) — HU-5.5
 - 2.5 Portal Supervisor v1: rol de solo lectura para fiscalizador SENCE — HU-5.5, M12
-- 2.6 Cron: expiración 3 h, inactividad 60 min, alertas tasa de error — Plan §5.6
+- 2.6 ✅ Cron: expiración 3 h, inactividad 60 min, alertas tasa de error — Plan §5.6 — **hecho 2026-07-15** (PR #31): worker BullMQ+Redis (proceso aparte, misma imagen) dispara T4/T6/T9 con CAS estrecho + auditoría (`sence.session_expired`); desbloquea el "brick" del índice único parcial; alertas de tasa de error por tenant (tabla `alerts` + política D-017); knobs I-13 cableados. Verificado end-to-end con worker real contra Redis local. ⚠ Post-merge: desplegar Redis + app worker en Coolify staging
 - 2.7 Pre-flight de acción SENCE (validación masiva RUN/DV, guía Clave Única, check de configuración, alerta día 1) — HU-5.8
 - 2.8 Clonado de cursos y re-ejecución de acciones — HU-3.6
 

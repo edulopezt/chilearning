@@ -26,8 +26,11 @@
 
 - **Fecha:** 2026-07-15
 - **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10)
-- **Hito en curso:** ninguno — **siguiente = Hito 2**
-- **PRs mergeados a `main`:** 28 · **Tests:** ~500 verdes (unit + integración + RLS)
+- **Hito en curso:** **Hito 2** — 2.6 en PR #31 (worker de expiración, el gap crítico, con
+  revisión adversarial en curso). Plan aprobado por Edu: BullMQ+Redis ya · export Excel =
+  plugin verbatim + col. extra `ID SESION SENCE` · **Resend AHORA** (Edu debe crear cuenta +
+  verificar dominio + pasar `RESEND_API_KEY`) · nota final = promedio parcial + "incompleta".
+- **PRs mergeados a `main`:** 30 · **Tests:** 520 verdes (311 unit + 138 RLS + 71 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -84,7 +87,9 @@ Ojo: `ALTER TYPE ... ADD VALUE` debe ir en sentencia separada (no en transacció
   (por `/admin/acciones`) → `SENCE_ENV=test` en Coolify → correr el flujo con el RUN de Edu.
 - 🔒 **Correo a `controlelearning@sence.cl` (0.10):** borrador en `docs/sence/BORRADOR-CORREO-SENCE.md`.
   Edu lo envía (pregunta obligatoriedad API LMS-SIC línea 3 + fuente normativa de la regla 3h/60min).
-- 🔒 **Proveedor de correo (para 1.6 real):** falta elegir SMTP/Resend y sus credenciales.
+- 🔒 **Resend (decidido 2026-07-15, para 1.6/2.2/2.6/2.7):** Edu debe crear la cuenta en
+  resend.com, verificar el dominio chilearning.cl (registros DNS en Cloudflare) y pasar
+  `RESEND_API_KEY` por `.env.local` + Coolify. El código degrada a no-op/outbox mientras tanto.
 - 🔒 **Dominio de producción / decisiones de marca (Hito 5):** cuesta plata → decisión de Edu.
 
 ---
@@ -135,10 +140,13 @@ edición inline de contenido de lección desde la UI (1.4, hoy: crear/reordenar/
 - ⬜ **2.3** Libro de notas por acción + **auditoría de cambios de nota** — HU-6.4.
 - ⬜ **2.4** Panel de cumplimiento SENCE + **export Excel** (columnas del reporte del plugin actual) — HU-5.5.
 - ⬜ **2.5** Portal Supervisor v1: rol de **solo lectura** para fiscalizador SENCE (tests de que NO escribe) — HU-5.5, M12.
-- ⬜ **2.6** **Cron/worker**: expiración 3 h, inactividad 60 min, alertas de tasa de error — Plan §5.6.
-  ⚠ **CIERRA UN GAP CONOCIDO:** hoy NO hay worker que expire sesiones SENCE (T4/T6/T9 muertos);
-  una Clave Única abandonada deja la sesión colgada y puede brickear el enrollment (índice único
-  parcial). Es lo primero a hacer del Hito 2 si se va a certificar/pilotear.
+- 🔶 **2.6** **Cron/worker**: expiración 3 h, inactividad 60 min, alertas de tasa de error —
+  Plan §5.6. **PR #31** (revisión adversarial + CI en curso): worker BullMQ+Redis dispara
+  T4/T6/T9 (cierra el brick del índice único parcial), tabla `alerts` + tasa de error por
+  tenant (D-015/016/017). ⚠ Post-merge: migración al cloud + desplegar Redis + app
+  `chilearning-worker` en Coolify (misma imagen, start `node dist/worker/index.js`) +
+  `REDIS_URL`. Dev local: `docker run -d --name chilearning-redis-dev -p 6379:6379
+  redis:7-alpine` + `pnpm worker`.
 - ⬜ **2.7** Pre-flight de acción SENCE: validación masiva RUN/DV, guía Clave Única, check de
   configuración, alerta día 1 — HU-5.8. *(Reusa `preflight.ts` del motor.)*
 - ⬜ **2.8** Clonado de cursos y re-ejecución de acciones (exige fechas y código nuevos) — HU-3.6.
@@ -203,7 +211,9 @@ migrador Moodle · custom domains · app móvil · gamificación · marketplace 
 
 ## 🔁 Follow-ups técnicos / deuda conocida (no bloquea, pero anotado)
 
-- **Worker de expiración de sesiones SENCE** (T4/T6/T9): no existe → Hito 2 tarea 2.6. Crítico antes del piloto.
+- **Worker de expiración SENCE**: implementado en PR #31 (2.6). Follow-ups que dejó: alerta de
+  spike de eventos `unmatched` (hoy fuera del cálculo de tasa) · conectar correo de alertas al
+  EmailSender (PR de Resend de este hito) · desplegar Redis+worker en staging y prod.
 - **Envío real de correos** (1.6): plantillas listas, falta proveedor + `EmailSender`.
 - **Subida de logos a Storage** (1.10): hoy se pega una URL https.
 - **Asignación relator↔curso** (1.8/1.4): sin ella, "sus cursos" = todo el tenant para relator/tutor.
