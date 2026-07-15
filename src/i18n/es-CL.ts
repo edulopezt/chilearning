@@ -41,6 +41,15 @@ export const esCL = {
     platformAdmin: "Administrador de plataforma (sin organización)",
     goToCourse: "Ir a mi curso",
   },
+  emails: {
+    title: "Correos a tus alumnos",
+    intro: "Vista previa de los correos transaccionales, con la marca de tu OTEC.",
+    invitationTitle: "Invitación a la plataforma",
+    welcomeTitle: "Bienvenida al curso (con guía Clave Única)",
+    subjectLabel: "Asunto:",
+    note: "El envío real se conecta a un proveedor de correo (pendiente). Estas plantillas ya están listas y usan tu marca.",
+    forbidden: "No tienes permiso para ver los correos.",
+  },
   board: {
     title: "Tablero del relator",
     intro: "Avance y asistencia por acción, con semáforo de riesgo (rojo = necesita atención).",
