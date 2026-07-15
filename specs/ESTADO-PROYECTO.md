@@ -33,10 +33,12 @@
   3 HIGH máquina de notas + audit atómico) · ✅ **2.3 libro de notas / GATE** (#40, D-024:
   paginación + anti-inyección CSV) · ✅ **2.8 clonado** (#41, D-025: RPC `clone_course` + estado
   draft/active + re-ejecución; HIGH corregido: activación por UI).
-  🔒 No bloquean el hito pero necesitan a Edu: `RESEND_API_KEY` (correo real en staging) y la
-  certificación rcetest (P3, con Edu presente).
+  Pendientes que NO bloquean el hito: `RESEND_API_KEY` para correo real (necesita a Edu); cert
+  rcetest **parqueada** (bloqueo de SENCE — su rcetest usa Clave SENCE deprecada; Edu decidió no
+  escalar → validación al primer curso real; ver §Bloqueos). Staging tuvo un 500 por conflicto de
+  rutas del #41, corregido en el hotfix **#43** (deuda: el CI no corre `next build`).
 - **Hito en curso:** **Hito 3** (cierre del ciclo formativo + endurecimiento) — por planificar.
-- **PRs mergeados a `main`:** 41 · **Tests:** 812 verdes (411 unit + 271 RLS + 130 integración)
+- **PRs mergeados a `main`:** 43 · **Tests:** 812 verdes (411 unit + 271 RLS + 130 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -87,10 +89,16 @@ Ojo: `ALTER TYPE ... ADD VALUE` debe ir en sentencia separada (no en transacció
 
 ## 🔒 Bloqueos activos — necesitan a Edu
 
-- 🔒 **Certificación rcetest (0.9):** todo listo. Requiere a Edu presente con su token de
-  `https://sistemas.sence.cl/rts` (P3). Guía: `docs/sence/RUNBOOK-CERTIFICACION-RCETEST-STAGING.md`.
-  Pasos: cargar token en `/admin/sence` → poner la acción demo en `rcetest` con código `-1`
-  (por `/admin/acciones`) → `SENCE_ENV=test` en Coolify → correr el flujo con el RUN de Edu.
+- ⏸️ **Certificación rcetest (0.9): PARQUEADA (2026-07-15).** Se intentó end-to-end con token +
+  RUN reales de Edu; falló porque **el `rcetest` de SENCE todavía usa el login viejo de Clave
+  SENCE** (error 210), que ellos **deprecaron e inactivaron** (recuperación fuera de servicio;
+  Clave Única obligatoria desde 08/2019). Es un **bloqueo del lado de SENCE**, no del código:
+  nuestra integración quedó **probada correcta** (SENCE aceptó la petición y el motor manejó el
+  callback; un error de parámetros habría sido 200–209 *antes* del login). Edu **decidió no
+  contactar a SENCE** ni forzar producción. **Validación diferida al primer curso real en
+  producción** (Clave Única sobre `rce`). Detalle: memoria `rcetest-clave-sence-bloqueo` + el
+  aviso al inicio del runbook. Riesgo a vigilar: si SENCE gatilla producción tras rcetest, habrá
+  que reevaluar.
 - 🔒 **Correo a `controlelearning@sence.cl` (0.10):** borrador en `docs/sence/BORRADOR-CORREO-SENCE.md`.
   Edu lo envía (pregunta obligatoriedad API LMS-SIC línea 3 + fuente normativa de la regla 3h/60min).
 - 🔒 **Resend (decidido 2026-07-15, para 1.6/2.2/2.6/2.7):** Edu debe crear la cuenta en
@@ -252,6 +260,13 @@ migrador Moodle · custom domains · app móvil · gamificación · marketplace 
 - **`resolvePublicOrigin` fallback** (revisión de #20, R1): la rama de respaldo no valida el host
   contra el root domain; acotado por el enrutamiento de Traefik. Endurecimiento opcional.
 - **Reactivar proxy Cloudflare (naranja) + SSL "Full"** para ocultar la IP del VPS (opcional).
+- **⚠ CI no corre `next build`** (2026-07-15): el fix del #41 introdujo un conflicto de slug de
+  rutas (`/admin/acciones/[actionId]/activar` vs las hermanas `[id]/…`) que Next.js lanza en
+  RUNTIME ("different slug names for the same dynamic path") — 500 en TODA la app. typecheck,
+  lint y vitest NO lo cazan, y el CI tampoco (jobs `checks`/`rls`/`integration`, ninguno buildea).
+  El auto-deploy lo publicó → **staging estuvo caído hasta el hotfix #43**. **Follow-up: agregar
+  un paso `pnpm build` al job `checks`** (necesita env placeholders porque el build evalúa
+  `env.server.ts`). Regla interina: correr `next build` local antes de mergear rutas nuevas.
 
 ---
 

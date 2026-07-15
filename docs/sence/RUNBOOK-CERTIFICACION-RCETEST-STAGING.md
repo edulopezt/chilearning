@@ -1,5 +1,18 @@
 # RUNBOOK — Sesión de certificación `rcetest` en STAGING (supervisada)
 
+> **⛔ ESTADO 2026-07-15 — CERT PARQUEADA. LEE ESTO ANTES DE SEGUIR EL RUNBOOK.**
+> Se intentó la certificación end-to-end (token + RUN reales) y **falló por el lado de SENCE**,
+> no por el código. Hallazgo: **el `rcetest` de SENCE todavía sirve el login viejo de _Clave
+> SENCE_** (RUT + Contraseña → error **210**), un flujo que SENCE **deprecó e inactivó** (la
+> recuperación de Clave SENCE está fuera de servicio; Clave Única es obligatoria desde 08/2019).
+> Es decir, su ambiente de pruebas corre una versión más vieja que su propia normativa.
+> **Por lo tanto este runbook está DESACTUALIZADO en un punto clave: NO es Clave Única en
+> rcetest, es Clave SENCE** (donde dice "Clave Única" en los pasos §1/§3, léelo como el login de
+> SENCE que rcetest sirva). Nuestra integración quedó **probada correcta** (SENCE aceptó la
+> petición y el motor manejó el callback). Edu **decidió no contactar a SENCE** ni forzar
+> producción → validación diferida al **primer curso real en producción**. Detalle: memoria
+> `rcetest-clave-sence-bloqueo` y `specs/ESTADO-PROYECTO.md` (§Bloqueos). Retomar solo si Edu lo pide.
+
 > **⚠ SESIÓN SUPERVISADA. SOLO CON EDU PRESENTE (regla P3).**
 > Esta sesión usa el **token REAL del OTEC** y el ambiente `rcetest` de SENCE. Claude la
 > **prepara**; **no la ejecuta solo**. El token real **jamás** se pega en el repo, en el chat,
