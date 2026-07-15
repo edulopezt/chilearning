@@ -355,3 +355,21 @@ entrada original.
 - **Alternativas descartadas:** alerta global de plataforma (v1 es por tenant;
   la global puede derivarse de las filas); umbral estricto `>` (con muestras
   chicas 1/5 = 20% exacto debe alertar).
+
+## D-017b — Ajustes a la política de alerta tras la revisión adversarial del PR #31
+
+- **ID:** D-017b (enmienda a D-017)
+- **Fecha:** 2026-07-15
+- **Decisión:** (1) la tasa se agrega y alerta por **tenant×ambiente** (join a
+  `sence_sessions.environment`): rcetest y rce no se mezclan ni se silencian
+  mutuamente (cooldown por grupo); el ambiente va en `alerts.details` y en el
+  mensaje. (2) La lectura de la ventana se **pagina** (1000/página, tope 20
+  páginas con warning): PostgREST trunca en `max_rows` en silencio y la tasa se
+  calculaba sobre una muestra arbitraria bajo carga.
+- **Por qué:** hallazgos R-1/R-2 de la revisión adversarial (panel multi-agente
+  con refutación cruzada). I-11 sanciona ambientes conviviendo por tenant; el
+  checklist obligatorio en rcetest fabrica errores a propósito.
+- **Alternativas descartadas:** excluir rcetest del cálculo (descartada: deja
+  ciega la operación durante certificación/pruebas, que es cuando más se mira);
+  RPC SQL con GROUP BY (válida, se difiere: la paginación basta al volumen
+  actual y no agrega superficie SQL).

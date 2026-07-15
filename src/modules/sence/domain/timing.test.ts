@@ -3,14 +3,24 @@ import { describe, expect, it } from "vitest";
 import { SENCE_TIMING_DEFAULTS, senceTimingFromEnv } from "./timing";
 
 describe("senceTimingFromEnv (I-13/D-003 — knobs con default seguro)", () => {
-  it("sin env: defaults del contrato (3 h / 60 min / 20% / 5 eventos)", () => {
+  it("sin env: defaults del contrato (3 h / 60 min / 20% / 5 eventos / tick 5 min)", () => {
     const t = senceTimingFromEnv({});
     expect(t.pendingTimeoutMs).toBe(60 * 60_000);
     expect(t.sessionMaxMs).toBe(3 * 3_600_000);
     expect(t.alertWindowMs).toBe(60 * 60_000);
     expect(t.alertErrorRateThreshold).toBe(SENCE_TIMING_DEFAULTS.alertErrorRateThreshold);
     expect(t.alertMinEvents).toBe(5);
+    expect(t.tickEveryMs).toBe(5 * 60_000);
     expect(t.invalidKeys).toEqual([]);
+  });
+
+  it("SENCE_TICK_EVERY_MS: válido se respeta; negativo/fraccionario cae al default (R-3)", () => {
+    expect(senceTimingFromEnv({ SENCE_TICK_EVERY_MS: "60000" }).tickEveryMs).toBe(60_000);
+    for (const raw of ["-300000", "0.5", "0", "cinco"]) {
+      const t = senceTimingFromEnv({ SENCE_TICK_EVERY_MS: raw });
+      expect(t.tickEveryMs).toBe(5 * 60_000);
+      expect(t.invalidKeys).toContain("SENCE_TICK_EVERY_MS");
+    }
   });
 
   it("valores válidos se respetan", () => {

@@ -42,6 +42,30 @@ congelada `expireSession` (T4/T6/T9, §3).
   como la 2ª excepción sancionada por CLAUDE.md ("service-role SOLO en worker y
   callbacks SENCE") — revisar en el 4-ojos.
 
+**Revisión adversarial (4 ojos, panel multi-agente con refutación cruzada) —
+11 hallazgos confirmados (5 únicos), 3 refutados; correcciones aplicadas:**
+- **R-1 (medium):** la tasa de error leía la ventana SIN paginar → PostgREST
+  truncaba en `max_rows=1000` en silencio y la tasa se calculaba sobre una
+  muestra arbitraria justo bajo carga. Fijo: paginación con orden estable +
+  warning al tope.
+- **R-2 (low):** la tasa mezclaba callbacks de `rcetest` y `rce` (I-11 sanciona
+  ambos ambientes conviviendo) → el tráfico de prueba disparaba alertas
+  "reales". Fijo: agregación y cooldown por tenant×ambiente (join a la sesión),
+  ambiente en mensaje y `details`.
+- **R-3 (low):** `SENCE_TICK_EVERY_MS` era el único knob sin defensa; un
+  negativo llegaba crudo a BullMQ (que no valida `every`) y rompía el
+  scheduling en silencio. Fijo: entra a `senceTimingFromEnv`.
+- **R-4 (medium):** la excepción del guardarraíl service-role usaba `endsWith`
+  → cualquier `src/**/worker/index.ts` futuro quedaba exento (reproducido por
+  el refutador). Fijo: ruta absoluta exacta.
+- **R-5 (low):** si el CAS commiteaba y la auditoría fallaba, el summary
+  reportaba `failed` (la expiración SÍ ocurrió) y un fallo sistemático de
+  audit_log cortaba el barrido como "sin progreso". Fijo: outcome
+  `expired_unaudited` (cuenta como expirada + progreso, contador propio).
+- **R-6 (low):** jobs BullMQ sin `removeOnComplete/removeOnFail` (288/día para
+  siempre en un Redis noeviction) → poda configurada. Y CI ahora construye y
+  smoke-testea el bundle del worker (antes la primera detección era el deploy).
+
 Pendiente (Hito 2): alerta de spike de `unmatched` · canal de correo de alertas
 (llega con el EmailSender de este hito) · alerta día-1 (tarea 2.7, mismo tick).
 

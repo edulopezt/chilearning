@@ -20,6 +20,8 @@ export interface SenceTiming {
   readonly alertErrorRateThreshold: number;
   /** Mínimo de eventos en la ventana para evaluar la tasa. */
   readonly alertMinEvents: number;
+  /** Frecuencia del job repetible del worker (ms). */
+  readonly tickEveryMs: number;
   /** Claves de env cuyo valor era inválido y cayó al default. */
   readonly invalidKeys: readonly string[];
 }
@@ -30,6 +32,7 @@ export const SENCE_TIMING_DEFAULTS = {
   alertWindowMinutes: 60,
   alertErrorRateThreshold: 0.2,
   alertMinEvents: 5,
+  tickEveryMs: 5 * 60_000,
 } as const;
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number | null {
@@ -73,6 +76,9 @@ export function senceTimingFromEnv(env: Record<string, string | undefined>): Sen
     alertWindowMs: int("SENCE_ALERT_WINDOW_MINUTES", d.alertWindowMinutes) * 60_000,
     alertErrorRateThreshold: ratio("SENCE_ALERT_ERROR_RATE_THRESHOLD", d.alertErrorRateThreshold),
     alertMinEvents: int("SENCE_ALERT_MIN_EVENTS", d.alertMinEvents),
+    // Revisión R-3: era el único knob sin defensa; un negativo llegaba crudo a
+    // BullMQ (upsertJobScheduler no valida `every`) y rompía el scheduling.
+    tickEveryMs: int("SENCE_TICK_EVERY_MS", d.tickEveryMs),
     invalidKeys,
   };
 }

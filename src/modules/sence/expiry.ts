@@ -5,12 +5,7 @@ import {
   evaluateErrorRate,
   type ErrorRatePolicy,
 } from "./domain/alerts";
-import {
-  expireSession,
-  rowToState,
-  type SessionStateColumns,
-  type TransitionId,
-} from "./domain/session";
+import { expireSession, rowToState, type SessionStateColumns } from "./domain/session";
 
 /**
  * Task 2.6 — el tick del worker de expiración SENCE. Dispara las transiciones
@@ -62,6 +57,10 @@ export interface ExpiryTickSummary {
   readonly raced: number;
   /** Errores de IO por fila (no abortan el barrido). */
   readonly failed: number;
+  /** Expiradas cuya fila de audit_log falló (revisión R-5): la transición SÍ
+   *  ocurrió (cuenta en `expired`) pero el renglón de auditoría se perdió; el
+   *  log lleva el sessionId para backfill manual. */
+  readonly unaudited: number;
 }
 
 interface ExpiryCandidateRow extends SessionStateColumns {
@@ -82,7 +81,13 @@ export async function runExpiryTick(
   const batchSize = cfg.batchSize ?? 200;
   const maxBatches = cfg.maxBatches ?? 10;
   const log = cfg.log ?? console;
-  const summary = { scanned: 0, expired: { T4: 0, T6: 0, T9: 0 }, raced: 0, failed: 0 };
+  const summary = {
+    scanned: 0,
+    expired: { T4: 0, T6: 0, T9: 0 },
+    raced: 0,
+    failed: 0,
+    unaudited: 0,
+  };
 
   // T4: pendientes que superaron el timeout de abandono (índice parcial por
   // created_at). El dominio re-verifica el deadline: la query solo preselecciona.
@@ -129,16 +134,20 @@ interface SweepContext {
   maxBatches: number;
 }
 
+interface MutableSummary {
+  scanned: number;
+  expired: Record<"T4" | "T6" | "T9", number>;
+  raced: number;
+  failed: number;
+  unaudited: number;
+}
+
 type CandidateQuery = () => PromiseLike<{
   data: unknown;
   error: { message: string } | null;
 }>;
 
-async function sweep(
-  query: CandidateQuery,
-  summary: { scanned: number; expired: Record<TransitionId & ("T4" | "T6" | "T9"), number>; raced: number; failed: number },
-  ctx: SweepContext,
-): Promise<void> {
+async function sweep(query: CandidateQuery, summary: MutableSummary, ctx: SweepContext): Promise<void> {
   for (let batch = 0; batch < ctx.maxBatches; batch += 1) {
     const { data, error } = await query();
     if (error) {
@@ -157,8 +166,12 @@ async function sweep(
     for (const row of rows) {
       summary.scanned += 1;
       const outcome = await expireOne(row, ctx);
-      if (outcome.kind === "expired") {
+      if (outcome.kind === "expired" || outcome.kind === "expired_unaudited") {
+        // Ambas cuentan como expiración Y como progreso (revisión R-5): la fila
+        // salió del predicado aunque la auditoría haya fallado; sin esto un
+        // fallo sistemático de audit_log cortaba el barrido como "sin progreso".
         summary.expired[outcome.transition] += 1;
+        if (outcome.kind === "expired_unaudited") summary.unaudited += 1;
         progressed = true;
       } else if (outcome.kind === "raced") {
         summary.raced += 1;
@@ -184,6 +197,7 @@ async function sweep(
 
 type ExpireOutcome =
   | { kind: "expired"; transition: "T4" | "T6" | "T9" }
+  | { kind: "expired_unaudited"; transition: "T4" | "T6" | "T9" }
   | { kind: "raced" }
   | { kind: "skipped" }
   | { kind: "failed" };
@@ -232,11 +246,13 @@ async function expireOne(row: ExpiryCandidateRow, ctx: SweepContext): Promise<Ex
     },
   });
   if (auditError) {
+    // La transición ya commiteó (es la verdad operativa; la fila conserva todos
+    // los campos del registro perdido). Se reporta con sessionId para backfill.
     ctx.log.error("[sence][worker] sesión expirada pero auditoría falló", {
       sessionId: row.id,
       message: auditError.message,
     });
-    return { kind: "failed" };
+    return { kind: "expired_unaudited", transition };
   }
   return { kind: "expired", transition };
 }
@@ -258,6 +274,7 @@ export interface ErrorRateCheckConfig {
    */
   readonly notify?: (alert: {
     tenantId: string;
+    environment: string;
     message: string;
     rate: number;
     errors: number;
@@ -265,14 +282,28 @@ export interface ErrorRateCheckConfig {
   }) => Promise<void>;
 }
 
+/** Grupo tenant×ambiente evaluado (revisión R-2: rcetest y rce no se mezclan). */
+export interface ErrorRateGroup {
+  readonly tenantId: string;
+  readonly environment: string;
+}
+
 export interface ErrorRateCheckSummary {
-  /** Tenants que generaron una alerta nueva en esta pasada. */
-  readonly alerted: string[];
-  /** Tenants sobre el umbral pero silenciados por cooldown. */
-  readonly cooledDown: string[];
+  /** Grupos tenant×ambiente que generaron una alerta nueva en esta pasada. */
+  readonly alerted: ErrorRateGroup[];
+  /** Grupos sobre el umbral pero silenciados por cooldown. */
+  readonly cooledDown: ErrorRateGroup[];
 }
 
 const CALLBACK_KINDS = ["start_ok", "start_error", "close_ok", "close_error"] as const;
+const EVENTS_PAGE_SIZE = 1000;
+const EVENTS_MAX_PAGES = 20;
+
+interface EventPageRow {
+  tenant_id: string;
+  kind: string;
+  session: { environment: string } | null;
+}
 
 export async function runErrorRateCheck(
   serviceDb: SupabaseClient,
@@ -281,46 +312,74 @@ export async function runErrorRateCheck(
   const log = cfg.log ?? console;
   const cooldownMs = cfg.cooldownMs ?? cfg.windowMs;
   const windowStart = new Date(cfg.now - cfg.windowMs).toISOString();
+  const nowIso = new Date(cfg.now).toISOString();
 
-  // Ventana CERRADA [now-window, now]: sin cota superior, un evento con
-  // timestamp posterior al tick (reloj desviado, fixtures) contaminaría la tasa.
-  const { data, error } = await serviceDb
-    .from("sence_events")
-    .select("tenant_id, kind")
-    .gte("received_at", windowStart)
-    .lte("received_at", new Date(cfg.now).toISOString())
-    .in("kind", [...CALLBACK_KINDS])
-    .not("tenant_id", "is", null);
-  if (error) {
-    log.error("[sence][worker] fallo leyendo eventos para la tasa de error", {
-      message: error.message,
-    });
-    return { alerted: [], cooledDown: [] };
+  // Ventana CERRADA [now-window, now] (sin cota superior, un evento con reloj
+  // desviado contaminaría la tasa) y PAGINADA (revisión R-1: PostgREST trunca
+  // en max_rows=1000 en silencio; sin paginar, la tasa se calculaba sobre una
+  // muestra arbitraria bajo carga — justo durante el incidente que debe
+  // detectar). Join a la sesión para separar rcetest de rce (revisión R-2:
+  // el tráfico de prueba no debe disparar alertas "de producción" ni al revés;
+  // I-11 sanciona ambos ambientes conviviendo en el mismo tenant).
+  const rows: EventPageRow[] = [];
+  for (let page = 0; page < EVENTS_MAX_PAGES; page += 1) {
+    const from = page * EVENTS_PAGE_SIZE;
+    const { data, error } = await serviceDb
+      .from("sence_events")
+      .select("tenant_id, kind, session:sence_sessions!inner(environment)")
+      .gte("received_at", windowStart)
+      .lte("received_at", nowIso)
+      .in("kind", [...CALLBACK_KINDS])
+      .not("tenant_id", "is", null)
+      .order("received_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + EVENTS_PAGE_SIZE - 1);
+    if (error) {
+      log.error("[sence][worker] fallo leyendo eventos para la tasa de error", {
+        message: error.message,
+      });
+      return { alerted: [], cooledDown: [] };
+    }
+    const batch = (data ?? []) as unknown as EventPageRow[];
+    rows.push(...batch);
+    if (batch.length < EVENTS_PAGE_SIZE) break;
+    if (page === EVENTS_MAX_PAGES - 1) {
+      log.warn("[sence][worker] ventana de tasa de error truncada por tope de páginas", {
+        maxRows: EVENTS_MAX_PAGES * EVENTS_PAGE_SIZE,
+      });
+    }
   }
 
-  const byTenant = new Map<string, { errors: number; total: number }>();
-  for (const row of (data ?? []) as { tenant_id: string; kind: string }[]) {
-    const agg = byTenant.get(row.tenant_id) ?? { errors: 0, total: 0 };
+  const byGroup = new Map<string, { errors: number; total: number }>();
+  for (const row of rows) {
+    const environment = row.session?.environment;
+    if (!environment) continue; // sin sesión correlacionada no hay ambiente
+    const key = `${row.tenant_id}|${environment}`;
+    const agg = byGroup.get(key) ?? { errors: 0, total: 0 };
     agg.total += 1;
     if (row.kind === "start_error" || row.kind === "close_error") agg.errors += 1;
-    byTenant.set(row.tenant_id, agg);
+    byGroup.set(key, agg);
   }
 
-  const alerted: string[] = [];
-  const cooledDown: string[] = [];
+  const alerted: ErrorRateGroup[] = [];
+  const cooledDown: ErrorRateGroup[] = [];
   const windowMinutes = Math.round(cfg.windowMs / 60_000);
   const cooldownStart = new Date(cfg.now - cooldownMs).toISOString();
 
-  for (const [tenantId, sample] of byTenant) {
+  for (const [key, sample] of byGroup) {
+    const [tenantId, environment] = key.split("|") as [string, string];
     const verdict = evaluateErrorRate(sample, cfg.policy);
     if (!verdict.alert) continue;
 
+    // Cooldown por tenant×ambiente: una alerta de rcetest no silencia una de rce.
     const { data: recent, error: recentError } = await serviceDb
       .from("alerts")
       .select("id")
       .eq("kind", "sence_error_rate")
       .eq("tenant_id", tenantId)
+      .eq("details->>environment", environment)
       .gte("created_at", cooldownStart)
+      .lte("created_at", nowIso)
       .limit(1);
     if (recentError) {
       log.error("[sence][worker] fallo consultando cooldown de alertas", {
@@ -329,17 +388,18 @@ export async function runErrorRateCheck(
       continue;
     }
     if ((recent ?? []).length > 0) {
-      cooledDown.push(tenantId);
+      cooledDown.push({ tenantId, environment });
       continue;
     }
 
-    const message = errorRateAlertMessage(verdict, sample, windowMinutes);
+    const message = errorRateAlertMessage(verdict, sample, windowMinutes, environment);
     const { error: insertError } = await serviceDb.from("alerts").insert({
       tenant_id: tenantId,
       kind: "sence_error_rate",
       severity: "warning",
       message,
       details: {
+        environment,
         rate: Number(verdict.rate.toFixed(4)),
         errors: sample.errors,
         total: sample.total,
@@ -347,7 +407,7 @@ export async function runErrorRateCheck(
       },
       // Estampada con el reloj del tick (no el de la BD): el cooldown compara
       // contra el mismo reloj inyectado, y los tests controlan el tiempo.
-      created_at: new Date(cfg.now).toISOString(),
+      created_at: nowIso,
     });
     if (insertError) {
       log.error("[sence][worker] fallo insertando alerta", { message: insertError.message });
@@ -360,18 +420,20 @@ export async function runErrorRateCheck(
         JSON.stringify({
           kind: "sence_error_rate",
           tenantId,
+          environment,
           rate: verdict.rate,
           errors: sample.errors,
           total: sample.total,
           windowMinutes,
         }),
     );
-    alerted.push(tenantId);
+    alerted.push({ tenantId, environment });
 
     if (cfg.notify) {
       try {
         await cfg.notify({
           tenantId,
+          environment,
           message,
           rate: verdict.rate,
           errors: sample.errors,

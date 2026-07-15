@@ -301,7 +301,7 @@ describe("runExpiryTick — T6/T9 (vencimiento de expires_at)", () => {
   });
 });
 
-describe("runErrorRateCheck — alerta de tasa de error por tenant", () => {
+describe("runErrorRateCheck — alerta de tasa de error por tenant×ambiente", () => {
   // Reloj VIRTUAL futuro y monotónico por-corrida: aísla la ventana tanto de
   // los eventos reales del resto de la suite como de los eventos/alertas que
   // dejaron CORRIDAS ANTERIORES (sence_events es INSERT-only: no se pueden
@@ -311,11 +311,72 @@ describe("runErrorRateCheck — alerta de tasa de error por tenant", () => {
   const T0 = VIRTUAL_EPOCH + (Date.now() - VIRTUAL_EPOCH) * 1000;
   const WINDOW_MS = 10 * MINUTE;
   const POLICY = { threshold: 0.2, minEvents: 5 };
+  const STUDENT_B = "bbbbbbbb-0000-4000-8000-000000000005";
 
-  async function seedEvent(tenantId: string, kind: string, at: number): Promise<void> {
+  // La tasa separa rcetest de rce vía join a la sesión (R-2): los eventos del
+  // fixture cuelgan de sesiones reales con ambiente, como en producción.
+  let sessionA = ""; // tenant A, rcetest
+  let sessionB = ""; // tenant B, rcetest
+
+  async function seedFixtureSession(
+    tenantId: string,
+    userId: string,
+    courseId: string,
+  ): Promise<string> {
+    const actionId = randomUUID();
+    await svc.from("actions").insert({
+      id: actionId,
+      tenant_id: tenantId,
+      course_id: courseId,
+      codigo_accion: "ACC-ALERT-TEST",
+      training_line: 3,
+      environment: "rcetest",
+    });
+    const enrollmentId = randomUUID();
+    await svc.from("enrollments").insert({
+      id: enrollmentId,
+      tenant_id: tenantId,
+      action_id: actionId,
+      user_id: userId,
+      run: "5126663-3",
+    });
+    const { data, error } = await svc
+      .from("sence_sessions")
+      .insert({
+        tenant_id: tenantId,
+        enrollment_id: enrollmentId,
+        action_code: "ACC-ALERT-TEST",
+        training_line: 3,
+        run_alumno: "5126663-3",
+        id_sesion_alumno: `alert-${randomUUID()}`,
+        environment: "rcetest",
+        status: "cerrada",
+        closed_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(`seed sesión alerta: ${error.message}`);
+    return (data as { id: string }).id;
+  }
+
+  beforeAll(async () => {
+    const courseB = randomUUID();
+    await svc
+      .from("courses")
+      .insert({ id: courseB, tenant_id: TENANT_B, name: "Curso alertas B", sence: false });
+    sessionA = await seedFixtureSession(TENANT_A, STUDENT_A, DEMO_COURSE);
+    sessionB = await seedFixtureSession(TENANT_B, STUDENT_B, courseB);
+  });
+
+  async function seedEvent(
+    tenantId: string,
+    sessionId: string,
+    kind: string,
+    at: number,
+  ): Promise<void> {
     const { error } = await svc.from("sence_events").insert({
       tenant_id: tenantId,
-      session_id: null,
+      session_id: sessionId,
       kind,
       payload: {},
       error_codes: kind.endsWith("_error") ? ["100"] : [],
@@ -325,23 +386,23 @@ describe("runErrorRateCheck — alerta de tasa de error por tenant", () => {
     if (error) throw new Error(`seed evento: ${error.message}`);
   }
 
-  it("alerta al tenant sobre el umbral, respeta cooldown y no alerta al sano", async () => {
+  it("alerta al tenant×ambiente sobre el umbral, respeta cooldown y no alerta al sano", async () => {
     // Tenant A: 4 errores / 6 eventos = 67% (sobre umbral, sobre mínimo).
     for (const kind of ["start_error", "start_error", "close_error", "start_error"]) {
-      await seedEvent(TENANT_A, kind, T0 - MINUTE);
+      await seedEvent(TENANT_A, sessionA, kind, T0 - MINUTE);
     }
-    await seedEvent(TENANT_A, "start_ok", T0 - MINUTE);
-    await seedEvent(TENANT_A, "close_ok", T0 - MINUTE);
+    await seedEvent(TENANT_A, sessionA, "start_ok", T0 - MINUTE);
+    await seedEvent(TENANT_A, sessionA, "close_ok", T0 - MINUTE);
     // Tenant B: solo éxitos.
-    for (let i = 0; i < 6; i += 1) await seedEvent(TENANT_B, "start_ok", T0 - MINUTE);
+    for (let i = 0; i < 6; i += 1) await seedEvent(TENANT_B, sessionB, "start_ok", T0 - MINUTE);
 
     const first = await runErrorRateCheck(svc, {
       now: T0,
       windowMs: WINDOW_MS,
       policy: POLICY,
     });
-    expect(first.alerted).toContain(TENANT_A);
-    expect(first.alerted).not.toContain(TENANT_B);
+    expect(first.alerted).toContainEqual({ tenantId: TENANT_A, environment: "rcetest" });
+    expect(first.alerted.some((g) => g.tenantId === TENANT_B)).toBe(false);
 
     const { data: alertRows } = await svc
       .from("alerts")
@@ -350,9 +411,14 @@ describe("runErrorRateCheck — alerta de tasa de error por tenant", () => {
       .eq("kind", "sence_error_rate")
       .gte("created_at", new Date(T0 - WINDOW_MS).toISOString());
     expect(alertRows).toHaveLength(1);
-    const [alert] = alertRows as { message: string; details: { errors: number } }[];
+    const [alert] = alertRows as {
+      message: string;
+      details: { errors: number; environment: string };
+    }[];
     expect(alert?.message).toContain("Tasa de errores SENCE");
+    expect(alert?.message).toContain("rcetest");
     expect(alert?.details.errors).toBe(4);
+    expect(alert?.details.environment).toBe("rcetest");
 
     // Segunda pasada inmediata: cooldown, sin alerta duplicada.
     const second = await runErrorRateCheck(svc, {
@@ -360,19 +426,19 @@ describe("runErrorRateCheck — alerta de tasa de error por tenant", () => {
       windowMs: WINDOW_MS,
       policy: POLICY,
     });
-    expect(second.alerted).not.toContain(TENANT_A);
-    expect(second.cooledDown).toContain(TENANT_A);
+    expect(second.alerted.some((g) => g.tenantId === TENANT_A)).toBe(false);
+    expect(second.cooledDown).toContainEqual({ tenantId: TENANT_A, environment: "rcetest" });
   });
 
   it("NO alerta bajo el mínimo de eventos aunque todos sean errores", async () => {
     // Ventana propia, disjunta de la del test anterior.
     const t1 = T0 + 2 * 24 * HOUR;
-    for (let i = 0; i < 4; i += 1) await seedEvent(TENANT_B, "start_error", t1 - MINUTE);
+    for (let i = 0; i < 4; i += 1) await seedEvent(TENANT_B, sessionB, "start_error", t1 - MINUTE);
     const result = await runErrorRateCheck(svc, {
       now: t1,
       windowMs: WINDOW_MS,
       policy: POLICY,
     });
-    expect(result.alerted).not.toContain(TENANT_B);
+    expect(result.alerted.some((g) => g.tenantId === TENANT_B)).toBe(false);
   });
 });

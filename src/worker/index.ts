@@ -23,7 +23,6 @@ import { runErrorRateCheck, runExpiryTick } from "../modules/sence/expiry";
 
 const QUEUE_NAME = "sence";
 const TICK_JOB = "sence-tick";
-const DEFAULT_TICK_EVERY_MS = 5 * 60_000;
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -77,7 +76,9 @@ async function tick(db: SupabaseClient): Promise<void> {
 
 async function main(): Promise<void> {
   const redisUrl = requiredEnv("REDIS_URL");
-  const tickEveryMs = Number(process.env.SENCE_TICK_EVERY_MS) || DEFAULT_TICK_EVERY_MS;
+  // Mismo parseo defensivo que el resto de knobs (revisión R-3): un valor
+  // inválido (negativo, fraccionario) rompía el scheduling de BullMQ en silencio.
+  const { tickEveryMs } = senceTimingFromEnv(process.env);
   const db = buildServiceClient();
 
   // BullMQ exige `maxRetriesPerRequest: null` en la conexión de Workers.
@@ -87,8 +88,20 @@ async function main(): Promise<void> {
   });
 
   const queue = new Queue(QUEUE_NAME, { connection });
-  // Idempotente entre despliegues: actualiza (no duplica) el scheduler.
-  await queue.upsertJobScheduler(TICK_JOB, { every: tickEveryMs }, { name: TICK_JOB });
+  // Idempotente entre despliegues: actualiza (no duplica) el scheduler. Con
+  // poda de jobs terminados (revisión R-6): sin removeOn*, BullMQ conserva
+  // TODO el historial (288 jobs/día para siempre) en un Redis noeviction.
+  await queue.upsertJobScheduler(
+    TICK_JOB,
+    { every: tickEveryMs },
+    {
+      name: TICK_JOB,
+      opts: {
+        removeOnComplete: { count: 100 },
+        removeOnFail: { age: 7 * 24 * 3600, count: 500 },
+      },
+    },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,

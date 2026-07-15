@@ -36,12 +36,19 @@ describe("evaluateErrorRate (task 2.6 — política de alerta)", () => {
 });
 
 describe("errorRateAlertMessage", () => {
-  it("compone el mensaje es-CL con porcentaje redondeado y ventana", () => {
+  it("compone el mensaje es-CL con porcentaje, ventana y ambiente (R-2)", () => {
     const sample = { errors: 2, total: 6 };
-    const message = errorRateAlertMessage(evaluateErrorRate(sample, POLICY), sample, 60);
+    const message = errorRateAlertMessage(evaluateErrorRate(sample, POLICY), sample, 60, "rce");
+    expect(message).toContain("producción (rce)");
     expect(message).toContain("33%");
     expect(message).toContain("2 de 6");
     expect(message).toContain("60 minutos");
     expect(message.length).toBeLessThanOrEqual(500); // check de la columna
+  });
+
+  it("etiqueta rcetest como pruebas (los ambientes no se confunden)", () => {
+    const sample = { errors: 5, total: 5 };
+    const message = errorRateAlertMessage(evaluateErrorRate(sample, POLICY), sample, 30, "rcetest");
+    expect(message).toContain("pruebas (rcetest)");
   });
 });

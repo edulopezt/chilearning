@@ -41,16 +41,25 @@ export function evaluateErrorRate(
   return { alert, rate };
 }
 
+/** Etiqueta legible del ambiente SENCE (I-11) para mensajes operativos. */
+export function environmentLabel(environment: string): string {
+  if (environment === "rce") return "producción (rce)";
+  if (environment === "rcetest") return "pruebas (rcetest)";
+  return environment;
+}
+
 /** Mensaje persistido en `alerts.message` (es-CL). Sin datos personales. */
 export function errorRateAlertMessage(
   verdict: ErrorRateVerdict,
   sample: ErrorRateSample,
   windowMinutes: number,
+  environment: string,
 ): string {
   const pct = Math.round(verdict.rate * 100);
   return (
-    `Tasa de errores SENCE alta: ${pct}% (${sample.errors} de ${sample.total} ` +
-    `callbacks) en los últimos ${windowMinutes} minutos. Revisa el panel de ` +
-    `cumplimiento y la bitácora de eventos.`
+    `Tasa de errores SENCE alta en ${environmentLabel(environment)}: ${pct}% ` +
+    `(${sample.errors} de ${sample.total} callbacks) en los últimos ` +
+    `${windowMinutes} minutos. Revisa el panel de cumplimiento y la bitácora ` +
+    `de eventos.`
   );
 }

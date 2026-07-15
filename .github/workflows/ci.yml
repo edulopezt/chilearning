@@ -26,6 +26,17 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm build
+      # El bundle del worker (task 2.6) solo se construía en el docker build de
+      # Coolify: sin esto, una regresión de bundling se descubría recién al
+      # desplegar. Smoke: el bundle debe CARGAR y abortar limpio sin REDIS_URL.
+      - run: pnpm build:worker
+      - name: Worker bundle smoke (loads and aborts cleanly without REDIS_URL)
+        run: |
+          set +e
+          output=$(node dist/worker/index.js 2>&1)
+          code=$?
+          echo "$output"
+          [ $code -eq 1 ] && echo "$output" | grep -q "falta la variable de entorno REDIS_URL"
 
   # Aislamiento multi-tenant (RNF-1, P2): cualquier fuga rompe el build.
   rls:
