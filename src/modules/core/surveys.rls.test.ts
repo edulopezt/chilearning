@@ -106,8 +106,8 @@ beforeAll(async () => {
 });
 
 describe("surveys — lecturas por rol", () => {
-  it("el staff (otec_admin/coordinator/instructor/tutor) del tenant A lee encuestas y respuestas", async () => {
-    for (const role of ["otec_admin", "coordinator", "instructor", "tutor"]) {
+  it("el staff que ve resultados (otec_admin/coordinator/instructor) lee encuestas y respuestas", async () => {
+    for (const role of ["otec_admin", "coordinator", "instructor"]) {
       const c = client(await jwt({ sub: STUDENT_A, tenant_id: TENANT_A, roles: [role] }));
       const surveys = await c.from("surveys").select("id").eq("id", SURVEY_ID);
       expect(surveys.error).toBeNull();
@@ -116,6 +116,20 @@ describe("surveys — lecturas por rol", () => {
       expect(responses.error).toBeNull();
       expect((responses.data ?? []).length).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it("el tutor lee encuestas y participación pero NO respuestas (no ve resultados)", async () => {
+    const c = client(await jwt({ sub: STUDENT_A, tenant_id: TENANT_A, roles: ["tutor"] }));
+    expect((await c.from("surveys").select("id").eq("id", SURVEY_ID)).data ?? []).toHaveLength(1);
+    expect((await c.from("survey_submissions").select("id").eq("survey_id", SURVEY_ID)).data ?? []).toHaveLength(1);
+    expect((await c.from("survey_responses").select("id").eq("survey_id", SURVEY_ID)).data ?? []).toHaveLength(0);
+  });
+
+  it("ANONIMATO estructural: survey_responses no expone `submitted_at` (sin clave de join con el ledger)", async () => {
+    const svc = serviceClient();
+    const probe = await svc.from("survey_responses").select("submitted_at").eq("survey_id", SURVEY_ID);
+    // La columna no existe: la respuesta no comparte marca de tiempo con el ledger.
+    expect(probe.error).not.toBeNull();
   });
 
   it("ANONIMATO: la respuesta anónima tiene enrollment_id NULL — el staff no la mapea a un alumno", async () => {

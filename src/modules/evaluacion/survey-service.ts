@@ -25,6 +25,10 @@ import {
 const MANAGERS = ["otec_admin", "coordinator", "instructor"] as const;
 const RESULT_VIEWERS = MANAGERS;
 const PAGE = 1000;
+// Supresión de muestra pequeña (4-ojos MEDIUM, P4): en encuestas anónimas con
+// menos de N respuestas, cada respuesta/distribución sería atribuible al único
+// (o casi único) que respondió → se oculta el detalle.
+const MIN_ANON_RESPONSES = 3;
 
 async function fetchAll<T>(page: (offset: number) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
   const out: T[] = [];
@@ -386,11 +390,14 @@ export async function submitSurvey(
     .eq("id", enrollmentId)
     .maybeSingle();
   const actionId = enr?.action_id as string | undefined;
+  // `action_id` es NOT NULL en enrollments; si faltara, la inscripción no es
+  // válida para responder (evita pasar null y un error engañoso — 4-ojos L3).
+  if (!actionId) return { ok: false, error: "not_enrolled" };
 
   const { data: responseId, error } = await guard.db.rpc("submit_survey", {
     p_tenant_id: tenantId,
     p_survey_id: surveyId,
-    p_action_id: actionId ?? null,
+    p_action_id: actionId,
     p_enrollment_id: enrollmentId,
     p_anonymous: survey.anonymous,
     p_answers: validated.value as SurveyAnswers,
@@ -449,6 +456,8 @@ export interface SurveyResultEntry {
   readonly surveyId: string;
   readonly title: string;
   readonly aggregate: SurveyAggregate;
+  /** true = muestra anónima demasiado pequeña; se oculta el detalle (P4). */
+  readonly suppressed: boolean;
 }
 
 export interface SurveyResultsView {
@@ -509,11 +518,9 @@ export async function getSurveyResults(
     code: action.codigo_accion as string,
     surveys: surveys.map((s) => {
       const summary = toSummary(s);
-      return {
-        surveyId: summary.id,
-        title: summary.title,
-        aggregate: aggregateSurvey(summary.questions, byrSurvey.get(summary.id) ?? []),
-      };
+      const aggregate = aggregateSurvey(summary.questions, byrSurvey.get(summary.id) ?? []);
+      const suppressed = summary.anonymous && aggregate.total > 0 && aggregate.total < MIN_ANON_RESPONSES;
+      return { surveyId: summary.id, title: summary.title, aggregate, suppressed };
     }),
   };
 }
@@ -525,10 +532,12 @@ export async function getSurveyResultsExport(
 ): Promise<{ filename: string; headers: string[]; rows: string[][] } | null> {
   const view = await getSurveyResults(principal, actionId);
   if (!view) return null;
-  // Todas las preguntas de las encuestas publicadas de la acción.
+  // Solo encuestas NO suprimidas (muestra suficiente): no exportar detalle de
+  // muestras pequeñas anónimas (P4, 4-ojos MEDIUM).
+  const visible = view.surveys.filter((s) => !s.suppressed);
   const merged: SurveyAggregate = {
-    total: view.surveys.reduce((acc, s) => Math.max(acc, s.aggregate.total), 0),
-    questions: view.surveys.flatMap((s) => s.aggregate.questions),
+    total: visible.reduce((acc, s) => Math.max(acc, s.aggregate.total), 0),
+    questions: visible.flatMap((s) => s.aggregate.questions),
   };
   const safeCode = view.code.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 40);
   const { headers, rows } = surveyResultsRows(merged, labels);

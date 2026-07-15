@@ -362,6 +362,7 @@ export const esCL = {
     average: "Promedio",
     noResponses: "Aún no hay respuestas para esta acción.",
     noSurveys: "Este curso no tiene encuestas publicadas.",
+    suppressed: "Muestra insuficiente para mostrar resultados sin comprometer el anonimato (se requieren al menos 3 respuestas).",
     exportCsv: "Exportar CSV",
     exportXlsx: "Exportar Excel",
     backToAction: "Volver a la acción",

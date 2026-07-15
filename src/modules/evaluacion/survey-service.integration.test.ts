@@ -152,6 +152,8 @@ describe("getSurveyResults + hasCompletedSurvey", () => {
     const entry = results!.surveys.find((s) => s.surveyId === created.id);
     expect(entry).toBeDefined();
     expect(entry!.aggregate.total).toBe(1);
+    // 1 respuesta anónima < 3 → muestra suprimida (P4, 4-ojos MEDIUM).
+    expect(entry!.suppressed).toBe(true);
     const scale = entry!.aggregate.questions.find((q) => q.questionId === "q1");
     if (scale?.type === "scale") expect(scale.average).toBe(5);
 

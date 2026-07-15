@@ -56,6 +56,10 @@ export default async function EncuestaResultadosPage({
               </div>
               {s.aggregate.total === 0 ? (
                 <p className="text-muted-foreground text-sm">{t.noResponses}</p>
+              ) : s.suppressed ? (
+                <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  {t.suppressed}
+                </p>
               ) : (
                 <ul className="flex flex-col gap-4">
                   {s.aggregate.questions.map((q) => (

@@ -104,9 +104,14 @@ create table public.survey_responses (
   -- La acción (cohorte) para agregar por acción; NO es PII.
   action_id uuid not null references public.actions (id) on delete restrict,
   -- NULL = anónima (sin vínculo a persona en reposo). Solo se llena si nominada.
-  enrollment_id uuid references public.enrollments (id) on delete restrict,
-  answers jsonb not null default '{}'::jsonb,
-  submitted_at timestamptz not null default now()
+  enrollment_id uuid references public.enrollments (id) on delete restrict
+  -- SIN `submitted_at`: el ledger (survey_submissions, con enrollment_id) y la
+  -- respuesta se insertan en la MISMA transacción del RPC, así que un `now()`
+  -- compartido sería idéntico byte-a-byte y serviría de clave de join para
+  -- re-vincular la respuesta anónima al alumno (hallazgo 4-ojos, defeats P4).
+  -- La agregación no necesita la marca de tiempo; el ledger ya la registra.
+  ,
+  answers jsonb not null default '{}'::jsonb
 );
 create index survey_responses_tenant_idx on public.survey_responses (tenant_id);
 create index survey_responses_survey_idx on public.survey_responses (survey_id);
@@ -115,8 +120,9 @@ create index survey_responses_action_idx on public.survey_responses (action_id);
 alter table public.survey_responses enable row level security;
 alter table public.survey_responses force row level security;
 
--- Lectura: SOLO staff del tenant (para agregados). El alumno NO lee respuestas —
--- garantía estructural del anonimato (ni las suyas, para no dar pie a correlación).
+-- Lectura: SOLO staff que ve resultados del tenant (otec_admin/coordinator/
+-- instructor — coincide con RESULT_VIEWERS del servicio; el tutor NO ve
+-- resultados). El alumno NO lee respuestas — garantía estructural del anonimato.
 create policy survey_responses_select on public.survey_responses
   for select to authenticated
   using (
@@ -125,7 +131,7 @@ create policy survey_responses_select on public.survey_responses
       tenant_id = public.jwt_tenant_id()
       and (
         public.has_role('otec_admin') or public.has_role('coordinator')
-        or public.has_role('instructor') or public.has_role('tutor')
+        or public.has_role('instructor')
       )
     )
   );
@@ -154,6 +160,18 @@ declare
 begin
   if p_tenant_id is null or p_survey_id is null or p_enrollment_id is null then
     raise exception 'tenant_id, survey_id y enrollment_id son obligatorios';
+  end if;
+
+  -- Defensa en profundidad (4-ojos L1): no confiar en que los ids pertenecen al
+  -- tenant; verificarlo dentro del SECURITY DEFINER (como clone_course).
+  if not exists (select 1 from public.surveys where id = p_survey_id and tenant_id = p_tenant_id) then
+    raise exception 'encuesta no encontrada en el tenant';
+  end if;
+  if not exists (
+    select 1 from public.enrollments e
+    where e.id = p_enrollment_id and e.tenant_id = p_tenant_id and e.action_id = p_action_id
+  ) then
+    raise exception 'inscripcion/accion no consistente con el tenant';
   end if;
 
   -- Ledger: el unique(survey_id, enrollment_id) hace fallar el doble envío.
