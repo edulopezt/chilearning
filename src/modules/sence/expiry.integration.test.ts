@@ -431,8 +431,11 @@ describe("runErrorRateCheck — alerta de tasa de error por tenant×ambiente", (
   });
 
   it("NO alerta bajo el mínimo de eventos aunque todos sean errores", async () => {
-    // Ventana propia, disjunta de la del test anterior.
-    const t1 = T0 + 2 * 24 * HOUR;
+    // Reloj virtual PROPIO con amplificación ×2000 (no un offset fijo de T0):
+    // un offset constante colisiona con el T0 de OTRA corrida cuando la
+    // separación real ≈ offset/1000 (banda de ~1 s — llegó a ocurrir). Con
+    // factores distintos, los relojes de corridas vecinas nunca se cruzan.
+    const t1 = VIRTUAL_EPOCH + (Date.now() - VIRTUAL_EPOCH) * 2000;
     for (let i = 0; i < 4; i += 1) await seedEvent(TENANT_B, sessionB, "start_error", t1 - MINUTE);
     const result = await runErrorRateCheck(svc, {
       now: t1,

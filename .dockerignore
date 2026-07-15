@@ -1,0 +1,35 @@
+# Sin esto, `COPY . .` copiaba el node_modules del HOST sobre el del contenedor
+# (binarios de otra plataforma → pnpm aborta) y el contexto subía gigante.
+node_modules
+.next
+dist
+out
+build
+coverage
+playwright-report
+test-results
+*.log
+*.tsbuildinfo
+
+# Git y editor
+.git
+.vscode
+.idea
+
+# Secretos — el build usa build args, jamás archivos de entorno
+.env
+.env.local
+.env.*.local
+STAGING-CREDENTIALS.txt
+*.pem
+*.key
+
+# Supabase local
+supabase/.branches
+supabase/.temp
+
+# Material de referencia (no es parte de la app)
+block_sence
+integracion-sence-portable
+docs
+specs

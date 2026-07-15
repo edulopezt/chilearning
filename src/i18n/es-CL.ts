@@ -200,6 +200,10 @@ export const esCL = {
     allGood: "Todas las filas eran válidas. ¡Listo!",
     errorNoFile: "Debes seleccionar un archivo CSV.",
     errorNoAction: "Debes seleccionar una acción.",
+    emailsSent: "correos de bienvenida enviados",
+    emailsFailed: "correos que fallaron",
+    emailsSkipped:
+      "inscripciones nuevas sin correo (proveedor de correo no configurado)",
   },
   senceAdmin: {
     title: "Configuración SENCE",

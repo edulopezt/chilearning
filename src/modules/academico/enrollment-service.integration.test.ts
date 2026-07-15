@@ -4,19 +4,31 @@
  * Requiere `supabase start` + `supabase db reset`.
  */
 import { execSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { importEnrollmentsFromCsv } from "@/modules/academico/enrollment-service";
+import type { EmailSender, OutgoingEmail } from "@/modules/comunicacion/email-sender";
 import type { Principal } from "@/modules/core/domain/rbac";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
 const TENANT_B = "22222222-2222-4222-8222-222222222222";
 const DEMO_ACTION = "ac000000-0000-4000-8000-000000000001"; // sembrada en tenant A
+const DEMO_COURSE = "c0000000-0000-4000-8000-000000000001";
 
-const admin: Principal = { userId: "a", tenantId: TENANT_A, roles: ["otec_admin"] };
-const student: Principal = { userId: "s", tenantId: TENANT_A, roles: ["student"] };
+// user_ids REALES del seed: la auditoría escribe actor_user_id (uuid).
+const admin: Principal = {
+  userId: "aaaaaaaa-0000-4000-8000-000000000001",
+  tenantId: TENANT_A,
+  roles: ["otec_admin"],
+};
+const student: Principal = {
+  userId: "aaaaaaaa-0000-4000-8000-000000000005",
+  tenantId: TENANT_A,
+  roles: ["student"],
+};
 
 let svc: SupabaseClient;
 const createdEmails: string[] = [];
@@ -116,5 +128,103 @@ describe("import de inscripciones (task 1.3, HU-2.2/3.2/3.3)", () => {
       .eq("user_id", ana!.id)
       .single();
     expect(mem!.roles).toEqual(["student"]);
+  });
+});
+
+describe("correo de bienvenida al inscribir (Hito 2, cierra follow-up de 1.6)", () => {
+  const COURSE_URL = "https://otec-andes.chilearning.cl/mi-curso";
+  const WELCOME_CSV =
+    "nombre,email,run,exento\n" +
+    "Wanda Correo,welcome1@otec.cl,16032460-0,no\n" +
+    "Walter Correo,welcome2@otec.cl,9876543-3,no\n";
+
+  function fakeSender(outbox: OutgoingEmail[], ok = true): EmailSender {
+    return {
+      configured: true,
+      async send(email) {
+        outbox.push(email);
+        return ok ? { ok: true, id: "fake" } : { ok: false, error: "resend_http_500" };
+      },
+    };
+  }
+
+  /** Acción fresca por test: las inscripciones siempre son NUEVAS. */
+  async function freshAction(): Promise<string> {
+    const id = randomUUID();
+    const { error } = await svc.from("actions").insert({
+      id,
+      tenant_id: TENANT_A,
+      course_id: DEMO_COURSE,
+      codigo_accion: "ACC-EMAIL-TEST",
+      training_line: 3,
+      environment: "rcetest",
+    });
+    if (error) throw new Error(error.message);
+    return id;
+  }
+
+  it("envía la bienvenida SOLO a inscripciones nuevas, con curso y guía Clave Única", async () => {
+    createdEmails.push("welcome1@otec.cl", "welcome2@otec.cl");
+    const actionId = await freshAction();
+    const outbox: OutgoingEmail[] = [];
+
+    const r = await importEnrollmentsFromCsv(admin, actionId, WELCOME_CSV, {
+      emailSender: fakeSender(outbox),
+      courseUrl: COURSE_URL,
+    });
+    if ("error" in r) throw new Error(`inesperado: ${r.error}`);
+
+    expect(r.emails).toEqual({ sent: 2, failed: 0, skipped: 0 });
+    expect(outbox.map((e) => e.to).sort()).toEqual(["welcome1@otec.cl", "welcome2@otec.cl"]);
+    expect(outbox[0]?.subject).toContain("Bienvenido/a");
+    expect(outbox[0]?.html).toContain(COURSE_URL);
+    expect(outbox[0]?.html).toContain("Clave Única");
+
+    // Auditoría del lote (P8): conteos, sin direcciones de correo.
+    const { data: audits } = await svc
+      .from("audit_log")
+      .select("details")
+      .eq("action", "email.welcome_batch")
+      .eq("entity_id", actionId);
+    expect(audits).toHaveLength(1);
+    expect(audits?.[0]?.details).toEqual({ sent: 2, failed: 0, skipped: 0 });
+
+    // Re-import idéntico: nada nuevo → ningún correo más.
+    const again = await importEnrollmentsFromCsv(admin, actionId, WELCOME_CSV, {
+      emailSender: fakeSender(outbox),
+      courseUrl: COURSE_URL,
+    });
+    if ("error" in again) throw new Error(`inesperado: ${again.error}`);
+    expect(again.emails).toEqual({ sent: 0, failed: 0, skipped: 0 });
+    expect(outbox).toHaveLength(2);
+  });
+
+  it("un envío fallido NO invalida la inscripción (best-effort)", async () => {
+    const actionId = await freshAction();
+    const outbox: OutgoingEmail[] = [];
+    const r = await importEnrollmentsFromCsv(admin, actionId, WELCOME_CSV, {
+      emailSender: fakeSender(outbox, false),
+      courseUrl: COURSE_URL,
+    });
+    if ("error" in r) throw new Error(`inesperado: ${r.error}`);
+    expect(r.imported).toBe(2);
+    expect(r.emails).toEqual({ sent: 0, failed: 2, skipped: 0 });
+  });
+
+  it("sin proveedor configurado, las nuevas quedan como skipped (no revienta)", async () => {
+    const actionId = await freshAction();
+    const noop: EmailSender = {
+      configured: false,
+      async send() {
+        throw new Error("no debería llamarse");
+      },
+    };
+    const r = await importEnrollmentsFromCsv(admin, actionId, WELCOME_CSV, {
+      emailSender: noop,
+      courseUrl: COURSE_URL,
+    });
+    if ("error" in r) throw new Error(`inesperado: ${r.error}`);
+    expect(r.imported).toBe(2);
+    expect(r.emails).toEqual({ sent: 0, failed: 0, skipped: 2 });
   });
 });

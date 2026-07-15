@@ -26,11 +26,13 @@
 
 - **Fecha:** 2026-07-15
 - **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10)
-- **Hito en curso:** **Hito 2** — 2.6 en PR #31 (worker de expiración, el gap crítico, con
-  revisión adversarial en curso). Plan aprobado por Edu: BullMQ+Redis ya · export Excel =
-  plugin verbatim + col. extra `ID SESION SENCE` · **Resend AHORA** (Edu debe crear cuenta +
-  verificar dominio + pasar `RESEND_API_KEY`) · nota final = promedio parcial + "incompleta".
-- **PRs mergeados a `main`:** 30 · **Tests:** 520 verdes (311 unit + 138 RLS + 71 integración)
+- **Hito en curso:** **Hito 2** — 2.6 ✅ (PR #31 mergeado: worker BullMQ+Redis, revisión
+  adversarial multi-agente aplicada R-1..R-6; migración `alerts` YA aplicada al cloud; Redis
+  `chilearning-redis` creado en Coolify). EmailSender+Resend en PR. Plan aprobado por Edu:
+  BullMQ+Redis ya · export Excel = plugin verbatim + col. extra `ID SESION SENCE` · **Resend
+  AHORA** (Edu debe crear cuenta + verificar dominio + pasar `RESEND_API_KEY`) · nota final =
+  promedio parcial + "incompleta".
+- **PRs mergeados a `main`:** 31 · **Tests:** 535 verdes (323 unit + 138 RLS + 74 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -140,12 +142,13 @@ edición inline de contenido de lección desde la UI (1.4, hoy: crear/reordenar/
 - ⬜ **2.3** Libro de notas por acción + **auditoría de cambios de nota** — HU-6.4.
 - ⬜ **2.4** Panel de cumplimiento SENCE + **export Excel** (columnas del reporte del plugin actual) — HU-5.5.
 - ⬜ **2.5** Portal Supervisor v1: rol de **solo lectura** para fiscalizador SENCE (tests de que NO escribe) — HU-5.5, M12.
-- 🔶 **2.6** **Cron/worker**: expiración 3 h, inactividad 60 min, alertas de tasa de error —
-  Plan §5.6. **PR #31** (revisión adversarial + CI en curso): worker BullMQ+Redis dispara
-  T4/T6/T9 (cierra el brick del índice único parcial), tabla `alerts` + tasa de error por
-  tenant (D-015/016/017). ⚠ Post-merge: migración al cloud + desplegar Redis + app
-  `chilearning-worker` en Coolify (misma imagen, start `node dist/worker/index.js`) +
-  `REDIS_URL`. Dev local: `docker run -d --name chilearning-redis-dev -p 6379:6379
+- ✅ **2.6** **Cron/worker**: expiración 3 h, inactividad 60 min, alertas de tasa de error —
+  Plan §5.6 — **PR #31 mergeado 2026-07-15** (revisión adversarial multi-agente aplicada,
+  hallazgos R-1..R-6): worker BullMQ+Redis dispara T4/T6/T9 (cierra el brick del índice único
+  parcial), tabla `alerts` + tasa de error por tenant×ambiente (D-015/016/017/017b). Migración
+  `alerts` aplicada al cloud ✔ · Redis `chilearning-redis` creado en Coolify ✔ · ⚠ falta la
+  app `chilearning-worker` (target Docker `worker`, llega con el Dockerfile del PR de
+  EmailSender). Dev local: `docker run -d --name chilearning-redis-dev -p 6379:6379
   redis:7-alpine` + `pnpm worker`.
 - ⬜ **2.7** Pre-flight de acción SENCE: validación masiva RUN/DV, guía Clave Única, check de
   configuración, alerta día 1 — HU-5.8. *(Reusa `preflight.ts` del motor.)*
@@ -214,7 +217,10 @@ migrador Moodle · custom domains · app móvil · gamificación · marketplace 
 - **Worker de expiración SENCE**: implementado en PR #31 (2.6). Follow-ups que dejó: alerta de
   spike de eventos `unmatched` (hoy fuera del cálculo de tasa) · conectar correo de alertas al
   EmailSender (PR de Resend de este hito) · desplegar Redis+worker en staging y prod.
-- **Envío real de correos** (1.6): plantillas listas, falta proveedor + `EmailSender`.
+- **Envío real de correos** (1.6): `EmailSender` (Resend por REST, D-019) implementado en el
+  PR de Hito 2 — la bienvenida se envía al inscribir (best-effort, auditado). Solo falta que
+  Edu configure `RESEND_API_KEY` + dominio verificado (hasta entonces: skipped, visible en el
+  resultado del import). Envíos masivos por cola BullMQ = follow-up.
 - **Subida de logos a Storage** (1.10): hoy se pega una URL https.
 - **Asignación relator↔curso** (1.8/1.4): sin ella, "sus cursos" = todo el tenant para relator/tutor.
 - **Tracking de migraciones en cloud:** `supabase_migrations` no existe como tabla en el cloud;

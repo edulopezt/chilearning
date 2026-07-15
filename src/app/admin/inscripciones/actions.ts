@@ -1,5 +1,7 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { getPrincipal } from "@/modules/core/auth/session";
 import { importEnrollmentsFromCsv, type ImportOutcome, type ImportError } from "@/modules/academico/enrollment-service";
 
@@ -25,7 +27,14 @@ export async function importEnrollmentsAction(
   }
 
   const csv = await file.text();
-  const result = await importEnrollmentsFromCsv(principal, actionId, csv);
+  // El enlace "Ir a mi curso" del correo de bienvenida apunta al host del
+  // tenant desde el que importa el admin (mismo subdominio que ve el alumno).
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const courseUrl = host ? `${proto}://${host}/mi-curso` : undefined;
+
+  const result = await importEnrollmentsFromCsv(principal, actionId, csv, { courseUrl });
   if ("error" in result) return { status: "error", error: result.error };
   return { status: "done", outcome: result };
 }

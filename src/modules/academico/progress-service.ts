@@ -46,20 +46,15 @@ export async function setLessonProgress(
   if (!lesson) return { ok: false, error: "lesson_not_found" };
 
   // La inscripción del alumno cuya acción pertenece al curso de la lección.
-  const { data: actions } = await guard.db
-    .from("actions")
-    .select("id")
-    .eq("course_id", lesson.course_id)
-    .eq("tenant_id", principal.tenantId);
-  const actionIds = (actions ?? []).map((a) => a.id as string);
-  if (actionIds.length === 0) return { ok: false, error: "not_enrolled" };
-
+  // Join embebido (¡no `.in()` con la lista de acciones!): con cientos de
+  // acciones por curso, la lista inflaba la query string hasta el límite de
+  // URI de PostgREST ("URI too long") y el progreso fallaba.
   const { data: enrollment } = await guard.db
     .from("enrollments")
-    .select("id")
+    .select("id, actions!inner(course_id)")
     .eq("tenant_id", principal.tenantId)
     .eq("user_id", principal.userId)
-    .in("action_id", actionIds)
+    .eq("actions.course_id", lesson.course_id)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
