@@ -56,14 +56,14 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 
 ## Hito 2 — Evaluación y panel SENCE (semana 4)
 
-- 2.1 Quizzes autocorregidos (3 tipos, intentos, banco, escala 1.0–7.0) — HU-6.1
-- 2.2 Tareas con entrega y corrección (relator/tutor) — HU-6.2
-- 2.3 Libro de notas por acción + auditoría de cambios — HU-6.4
-- 2.4 Panel de cumplimiento SENCE + export Excel (columnas del reporte del plugin) — HU-5.5
-- 2.5 Portal Supervisor v1: rol de solo lectura para fiscalizador SENCE — HU-5.5, M12
+- 2.1 ✅ Quizzes autocorregidos (3 tipos, intentos, banco, escala 1.0–7.0) — HU-6.1 — **hecho 2026-07-15** (PR #37 esquema/dominio/servicios + #38 UI + intento del alumno): pauta sin grant a authenticated, finalización perezosa del intento vencido, defaults D-022 S1–S7
+- 2.2 ✅ Tareas con entrega y corrección (relator/tutor) — HU-6.2 — **hecho 2026-07-15** (PR #39): `assignments`/`submissions` INSERT-only + bucket privado + `notifications`; revisión adversarial 4-ojos aplicada (D-023): nota publicada blindada (trigger + guardias), cambio de nota + auditoría atómicos vía RPC `write_assignment_grade`, cola paginada, sin huérfanos en Storage. M2+M3 aplicadas al cloud
+- 2.3 Libro de notas por acción + auditoría de cambios — HU-6.4 — **(SIGUIENTE — GATE del hito)**
+- 2.4 ✅ Panel de cumplimiento SENCE + export Excel (columnas del plugin verbatim + `ID SESION SENCE`) — HU-5.5 — **hecho 2026-07-15** (PR #34 nombres + #35 panel/export xlsx, D-021)
+- 2.5 ✅ Portal Supervisor v1: rol de solo lectura para fiscalizador SENCE — HU-5.5, M12 — **hecho 2026-07-15** (PR #36): reusa compliance-panel; suites de NO-escritura (RLS + servicios)
 - 2.6 ✅ Cron: expiración 3 h, inactividad 60 min, alertas tasa de error — Plan §5.6 — **hecho 2026-07-15** (PR #31): worker BullMQ+Redis (proceso aparte, misma imagen) dispara T4/T6/T9 con CAS estrecho + auditoría (`sence.session_expired`); desbloquea el "brick" del índice único parcial; alertas de tasa de error por tenant (tabla `alerts` + política D-017); knobs I-13 cableados. Verificado end-to-end con worker real contra Redis local. ⚠ Post-merge: desplegar Redis + app worker en Coolify staging
-- 2.7 Pre-flight de acción SENCE (validación masiva RUN/DV, guía Clave Única, check de configuración, alerta día 1) — HU-5.8
-- 2.8 Clonado de cursos y re-ejecución de acciones — HU-3.6
+- 2.7 ✅ Pre-flight de acción SENCE (validación masiva RUN/DV, guía Clave Única, check de configuración, alerta día 1) — HU-5.8 — **hecho 2026-07-15** (PR #33): checklist de 8 ítems reusando validadores congelados de `preflight.ts`, envío real de guía + marca manual de respaldo, alerta día-1 en el tick del worker (D-020)
+- 2.8 Clonado de cursos y re-ejecución de acciones — HU-3.6 — **(último del hito)**
 
 ## Hito 3 — Cierre del ciclo formativo + endurecimiento (semanas 5–6)
 
