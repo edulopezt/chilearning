@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const deps = buildEngineDeps(request.url);
+  const deps = buildEngineDeps(request);
   const guard = tenantGuard(principal.tenantId);
   const result = await buildCloseForm(guard, parsed.data.sessionId, principal.userId, deps);
 

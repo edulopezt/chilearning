@@ -16,7 +16,7 @@ export async function POST(
   const { nonce } = await params;
   const params_ = await readForm(request);
 
-  const deps = buildEngineDeps(request.url);
+  const deps = buildEngineDeps(request);
   const db = senceServiceClient();
   await handleCallback(db, params_, deps, nonce);
 

@@ -8,17 +8,18 @@ import { senceEnv } from "@/lib/env.server";
 import { untenantedServiceClient } from "@/lib/tenant-guard";
 import { parseEncryptionKey } from "@/modules/sence/domain/token-crypto";
 import type { EngineDeps } from "@/modules/sence/engine";
-import type { SenceEnvironment } from "@/modules/sence/domain/protocol";
+import { resolvePublicOrigin, type SenceEnvironment } from "@/modules/sence/domain/protocol";
 
 /**
  * Arma las dependencias del motor desde el entorno y la request. En modo `mock`
  * el motor habla contra el mock local; en `test`/`prod` contra rcetest/rce.
- * `callbackUrl` se deriva del host de la request (debe caber en 100 chars, I-8).
+ * `callbackUrl` se deriva del origin PÚBLICO (headers del proxy), no de
+ * `request.url` crudo, para que SENCE reciba un `https://` alcanzable (I-8).
  */
-export function buildEngineDeps(requestUrl: string): EngineDeps {
+export function buildEngineDeps(request: Request): EngineDeps {
   const sence = senceEnv();
   const key = parseEncryptionKey(sence.tokenEncryptionKey);
-  const origin = new URL(requestUrl).origin;
+  const origin = resolvePublicOrigin((n) => request.headers.get(n), request.url);
 
   const baseOverride: Partial<Record<SenceEnvironment, string>> | undefined =
     sence.mode === "mock"

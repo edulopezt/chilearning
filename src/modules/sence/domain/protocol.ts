@@ -26,6 +26,26 @@ export function resolveEndpoint(
 }
 
 /**
+ * Origin público de la app, del que cuelga `UrlRetoma`/`UrlError`. Detrás de un
+ * proxy (Traefik/Coolify) que termina TLS y reenvía HTTP al contenedor,
+ * `request.url` puede salir como `http://host-interno`, lo que haría a SENCE
+ * rechazar la URL (202/203) o llamar a un callback inseguro. Se prioriza
+ * `x-forwarded-proto`/`x-forwarded-host` (los pone el proxy), con `Host` y la
+ * URL cruda como respaldo. Función pura para poder testearla sin IO.
+ */
+export function resolvePublicOrigin(
+  header: (name: string) => string | null | undefined,
+  fallbackUrl: string,
+): string {
+  const first = (v: string | null | undefined): string | undefined =>
+    v?.split(",")[0]?.trim() || undefined;
+  const proto = first(header("x-forwarded-proto"));
+  const host = first(header("x-forwarded-host")) ?? first(header("host"));
+  if (proto && host) return `${proto}://${host}`;
+  return new URL(fallbackUrl).origin;
+}
+
+/**
  * Hash de deduplicación de un callback (I-3), sobre el payload COMPLETO
  * normalizado (claves ordenadas + el `kind` clasificado). Sirve para DETECTAR
  * replays en la bitácora; NO los bloquea (el índice es no-único, hallazgo C-1):
