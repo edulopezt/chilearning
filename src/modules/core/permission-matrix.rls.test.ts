@@ -33,13 +33,13 @@ type Access = "some" | "none"; // ≥1 fila legible | 0 filas (denegado)
  * A: 1 curso, 1 acción, 2 lecciones, 1 inscripción, 1 config SENCE, auditoría).
  */
 const EXPECTED: Record<string, Record<string, Access>> = {
-  otec_admin:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "some", audit_log: "some", memberships: "some" },
-  coordinator: { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some" },
-  instructor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some" }, // ve su propia membership
-  tutor:       { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some" },
-  student:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some" }, // enrollments: la suya
-  company:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some" },
-  supervisor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some" },
+  otec_admin:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "some", audit_log: "some", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some" },
+  coordinator: { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" },
+  instructor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" }, // ve su propia membership
+  tutor:       { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" },
+  student:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none" }, // enrollments/progreso/sesiones: los suyos
+  company:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "none", sence_sessions: "some", sence_events: "none", alerts: "none" },
+  supervisor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some" },
 };
 
 let env: { apiUrl: string; anonKey: string; jwtSecret: string };

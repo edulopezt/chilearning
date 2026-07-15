@@ -105,3 +105,28 @@ insert into public.lessons (tenant_id, course_id, title, kind, content, position
 insert into public.audit_log (tenant_id, actor_user_id, action, entity, details) values
   ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000001', 'seed.created', 'tenant', '{"seed":true}'),
   ('22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000001', 'seed.created', 'tenant', '{"seed":true}');
+
+-- ---------- Datos demo SENCE/progreso/alertas (task 2.5: matriz RLS + panel) ----------
+-- Sesión SENCE CERRADA del alumno demo: alimenta el panel de cumplimiento en
+-- dev y las expectativas de lectura por rol (sence_sessions en la matriz).
+insert into public.sence_sessions (id, tenant_id, enrollment_id, sence_course_code, action_code,
+  training_line, run_alumno, id_sesion_alumno, id_sesion_sence, status, environment, opened_at, closed_at) values
+  ('50000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   'e0000000-0000-4000-8000-000000000001', '1234567890', 'ACC-DEMO-0001', 3,
+   '5126663-3', 'seed-session-0001', '424242', 'cerrada', 'rcetest',
+   now() - interval '2 hours', now() - interval '1 hour');
+
+insert into public.sence_events (tenant_id, session_id, kind, payload, error_codes, dedupe_hash) values
+  ('11111111-1111-4111-8111-111111111111', '50000000-0000-4000-8000-000000000001',
+   'start_ok', '{}', '{}', 'seed-event-0001');
+
+-- Progreso demo: la primera lección del curso, sin completar (estado neutro).
+insert into public.lesson_progress (tenant_id, enrollment_id, lesson_id, completed)
+select '11111111-1111-4111-8111-111111111111', 'e0000000-0000-4000-8000-000000000001', l.id, false
+from public.lessons l
+where l.course_id = 'c0000000-0000-4000-8000-000000000001' and l.position = 1;
+
+-- Alerta demo (informativa): prueba la lectura por rol de `alerts`.
+insert into public.alerts (tenant_id, kind, severity, message, details) values
+  ('11111111-1111-4111-8111-111111111111', 'sence_error_rate', 'info',
+   'Alerta demo del seed (sin efecto operativo).', '{"seed": true}');
