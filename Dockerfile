@@ -16,6 +16,13 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Next inlina las NEXT_PUBLIC_* en el bundle del navegador EN EL BUILD, así que
+# deben estar presentes al compilar. La URL y la anon key son públicas por
+# diseño (la anon key va en el navegador); Coolify las pasa como build args.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
