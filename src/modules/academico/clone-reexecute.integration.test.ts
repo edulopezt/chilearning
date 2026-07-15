@@ -14,7 +14,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import type { Principal } from "@/modules/core/domain/rbac";
 import { cloneCourse } from "@/modules/academico/course-service";
-import { activateAction, reexecuteAction } from "@/modules/academico/action-service";
+import { reexecuteAction, scheduleAndActivate } from "@/modules/academico/action-service";
 import { importEnrollmentsFromCsv } from "@/modules/academico/enrollment-service";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
@@ -48,7 +48,7 @@ async function seedCourseWithContent(): Promise<string> {
     { tenant_id: TENANT_A, course_id: courseId, title: "L2", kind: "text", content: "b", position: 2, status: "draft" },
   ]);
   const quizId = randomUUID();
-  await svc.from("quizzes").insert({ id: quizId, tenant_id: TENANT_A, course_id: courseId, title: "Quiz A", status: "published", weight: 2 });
+  await svc.from("quizzes").insert({ id: quizId, tenant_id: TENANT_A, course_id: courseId, title: "Quiz A", description: "Instrucciones del quiz", status: "published", weight: 2 });
   await svc.from("questions").insert({
     tenant_id: TENANT_A, quiz_id: quizId, kind: "true_false", prompt: "¿Verdadero?", body: { correct: true }, points: 1, position: 1,
   });
@@ -92,9 +92,10 @@ describe("cloneCourse — copia contenido + instrumentos, NUNCA runtime", () => 
       { title: "L2", status: "draft" },
     ]);
 
-    const { data: quizzes } = await svc.from("quizzes").select("id, title, weight").eq("course_id", newCourseId);
+    const { data: quizzes } = await svc.from("quizzes").select("id, title, description, weight").eq("course_id", newCourseId);
     expect(quizzes).toHaveLength(1);
-    expect(quizzes![0]).toMatchObject({ title: "Quiz A", weight: 2 });
+    // Copia también la descripción (contenido del instructor), no solo título/peso.
+    expect(quizzes![0]).toMatchObject({ title: "Quiz A", description: "Instrucciones del quiz", weight: 2 });
     const { data: questions } = await svc.from("questions").select("prompt").eq("quiz_id", quizzes![0]!.id);
     expect(questions).toHaveLength(1);
 
@@ -149,19 +150,25 @@ describe("re-ejecución + gate de activación", () => {
     const { data: audit } = await svc.from("audit_log").select("action").eq("entity_id", re.id).eq("action", "action.reexecuted");
     expect(audit).toHaveLength(1);
 
+    // La ruta de UI (scheduleAndActivate): MISMO código que el origen → code_unchanged.
+    expect(
+      await scheduleAndActivate(admin, re.id, { codigoAccion: "ORIG-2", startsOn: "2027-01-01", endsOn: "2027-06-30" }),
+    ).toEqual({ ok: false, error: "code_unchanged" });
+
     // Sin fechas → missing_dates.
-    expect(await activateAction(admin, re.id)).toEqual({ ok: false, error: "missing_dates" });
+    expect(
+      await scheduleAndActivate(admin, re.id, { codigoAccion: "ORIG-2-B", startsOn: "", endsOn: "" }),
+    ).toEqual({ ok: false, error: "missing_dates" });
 
-    // Con fechas pero MISMO código que el origen → code_unchanged.
-    await svc.from("actions").update({ starts_on: "2027-01-01", ends_on: "2027-06-30" }).eq("id", re.id);
-    expect(await activateAction(admin, re.id)).toEqual({ ok: false, error: "code_unchanged" });
-
-    // Código nuevo + fechas → activa + audit.
-    await svc.from("actions").update({ codigo_accion: "ORIG-2-B" }).eq("id", re.id);
-    const activated = await activateAction(admin, re.id);
+    // Código nuevo + fechas → activa (la acción queda con esos datos) + audit.
+    const activated = await scheduleAndActivate(admin, re.id, {
+      codigoAccion: "ORIG-2-B",
+      startsOn: "2027-01-01",
+      endsOn: "2027-06-30",
+    });
     expect(activated.ok).toBe(true);
-    const { data: after } = await svc.from("actions").select("status").eq("id", re.id).single();
-    expect(after!.status).toBe("active");
+    const { data: after } = await svc.from("actions").select("status, codigo_accion, starts_on, ends_on").eq("id", re.id).single();
+    expect(after).toMatchObject({ status: "active", codigo_accion: "ORIG-2-B", starts_on: "2027-01-01", ends_on: "2027-06-30" });
     const { data: audit2 } = await svc.from("audit_log").select("action").eq("entity_id", re.id).eq("action", "action.activated");
     expect(audit2).toHaveLength(1);
   });

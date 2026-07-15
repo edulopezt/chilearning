@@ -226,3 +226,50 @@ export async function activateAction(
   });
   return { ok: true, id: actionId };
 }
+
+/**
+ * Fija el código y las fechas de una acción en borrador y la activa en un solo
+ * paso (task 2.8): la ruta de la UI para activar una re-ejecución (que nace con
+ * el código de origen y sin fechas). Persiste primero los datos en el borrador
+ * y luego aplica el gate de `activateAction` (fechas + código ≠ origen).
+ */
+export async function scheduleAndActivate(
+  principal: Principal,
+  actionId: string,
+  input: { codigoAccion: unknown; startsOn: unknown; endsOn: unknown },
+): Promise<ActionMutationResult> {
+  if (!principal.tenantId) return { ok: false, error: "no_tenant" };
+  if (!canManage(principal)) return { ok: false, error: "forbidden" };
+  const guard = tenantGuard(principal.tenantId);
+
+  const { data: current } = await guard.db
+    .from("actions")
+    .select("id, course_id, training_line, environment, attendance_lock")
+    .eq("id", actionId)
+    .eq("tenant_id", principal.tenantId)
+    .maybeSingle();
+  if (!current) return { ok: false, error: "not_found" };
+
+  // Reusa la validación de dominio del formulario (formato de fechas/código, etc.).
+  const parsed = parseActionInput({
+    courseId: current.course_id,
+    codigoAccion: input.codigoAccion,
+    trainingLine: current.training_line,
+    environment: current.environment,
+    attendanceLock: current.attendance_lock,
+    startsOn: input.startsOn,
+    endsOn: input.endsOn,
+  });
+  if (!parsed.ok) return { ok: false, validation: parsed.errors };
+
+  // Persiste código + fechas en el BORRADOR (el CHECK admite draft sin/ con fechas).
+  const { error } = await guard.db
+    .from("actions")
+    .update(toRow(parsed.value))
+    .eq("id", actionId)
+    .eq("tenant_id", principal.tenantId);
+  if (error) return { ok: false, error: "not_found" };
+
+  // Aplica el gate real (fechas presentes + código ≠ origen) y activa + audita.
+  return activateAction(principal, actionId);
+}

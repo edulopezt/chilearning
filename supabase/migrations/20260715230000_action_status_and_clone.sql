@@ -68,12 +68,12 @@ begin
   for q in
     select * from public.quizzes where course_id = p_course_id and tenant_id = p_tenant_id
   loop
-    insert into public.quizzes (tenant_id, course_id, title, time_limit_minutes, max_attempts,
-      attempt_scoring, passing_pct, pool_size, shuffle_questions, shuffle_choices, review_policy,
-      opens_at, closes_at, weight, status)
-      values (p_tenant_id, v_new_course, q.title, q.time_limit_minutes, q.max_attempts,
-        q.attempt_scoring, q.passing_pct, q.pool_size, q.shuffle_questions, q.shuffle_choices,
-        q.review_policy, q.opens_at, q.closes_at, q.weight, q.status)
+    insert into public.quizzes (tenant_id, course_id, title, description, time_limit_minutes,
+      max_attempts, attempt_scoring, passing_pct, pool_size, shuffle_questions, shuffle_choices,
+      review_policy, opens_at, closes_at, weight, status)
+      values (p_tenant_id, v_new_course, q.title, q.description, q.time_limit_minutes,
+        q.max_attempts, q.attempt_scoring, q.passing_pct, q.pool_size, q.shuffle_questions,
+        q.shuffle_choices, q.review_policy, q.opens_at, q.closes_at, q.weight, q.status)
       returning id into v_new_quiz;
 
     insert into public.questions (tenant_id, quiz_id, kind, prompt, body, points, position)
