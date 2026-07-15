@@ -32,6 +32,28 @@ export const esCL = {
     platformAdmin: "Administrador de plataforma (sin organización)",
     goToCourse: "Ir a mi curso",
   },
+  enrollmentImport: {
+    title: "Importar alumnos",
+    intro:
+      "Sube un archivo CSV con tus alumnos. Revisaremos fila por fila y solo inscribiremos las válidas.",
+    actionLabel: "Acción de capacitación",
+    fileLabel: "Archivo CSV",
+    submit: "Revisar e importar",
+    downloadTemplate: "Descargar plantilla CSV",
+    templateHint: "Columnas: nombre, email, run, exento (Sí/No).",
+    noActions: "Primero crea una acción de capacitación para poder inscribir alumnos.",
+    forbidden: "No tienes permiso para importar alumnos.",
+    resultTitle: "Resultado del import",
+    imported: "inscritos",
+    rejected: "filas rechazadas",
+    failed: "filas con error al inscribir",
+    rowColumn: "Fila",
+    fieldColumn: "Campo",
+    messageColumn: "Problema",
+    allGood: "Todas las filas eran válidas. ¡Listo!",
+    errorNoFile: "Debes seleccionar un archivo CSV.",
+    errorNoAction: "Debes seleccionar una acción.",
+  },
   senceAdmin: {
     title: "Configuración SENCE",
     intro:
