@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   // Sin nonce en la URL: nunca correlaciona una sesión (se persiste unmatched).
   // El receptor real es /api/sence/cb/{nonce}. Esta ruta solo cae basura/ataques.
-  const deps = buildEngineDeps(request.url);
+  const deps = buildEngineDeps(request);
   const db = senceServiceClient();
   await handleCallback(db, params, deps, null);
 

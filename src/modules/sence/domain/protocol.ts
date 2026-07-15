@@ -26,6 +26,47 @@ export function resolveEndpoint(
 }
 
 /**
+ * Origin público de la app, del que cuelga `UrlRetoma`/`UrlError`. Detrás de un
+ * proxy (Traefik/Coolify) que termina TLS y reenvía HTTP al contenedor,
+ * `request.url` puede salir como `http://host-interno`, lo que haría a SENCE
+ * rechazar la URL (202/203) o llamar a un callback inseguro (I-8).
+ *
+ * SEGURIDAD: un cliente puede FALSEAR `x-forwarded-host`/`Host` en su propia
+ * request. Confiar en ellos a ciegas abriría un open-redirect del callback de
+ * SENCE (desvío del `IdSesionSence`). Por eso el host reenviado se acepta SOLO
+ * si es el dominio raíz o un subdominio suyo — el mismo criterio que
+ * `resolveTenantFromHost` en el middleware — y el esquema se FUERZA a `https`
+ * (SENCE lo exige). Si no valida, se cae al origin de la URL cruda. El hostname
+ * se parsea como URL para descartar puerto, userinfo (`a@b`) y path (anti-bypass).
+ * Función pura (sin IO): el dominio raíz permitido entra por parámetro para no
+ * romper el aislamiento del módulo (I-16).
+ */
+export function resolvePublicOrigin(
+  header: (name: string) => string | null | undefined,
+  fallbackUrl: string,
+  allowedRootDomain: string,
+): string {
+  const first = (v: string | null | undefined): string | undefined =>
+    v?.split(",")[0]?.trim() || undefined;
+  const rawHost = first(header("x-forwarded-host")) ?? first(header("host"));
+  const host = rawHost ? safeHostname(rawHost) : undefined;
+  const root = allowedRootDomain.toLowerCase().split(":")[0]?.trim() ?? "";
+  if (host && root && (host === root || host.endsWith(`.${root}`))) {
+    return `https://${host}`;
+  }
+  return new URL(fallbackUrl).origin;
+}
+
+/** Hostname limpio (sin puerto/userinfo/path) o undefined si no parsea. */
+function safeHostname(rawHost: string): string | undefined {
+  try {
+    return new URL(`https://${rawHost}`).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Hash de deduplicación de un callback (I-3), sobre el payload COMPLETO
  * normalizado (claves ordenadas + el `kind` clasificado). Sirve para DETECTAR
  * replays en la bitácora; NO los bloquea (el índice es no-único, hallazgo C-1):
