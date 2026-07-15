@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "dist/**",
     "next-env.d.ts",
     "coverage/**",
     // Material de referencia AGPLv3 — solo lectura, jamás parte de la app (ver NOTICE.md):

@@ -13,6 +13,13 @@ export default defineConfig({
   test: {
     // Cada suite es un "project"; las de integración (RLS, mock SENCE) se
     // agregan como projects nuevos en las tareas 0.2 y 0.6.
+    //
+    // ⚠ `fileParallelism: false` es POR-proyecto: no serializa un proyecto
+    // respecto de otro. `rls` e `integration` comparten la BD local con estado,
+    // así que correrlas en paralelo entre sí es una carrera (visto en task 2.6:
+    // el orden/timing decidía si colisionaban). Por eso `pnpm test` encadena
+    // los tres proyectos en secuencia (igual que los jobs de CI); no invocar
+    // `vitest run` a secas para la suite completa.
     projects: [
       {
         extends: true,

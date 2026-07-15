@@ -296,3 +296,80 @@ entrada original.
   manipulación y a desfases de zona horaria.
 - **Alternativas descartadas:** `expires_at = FechaHora + 3h` literal
   (descartada por lo anterior; se preserva `opened_at` para el registro).
+
+## D-015 — Las expiraciones del worker van a `audit_log`, no a `sence_events`
+
+- **ID:** D-015
+- **Fecha:** 2026-07-15
+- **Decisión:** el worker de expiración (task 2.6) registra T4/T6/T9 en
+  `audit_log` (`action: sence.session_expired`, actor NULL = sistema, con
+  transición/enrollment/ambiente en `details`). El enum `sence_event_kind` NO
+  gana un kind nuevo.
+- **Por qué:** los kinds de `sence_events` derivan del invariante I-4 =
+  clasificación de callbacks RECIBIDOS de SENCE. Una expiración es una decisión
+  100% local sin callback; meterla ahí contamina la tabla de evidencia y
+  obligaría a inventar semántica de `dedupe_hash`/`payload` para algo que no es
+  un POST. `audit_log` existe exactamente para esto (INSERT-only, P8).
+- **Alternativas descartadas:** kind `expired` en `sence_events` (descartada:
+  toca el contrato congelado §6/I-4 con costo de revisión alto y semántica
+  forzada); no registrar nada (descartada: P8 — todo deja rastro).
+
+## D-016 — Topología del worker: BullMQ + Redis, 2ª app Coolify con la misma imagen
+
+- **ID:** D-016
+- **Fecha:** 2026-07-15
+- **Decisión:** el worker (plan §5.6) corre como proceso aparte del mismo repo:
+  entry `src/worker/index.ts` (BullMQ, job repetible `sence-tick` cada 5 min),
+  bundle único con esbuild (`pnpm build:worker` → `dist/worker/index.js`,
+  incluido en la imagen Docker), desplegado en Coolify como segunda app con
+  start command `node dist/worker/index.js` + servicio Redis. Decidido por Edu
+  el 2026-07-15 (se ofreció la alternativa cron-HTTP; eligió fidelidad al plan).
+  `ioredis` se fija a la versión exacta que pinnea bullmq (los tipos de
+  `connection` chocan entre instancias distintas). El wiring BullMQ es fino:
+  la lógica vive en `expiry.ts` y se testea sin Redis.
+- **Por qué:** es la topología comprometida en el plan técnico (§2, §5.6, §7);
+  deja lista la cola para los jobs reales del Hito 3/5 (certificados masivos,
+  correos, imports). El worker construye su propio client service-role (no
+  puede importar `tenant-guard`, que es `server-only`); el guardarraíl
+  `service-role-isolation.test.ts` lo reconoce como 2ª excepción sancionada.
+- **Alternativas descartadas:** route handler cron + secret (cero infra, pero
+  desvía del plan; Edu la descartó); `setInterval` in-process (invisible,
+  frágil con réplicas/redeploys).
+
+## D-017 — Política de la alerta de tasa de error SENCE
+
+- **ID:** D-017
+- **Fecha:** 2026-07-15
+- **Decisión:** por tenant, sobre los callbacks de una ventana móvil:
+  ventana 60 min · umbral 20% (borde INCLUSIVO: `rate >= threshold`) · mínimo
+  5 eventos · cooldown = ventana. Todo configurable por env
+  (`SENCE_ALERT_*`), valores inválidos caen al default con warning. Canal v1:
+  fila en `alerts` (la leen otec_admin/supervisor del tenant) + log
+  estructurado en Coolify; el correo al operador se conecta cuando exista el
+  EmailSender (mismo hito). Los eventos `unmatched` (tenant NULL) quedan FUERA
+  del cálculo; un spike de unmatched merece alerta propia (follow-up).
+- **Por qué:** P:136-137 exige "alertas si tasa de errores > umbral" sin
+  cuantificar; estos defaults son conservadores (5 eventos evita alertar por 1
+  error aislado) y el cooldown evita spam con tick de 5 min. Pendiente de
+  ratificación fina por Edu con datos reales del piloto.
+- **Alternativas descartadas:** alerta global de plataforma (v1 es por tenant;
+  la global puede derivarse de las filas); umbral estricto `>` (con muestras
+  chicas 1/5 = 20% exacto debe alertar).
+
+## D-017b — Ajustes a la política de alerta tras la revisión adversarial del PR #31
+
+- **ID:** D-017b (enmienda a D-017)
+- **Fecha:** 2026-07-15
+- **Decisión:** (1) la tasa se agrega y alerta por **tenant×ambiente** (join a
+  `sence_sessions.environment`): rcetest y rce no se mezclan ni se silencian
+  mutuamente (cooldown por grupo); el ambiente va en `alerts.details` y en el
+  mensaje. (2) La lectura de la ventana se **pagina** (1000/página, tope 20
+  páginas con warning): PostgREST trunca en `max_rows` en silencio y la tasa se
+  calculaba sobre una muestra arbitraria bajo carga.
+- **Por qué:** hallazgos R-1/R-2 de la revisión adversarial (panel multi-agente
+  con refutación cruzada). I-11 sanciona ambientes conviviendo por tenant; el
+  checklist obligatorio en rcetest fabrica errores a propósito.
+- **Alternativas descartadas:** excluir rcetest del cálculo (descartada: deja
+  ciega la operación durante certificación/pruebas, que es cuando más se mira);
+  RPC SQL con GROUP BY (válida, se difiere: la paginación basta al volumen
+  actual y no agrega superficie SQL).

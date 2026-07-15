@@ -7,6 +7,70 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-15 — Worker de expiración T4/T6/T9 + alertas de tasa de error (tarea 2.6, Hito 2)
+
+Cierra el pendiente anotado el 2026-07-15 ("worker de expiración") y el gap
+crítico del índice único parcial: una sesión `iniciada_pendiente` abandonada en
+Clave Única (SENCE no envía callback) bloqueaba para siempre nuevos inicios del
+enrollment. Sin cambio de contrato: el worker solo ORQUESTA la función pura ya
+congelada `expireSession` (T4/T6/T9, §3).
+
+- **Tick idempotente `runExpiryTick`** (`expiry.ts`, sin `server-only`: lo
+  ejecuta el proceso worker): barre candidatas T4 (índice parcial nuevo por
+  `created_at`) y T6/T9 (`sence_sessions_expiry_idx`), decide con
+  `expireSession` y persiste con **compare-and-set ESTRECHO solo-`status`**.
+  Deliberadamente NO reusa `persistState`: reescribir todas las columnas podía
+  pisar `error_codes` refrescados por un `close_error` concurrente (§6). Un
+  callback tardío no revive una expirada (I-15) y queda `late=true` (verificado
+  en integración, incl. doble tick concurrente).
+- **Expiraciones se registran en `audit_log`** (`sence.session_expired`, actor
+  NULL = sistema), NO como kind nuevo de `sence_events`: I-4 clasifica callbacks
+  RECIBIDOS y la expiración es una decisión local ([D-015](../../specs/DECISIONES.md)).
+- **Knobs I-13/D-003 cableados** (`domain/timing.ts`): `SENCE_SESSION_MAX_HOURS`
+  ahora llega al motor (`EngineDeps.sessionMaxMs`; antes hardcode) y
+  `SENCE_PENDING_TIMEOUT_MINUTES` al worker. Defaults del contrato si faltan o
+  son inválidas.
+- **Alerta de tasa de error por tenant** (`runErrorRateCheck` + dominio puro
+  `domain/alerts.ts`): ventana/umbral/mínimo configurables, cooldown, fila en la
+  tabla nueva `alerts` + log estructurado ([D-017](../../specs/DECISIONES.md)).
+  Los eventos `unmatched` (tenant NULL) quedan fuera del cálculo v1.
+- **Proceso worker** (`src/worker/index.ts`, BullMQ + Redis, plan §5.6): job
+  repetible cada 5 min; 2ª app en Coolify con la misma imagen
+  ([D-016](../../specs/DECISIONES.md)). `rowToState` se movió al dominio
+  (compartido motor/worker), sin cambio de comportamiento.
+- El guardarraíl `service-role-isolation.test.ts` reconoce `src/worker/index.ts`
+  como la 2ª excepción sancionada por CLAUDE.md ("service-role SOLO en worker y
+  callbacks SENCE") — revisar en el 4-ojos.
+
+**Revisión adversarial (4 ojos, panel multi-agente con refutación cruzada) —
+11 hallazgos confirmados (5 únicos), 3 refutados; correcciones aplicadas:**
+- **R-1 (medium):** la tasa de error leía la ventana SIN paginar → PostgREST
+  truncaba en `max_rows=1000` en silencio y la tasa se calculaba sobre una
+  muestra arbitraria justo bajo carga. Fijo: paginación con orden estable +
+  warning al tope.
+- **R-2 (low):** la tasa mezclaba callbacks de `rcetest` y `rce` (I-11 sanciona
+  ambos ambientes conviviendo) → el tráfico de prueba disparaba alertas
+  "reales". Fijo: agregación y cooldown por tenant×ambiente (join a la sesión),
+  ambiente en mensaje y `details`.
+- **R-3 (low):** `SENCE_TICK_EVERY_MS` era el único knob sin defensa; un
+  negativo llegaba crudo a BullMQ (que no valida `every`) y rompía el
+  scheduling en silencio. Fijo: entra a `senceTimingFromEnv`.
+- **R-4 (medium):** la excepción del guardarraíl service-role usaba `endsWith`
+  → cualquier `src/**/worker/index.ts` futuro quedaba exento (reproducido por
+  el refutador). Fijo: ruta absoluta exacta.
+- **R-5 (low):** si el CAS commiteaba y la auditoría fallaba, el summary
+  reportaba `failed` (la expiración SÍ ocurrió) y un fallo sistemático de
+  audit_log cortaba el barrido como "sin progreso". Fijo: outcome
+  `expired_unaudited` (cuenta como expirada + progreso, contador propio).
+- **R-6 (low):** jobs BullMQ sin `removeOnComplete/removeOnFail` (288/día para
+  siempre en un Redis noeviction) → poda configurada. Y CI ahora construye y
+  smoke-testea el bundle del worker (antes la primera detección era el deploy).
+
+Pendiente (Hito 2): alerta de spike de `unmatched` · canal de correo de alertas
+(llega con el EmailSender de este hito) · alerta día-1 (tarea 2.7, mismo tick).
+
+---
+
 ## 2026-07-15 — Cableado del motor (tarea 0.7) + endurecimiento por revisión adversarial
 
 Implementación del motor sobre el contrato congelado: cifrado AES-256-GCM del

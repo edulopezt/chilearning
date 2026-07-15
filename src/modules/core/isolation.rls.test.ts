@@ -256,6 +256,14 @@ describe("escalada de privilegios dentro del propio tenant (hallazgo C1)", () =>
   });
 
   it("otec_admin SÍ puede crear una membership normal en su tenant", async () => {
+    // Limpieza previa (service-role): la fila queda de corridas anteriores sin
+    // `db reset` y el unique(tenant_id, user_id) confundiría "duplicado" con
+    // "denegado". La aserción de permiso NO cambia: inserta el otec_admin.
+    const svc = createClient(env.apiUrl, env.serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+    await svc.from("memberships").delete().eq("tenant_id", TENANT_A).eq("user_id", SUPERADMIN_ID);
+
     const db = await clientAs("a", "otec_admin");
     const { error } = await db.from("memberships").insert({
       tenant_id: TENANT_A,
