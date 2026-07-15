@@ -206,6 +206,35 @@ export const esCL = {
     emailsSkipped:
       "inscripciones nuevas sin correo (proveedor de correo no configurado)",
   },
+  cumplimiento: {
+    title: "Panel de cumplimiento SENCE",
+    intro:
+      "Asistencia por alumno y día hábil, huecos y errores frecuentes — lo que un fiscalizador querrá ver, exportable con las columnas del reporte histórico.",
+    forbidden: "No tienes permiso para ver el panel de cumplimiento.",
+    linkLabel: "Cumplimiento",
+    matrixTitle: "Asistencia por alumno y día",
+    legend: "✓ asistencia cerrada · ◐ iniciada sin cierre · ✕ error · · sin registro · — exento.",
+    truncated:
+      "⚠ Hay más registros de los que se pudieron cargar: los datos pueden estar incompletos.",
+    empty: "La acción no tiene inscritos todavía.",
+    noDates: "Define las fechas de inicio y término de la acción para calcular días y huecos.",
+    colStudent: "Alumno",
+    colRun: "RUN",
+    colGaps: "Huecos",
+    daysClosed: "días con cierre",
+    exempt: "Exento",
+    errorsTitle: "Errores frecuentes",
+    noErrors: "Sin errores SENCE registrados para esta acción.",
+    downloadXlsx: "Descargar Excel",
+    downloadCsv: "Descargar CSV",
+    cell: {
+      cerrada: "asistencia cerrada",
+      iniciada: "iniciada sin cierre",
+      error: "error",
+      none: "sin registro",
+      exento: "exento",
+    },
+  },
   preflight: {
     title: "Pre-flight de la acción",
     intro:
