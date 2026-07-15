@@ -23,6 +23,15 @@ export const esCL = {
     genericError: "No pudimos iniciar sesión. Intenta nuevamente.",
     noAccess:
       "Tu cuenta no tiene acceso a ninguna organización. Contacta a tu administrador.",
+    magicLinkTab: "Enlace por correo",
+    passwordTab: "Contraseña",
+    magicLinkIntro: "Te enviamos un enlace de acceso a tu correo. No necesitas contraseña.",
+    magicLinkSubmit: "Enviarme el enlace",
+    magicLinkSending: "Enviando…",
+    magicLinkSent:
+      "¡Listo! Revisa tu correo y haz clic en el enlace para entrar. Puede tardar un minuto.",
+    magicLinkError: "No pudimos enviar el enlace. Revisa el correo e intenta de nuevo.",
+    magicLinkExpired: "El enlace no es válido o ya expiró. Pide uno nuevo.",
   },
   dashboard: {
     title: "Panel",

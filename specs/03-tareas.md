@@ -51,7 +51,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 1.6 Correos transaccionales (invitación, bienvenida con guía Clave Única) — HU-3.3
 - 1.7 ✅ Roles restantes en RBAC + tests matriz completa — HU-2.3 — **hecho 2026-07-15**: suite data-driven de los 8 roles × tablas de negocio (deny-by-default verificado); cazó y corrigió una fuga: token_encrypted era legible por el cliente (grant de columna arreglado)
 - 1.8 Tablero relator con avance y semáforo — HU-3.4
-- 1.9 Magic links de acceso para alumnos (Supabase Auth) — HU-2.1
+- 1.9 ✅ Magic links de acceso para alumnos (Supabase Auth) — HU-2.1 — **hecho 2026-07-15**: login con pestaña "enlace por correo" (signInWithOtp) + ruta /auth/callback (exchange code, redirect relativo anti-open-redirect); verificado end-to-end con MailPit local
 - 1.10 Editor de marca del tenant: logos, colores con chequeo de contraste y vista previa en vivo — HU-1.2
 
 ## Hito 2 — Evaluación y panel SENCE (semana 4)
