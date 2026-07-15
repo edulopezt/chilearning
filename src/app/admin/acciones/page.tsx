@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
@@ -52,7 +53,8 @@ export default async function ActionsPage() {
                   <th className="py-2 pr-3">{esCL.actions.colCode}</th>
                   <th className="py-2 pr-3">{esCL.actions.colLine}</th>
                   <th className="py-2 pr-3">{esCL.actions.colEnv}</th>
-                  <th className="py-2">{esCL.actions.colDates}</th>
+                  <th className="py-2 pr-3">{esCL.actions.colDates}</th>
+                  <th className="py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -64,8 +66,13 @@ export default async function ActionsPage() {
                     <td className="py-2 pr-3">
                       {a.environment === "rce" ? esCL.actions.envProd : esCL.actions.envTest}
                     </td>
-                    <td className="py-2 text-muted-foreground">
+                    <td className="py-2 pr-3 text-muted-foreground">
                       {a.starts_on ?? "—"} → {a.ends_on ?? "—"}
+                    </td>
+                    <td className="py-2">
+                      <Link href={`/admin/acciones/${a.id}/preflight`} className="underline">
+                        {esCL.preflight.linkLabel}
+                      </Link>
                     </td>
                   </tr>
                 ))}

@@ -22,6 +22,10 @@ export interface SenceTiming {
   readonly alertMinEvents: number;
   /** Frecuencia del job repetible del worker (ms). */
   readonly tickEveryMs: number;
+  /** Día-1 (task 2.7): umbral de asistencia 0..1 (alerta si ratio < umbral). */
+  readonly day1AttendanceThreshold: number;
+  /** Día-1: hora local (America/Santiago) desde la que se evalúa, 1-23. */
+  readonly day1EvalHour: number;
   /** Claves de env cuyo valor era inválido y cayó al default. */
   readonly invalidKeys: readonly string[];
 }
@@ -33,6 +37,8 @@ export const SENCE_TIMING_DEFAULTS = {
   alertErrorRateThreshold: 0.2,
   alertMinEvents: 5,
   tickEveryMs: 5 * 60_000,
+  day1AttendanceThreshold: 0.5,
+  day1EvalHour: 13,
 } as const;
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number | null {
@@ -69,6 +75,16 @@ export function senceTimingFromEnv(env: Record<string, string | undefined>): Sen
     return parsed;
   };
 
+  /** Entero 1-23 (hora local del día). Fuera de rango → default + reporte. */
+  const hourOfDay = (key: string, fallback: number): number => {
+    const parsed = parsePositiveInt(env[key], fallback);
+    if (parsed === null || parsed > 23) {
+      invalidKeys.push(key);
+      return fallback;
+    }
+    return parsed;
+  };
+
   const d = SENCE_TIMING_DEFAULTS;
   return {
     pendingTimeoutMs: int("SENCE_PENDING_TIMEOUT_MINUTES", d.pendingTimeoutMinutes) * 60_000,
@@ -79,6 +95,8 @@ export function senceTimingFromEnv(env: Record<string, string | undefined>): Sen
     // Revisión R-3: era el único knob sin defensa; un negativo llegaba crudo a
     // BullMQ (upsertJobScheduler no valida `every`) y rompía el scheduling.
     tickEveryMs: int("SENCE_TICK_EVERY_MS", d.tickEveryMs),
+    day1AttendanceThreshold: ratio("SENCE_DAY1_ATTENDANCE_THRESHOLD", d.day1AttendanceThreshold),
+    day1EvalHour: hourOfDay("SENCE_DAY1_EVAL_HOUR", d.day1EvalHour),
     invalidKeys,
   };
 }

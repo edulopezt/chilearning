@@ -75,4 +75,21 @@ describe("senceTimingFromEnv (I-13/D-003 — knobs con default seguro)", () => {
     expect(t.sessionMaxMs).toBe(3 * 3_600_000);
     expect(t.invalidKeys).toEqual([]);
   });
+
+  it("knobs de día-1 (task 2.7): defaults, válidos y hora fuera de rango", () => {
+    const d = senceTimingFromEnv({});
+    expect(d.day1AttendanceThreshold).toBe(0.5);
+    expect(d.day1EvalHour).toBe(13);
+
+    const custom = senceTimingFromEnv({
+      SENCE_DAY1_ATTENDANCE_THRESHOLD: "0.75",
+      SENCE_DAY1_EVAL_HOUR: "9",
+    });
+    expect(custom.day1AttendanceThreshold).toBe(0.75);
+    expect(custom.day1EvalHour).toBe(9);
+
+    const invalid = senceTimingFromEnv({ SENCE_DAY1_EVAL_HOUR: "24" });
+    expect(invalid.day1EvalHour).toBe(13);
+    expect(invalid.invalidKeys).toContain("SENCE_DAY1_EVAL_HOUR");
+  });
 });

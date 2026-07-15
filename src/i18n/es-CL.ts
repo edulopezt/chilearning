@@ -206,6 +206,107 @@ export const esCL = {
     emailsSkipped:
       "inscripciones nuevas sin correo (proveedor de correo no configurado)",
   },
+  preflight: {
+    title: "Pre-flight de la acción",
+    intro:
+      "Checklist previo al inicio: valida el RUN de todos los inscritos, la configuración SENCE y las fechas ANTES de que un alumno choque con un error 207/208.",
+    forbidden: "No tienes permiso para ver el pre-flight.",
+    notFound: "La acción no existe o no pertenece a tu OTEC.",
+    linkLabel: "Pre-flight",
+    overall: {
+      ok: "Todo listo: la acción pasa el pre-flight.",
+      warning: "Lista con advertencias: revisa los ítems amarillos.",
+      error: "NO está lista: corrige los ítems en rojo antes del inicio.",
+    },
+    items: {
+      config_token: "Token SENCE del OTEC",
+      config_rut_otec: "RUT del OTEC",
+      sence_course_code: "Código SENCE del curso (CodSence)",
+      action_code: "Código de la acción (CodigoCurso)",
+      environment: "Ambiente SENCE",
+      dates: "Fechas de la acción",
+      runs: "RUN de los inscritos",
+      clave_unica_guide: "Guía Clave Única",
+    },
+    details: {
+      noConfig: "El OTEC no tiene configuración SENCE. Configúrala en /admin/sence.",
+      noToken: "No hay token SENCE guardado. Ingrésalo en /admin/sence.",
+      tokenInvalid:
+        "El token guardado no se pudo validar (¿rotó la clave de cifrado?). Vuelve a ingresarlo en /admin/sence.",
+      tokenOk: "Token presente y válido.",
+      rutOk: "RUT del OTEC válido.",
+      rutInvalid: "El RUT del OTEC es inválido (revisa el dígito verificador en /admin/sence).",
+      codSenceOk: "Código SENCE del curso válido.",
+      codSenceMustBeEmpty:
+        "En línea 1 (Programas Sociales) el código SENCE del curso debe ir VACÍO.",
+      codSenceInvalid:
+        "El código SENCE del curso es inválido (deben ser 10 dígitos; el comodín -1 solo vale en pruebas).",
+      actionCodeOk: "Código de acción válido.",
+      actionCodeInvalid:
+        "El código de la acción es inválido (mínimo 7 caracteres salvo línea 6; el comodín -1 solo vale en pruebas).",
+      environmentInvalid: "El ambiente de la acción no es válido.",
+      environmentRcetest:
+        "La acción apunta al ambiente de PRUEBAS (rcetest). Correcto antes de certificar; cámbialo a producción para una acción real.",
+      environmentRce: "La acción apunta a producción (rce).",
+      datesMissing: "Faltan las fechas de inicio y/o término (sin rango no se registra asistencia).",
+      datesInverted: "La fecha de inicio es posterior a la de término.",
+      datesEnded:
+        "El período de ejecución ya TERMINÓ según sus fechas: los intentos de asistencia serán previsiblemente rechazados (código 309). Si la acción sigue vigente, corrige las fechas.",
+      datesStarted: "La acción ya comenzó según sus fechas.",
+      datesOk: "Fechas definidas y coherentes.",
+      runsEmpty: "La acción no tiene inscritos todavía.",
+      runsInvalid:
+        "Hay RUN inválidos entre los inscritos NO exentos: esos alumnos chocarán con el error 207 al registrar asistencia.",
+      runsInvalidExempt:
+        "Hay RUN inválidos solo entre alumnos exentos (no viajan a SENCE, pero conviene corregirlos).",
+      runsOk: "Todos los RUN de los inscritos son válidos.",
+      guideSent: "Guía Clave Única enviada.",
+      guideNotSent: "La guía Clave Única aún no se envía a los inscritos.",
+    },
+    runsTable: {
+      title: "RUN inválidos detectados",
+      colRun: "RUN",
+      colRule: "Problema",
+      colExempt: "Exento",
+      yes: "Sí",
+      no: "No",
+      rules: {
+        required: "vacío",
+        run_format: "formato inválido (usa 12345678-9, sin puntos)",
+        run_dv: "dígito verificador incorrecto",
+        run_not_normalized: "la K debe ir en minúscula",
+      } as Record<string, string>,
+    },
+    guide: {
+      title: "Guía Clave Única para los inscritos",
+      body:
+        "Envía a los inscritos (no exentos) el correo con el paso a paso para registrar asistencia con Clave Única.",
+      sendButton: "Enviar guía por correo",
+      markButton: "Marcar como enviada (sin correo)",
+      previewHint: "Puedes ver la plantilla en /admin/correos.",
+      sentOk: "Guía enviada.",
+      markedOk: "Guía marcada como enviada.",
+      notConfigured:
+        "El proveedor de correo no está configurado (falta RESEND_API_KEY). Puedes marcarla como enviada si la hiciste llegar por otra vía.",
+      auditFailed:
+        "No se pudo dejar constancia en la bitácora. Reintenta: sin registro auditable la operación no cuenta.",
+      sentUnaudited:
+        "los correos salieron, pero NO quedó constancia en la bitácora — reintenta el envío o marca manualmente para dejar registro.",
+      error: "No se pudo completar la operación.",
+      summary: "enviados",
+      summaryFailed: "fallidos",
+      summarySkipped: "sin correo",
+    },
+    day1: {
+      title: "Alerta de asistencia — día 1",
+      none: "Sin alertas de día 1 para esta acción.",
+    },
+    totals: {
+      enrolled: "inscritos",
+      exempt: "exentos",
+      invalid: "RUN inválidos",
+    },
+  },
   senceAdmin: {
     title: "Configuración SENCE",
     intro:

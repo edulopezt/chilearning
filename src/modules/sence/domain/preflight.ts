@@ -149,8 +149,10 @@ export const RCETEST_WILDCARD = "-1";
 
 const VALID_TRAINING_LINES: readonly number[] = [1, 3, 6];
 
-/** RUN fields validate to the same rule set (RutOtec / RunAlumno). */
-function validateRun(field: PreflightField, value: string): PreflightViolation[] {
+/** RUN fields validate to the same rule set (RutOtec / RunAlumno).
+ *  Exportada para el pre-flight MASIVO de acción (task 2.7), que valida el
+ *  roster completo sin fabricar un PreflightInput (ni token) por alumno. */
+export function validateRunField(field: PreflightField, value: string): PreflightViolation[] {
   if (value.length === 0) return [{ field, rule: "required" }];
   // The strict shape also bounds length to 10 (up to 8 body digits + '-' + DV).
   if (!/^\d{1,8}-[0-9kK]$/.test(value)) return [{ field, rule: "run_format" }];
@@ -186,8 +188,10 @@ function validateRequiredMax(
  *  - Line 1: MUST be empty (Anexo 5), even in `rcetest`.
  *  - Lines 3/6: exactly 10 digits, EXCEPT the `-1` wildcard which is accepted
  *    only in `rcetest` and rejected in `rce`.
+ *
+ * Exportada para el pre-flight masivo de acción (task 2.7).
  */
-function validateSenceCourseCode(
+export function validateSenceCourseCode(
   value: string,
   line: number,
   isRceTest: boolean,
@@ -216,8 +220,10 @@ function validateSenceCourseCode(
  *
  *  - `-1` wildcard: accepted only in `rcetest`, rejected in `rce`.
  *  - Otherwise: non-empty, ≤ 50 chars, and ≥ 7 chars EXCEPT line 6 (FPT).
+ *
+ * Exportada para el pre-flight masivo de acción (task 2.7).
  */
-function validateActionCode(
+export function validateActionCode(
   value: string,
   line: number,
   isRceTest: boolean,
@@ -272,8 +278,8 @@ export function validatePreflight(input: PreflightInput): PreflightResult {
   }
 
   // RUT OTEC + RUN alumno (format + module-11 DV, 'k' lowercased)
-  violations.push(...validateRun("rutOtec", input.rutOtec));
-  violations.push(...validateRun("runAlumno", input.runAlumno));
+  violations.push(...validateRunField("rutOtec", input.rutOtec));
+  violations.push(...validateRunField("runAlumno", input.runAlumno));
 
   // Token — presence + max length only; value NEVER inspected/echoed (I-6).
   violations.push(...validateRequiredMax("token", input.token, MAX_LENGTH.token));

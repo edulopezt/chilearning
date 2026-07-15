@@ -5,6 +5,7 @@ import {
   evaluateErrorRate,
   type ErrorRatePolicy,
 } from "./domain/alerts";
+import { day1AlertMessage, evaluateDay1, localHour, localIsoDate } from "./domain/day1";
 import { expireSession, rowToState, type SessionStateColumns } from "./domain/session";
 
 /**
@@ -448,4 +449,203 @@ export async function runErrorRateCheck(
   }
 
   return { alerted, cooledDown };
+}
+
+// ---------------------------------------------------------------------------
+// Alerta temprana de asistencia del DÍA 1 (task 2.7, HU-5.8) — fase 3 del tick.
+// ---------------------------------------------------------------------------
+
+export interface Day1CheckConfig {
+  readonly now: number;
+  /** Umbral 0..1: alerta si `ratio < threshold` (borde EXCLUSIVO). */
+  readonly threshold: number;
+  /** Hora local desde la que se evalúa (dar tiempo a la primera jornada). */
+  readonly evalHourLocal: number;
+  readonly timeZone?: string;
+  /** Sin nueva alerta de la misma acción dentro del cooldown (default 24 h). */
+  readonly cooldownMs?: number;
+  readonly log?: Pick<Console, "warn" | "error">;
+}
+
+export interface Day1CheckSummary {
+  /** `codigo_accion` de las acciones alertadas en esta pasada. */
+  readonly alerted: string[];
+  readonly cooledDown: string[];
+  /** Acciones que parten hoy y fueron evaluadas (con inscritos no exentos). */
+  readonly evaluated: number;
+}
+
+interface Day1SessionRow {
+  enrollment_id: string;
+  created_at: string;
+}
+
+export async function runDay1Check(
+  serviceDb: SupabaseClient,
+  cfg: Day1CheckConfig,
+): Promise<Day1CheckSummary> {
+  const log = cfg.log ?? console;
+  const tz = cfg.timeZone ?? "America/Santiago";
+  const cooldownMs = cfg.cooldownMs ?? 24 * 3_600_000;
+
+  // Antes de la hora de corte no se evalúa: el peor falso positivo sería
+  // alertar a las 8 AM cuando la jornada aún no parte.
+  if (localHour(cfg.now, tz) < cfg.evalHourLocal) {
+    return { alerted: [], cooledDown: [], evaluated: 0 };
+  }
+
+  const today = localIsoDate(cfg.now, tz);
+  const nowIso = new Date(cfg.now).toISOString();
+
+  // Acciones (cross-tenant, mismo precedente del barrido) que PARTEN hoy.
+  const { data: actionsData, error: actionsError } = await serviceDb
+    .from("actions")
+    .select("id, tenant_id, codigo_accion")
+    .eq("starts_on", today);
+  if (actionsError) {
+    log.error("[sence][worker] fallo leyendo acciones para día-1", {
+      message: actionsError.message,
+    });
+    return { alerted: [], cooledDown: [], evaluated: 0 };
+  }
+  const actions = (actionsData ?? []) as {
+    id: string;
+    tenant_id: string;
+    codigo_accion: string;
+  }[];
+
+  const alerted: string[] = [];
+  const cooledDown: string[] = [];
+  let evaluated = 0;
+
+  for (const action of actions) {
+    // Inscritos no exentos de la acción (los exentos no registran SENCE, I-14).
+    const { count: enrolledNonExempt, error: enrError } = await serviceDb
+      .from("enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("action_id", action.id)
+      .eq("exento", false);
+    if (enrError) {
+      log.error("[sence][worker] fallo leyendo inscritos para día-1", {
+        message: enrError.message,
+      });
+      continue;
+    }
+    if (!enrolledNonExempt) continue; // sin inscritos no exentos no hay que alertar
+
+    evaluated += 1;
+
+    // Sesiones de HOY (iniciada o cerrada) de inscritos no exentos de la acción.
+    // Join embebido (NUNCA `.in()` con la lista de ids: "URI too long" con
+    // cohortes grandes — lección del PR #32) y PAGINADO (revisión R-5 del
+    // PR #33: PostgREST capa CUALQUIER limit en max_rows=1000 en silencio;
+    // sin paginar, la cohorte grande subcontaba y disparaba una falsa alerta
+    // justo donde más duele). Ventana de 26 h (no 24: el día del cambio de
+    // hora chileno dura 25 h — revisión R-6); el filtro fino por día LOCAL se
+    // hace en JS con localIsoDate.
+    const windowStart = new Date(cfg.now - 26 * 3_600_000).toISOString();
+    const sessions: Day1SessionRow[] = [];
+    let sessError: { message: string } | null = null;
+    for (let page = 0; page < EVENTS_MAX_PAGES; page += 1) {
+      const from = page * EVENTS_PAGE_SIZE;
+      const { data, error } = await serviceDb
+        .from("sence_sessions")
+        .select("enrollment_id, created_at, enrollments!inner(action_id, exento)")
+        .eq("enrollments.action_id", action.id)
+        .eq("enrollments.exento", false)
+        .in("status", ["iniciada", "cerrada"])
+        .gte("created_at", windowStart)
+        .lte("created_at", nowIso)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + EVENTS_PAGE_SIZE - 1);
+      if (error) {
+        sessError = error;
+        break;
+      }
+      const batch = (data ?? []) as unknown as Day1SessionRow[];
+      sessions.push(...batch);
+      if (batch.length < EVENTS_PAGE_SIZE) break;
+      if (page === EVENTS_MAX_PAGES - 1) {
+        log.warn("[sence][worker] sesiones de día-1 truncadas por tope de páginas", {
+          codigoAccion: action.codigo_accion,
+          maxRows: EVENTS_MAX_PAGES * EVENTS_PAGE_SIZE,
+        });
+      }
+    }
+    if (sessError) {
+      log.error("[sence][worker] fallo leyendo sesiones para día-1", {
+        message: sessError.message,
+      });
+      continue;
+    }
+    const withSessionToday = new Set(
+      sessions
+        .filter((r) => localIsoDate(Date.parse(r.created_at), tz) === today)
+        .map((r) => r.enrollment_id),
+    ).size;
+
+    const verdict = evaluateDay1({ enrolledNonExempt, withSessionToday }, cfg.threshold);
+    if (!verdict.alert) continue;
+
+    // Cooldown por acción (una alerta de día-1 al día).
+    const { data: recent, error: recentError } = await serviceDb
+      .from("alerts")
+      .select("id")
+      .eq("kind", "sence_day1_low_attendance")
+      .eq("action_id", action.id)
+      .gte("created_at", new Date(cfg.now - cooldownMs).toISOString())
+      .lte("created_at", nowIso)
+      .limit(1);
+    if (recentError) {
+      log.error("[sence][worker] fallo consultando cooldown de día-1", {
+        message: recentError.message,
+      });
+      continue;
+    }
+    if ((recent ?? []).length > 0) {
+      cooledDown.push(action.codigo_accion);
+      continue;
+    }
+
+    const message = day1AlertMessage(
+      verdict,
+      { enrolledNonExempt, withSessionToday },
+      action.codigo_accion,
+    );
+    const { error: insertError } = await serviceDb.from("alerts").insert({
+      tenant_id: action.tenant_id,
+      kind: "sence_day1_low_attendance",
+      severity: "warning",
+      message,
+      action_id: action.id,
+      details: {
+        date: today,
+        ratio: Number(verdict.ratio.toFixed(4)),
+        enrolledNonExempt,
+        withSessionToday,
+      },
+      created_at: nowIso,
+    });
+    if (insertError) {
+      log.error("[sence][worker] fallo insertando alerta de día-1", {
+        message: insertError.message,
+      });
+      continue;
+    }
+    log.error(
+      "[sence][alert] " +
+        JSON.stringify({
+          kind: "sence_day1_low_attendance",
+          tenantId: action.tenant_id,
+          codigoAccion: action.codigo_accion,
+          ratio: verdict.ratio,
+          enrolledNonExempt,
+          withSessionToday,
+        }),
+    );
+    alerted.push(action.codigo_accion);
+  }
+
+  return { alerted, cooledDown, evaluated };
 }

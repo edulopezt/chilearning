@@ -19,7 +19,7 @@ import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 
 import { senceTimingFromEnv } from "../modules/sence/domain/timing";
-import { runErrorRateCheck, runExpiryTick } from "../modules/sence/expiry";
+import { runDay1Check, runErrorRateCheck, runExpiryTick } from "../modules/sence/expiry";
 
 const QUEUE_NAME = "sence";
 const TICK_JOB = "sence-tick";
@@ -62,6 +62,12 @@ async function tick(db: SupabaseClient): Promise<void> {
       minEvents: timing.alertMinEvents,
     },
   });
+  // Fase 3 (task 2.7): alerta temprana de asistencia baja el día 1.
+  const day1 = await runDay1Check(db, {
+    now: startedAt,
+    threshold: timing.day1AttendanceThreshold,
+    evalHourLocal: timing.day1EvalHour,
+  });
 
   // Una línea JSON por tick: los logs de Coolify son la observabilidad v1.
   console.log(
@@ -70,6 +76,7 @@ async function tick(db: SupabaseClient): Promise<void> {
         tookMs: Date.now() - startedAt,
         expiry,
         alerts,
+        day1,
       }),
   );
 }

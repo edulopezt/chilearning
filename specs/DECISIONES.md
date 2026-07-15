@@ -393,3 +393,28 @@ entrada original.
   genérico con nodemailer (más config y otra dependencia; Resend da API key +
   dominio verificado en minutos); esperar al Hito 3 (descartado por Edu:
   quiere envío real ya).
+
+## D-020 — Política de la alerta día-1 y envío de guía Clave Única (task 2.7)
+
+- **ID:** D-020
+- **Fecha:** 2026-07-15
+- **Decisión:** (1) **Día-1**: para toda acción cuyo `starts_on` es HOY
+  (America/Santiago), el worker evalúa desde las 13:00 locales el ratio de
+  inscritos no exentos con sesión `iniciada|cerrada` ese día; si
+  `ratio < 0.5` (borde exclusivo) inserta una alerta
+  `sence_day1_low_attendance` con cooldown de 24 h por acción. Umbral y hora
+  por env (`SENCE_DAY1_*`), defaults pendientes de ratificación fina de Edu
+  con datos del piloto. (2) **Guía Clave Única**: el envío usa la plantilla de
+  bienvenida (que ya trae la guía paso a paso) vía EmailSender a los inscritos
+  NO exentos; queda marca auditada (`sence.guide_sent` con conteos). Sin
+  proveedor: marca manual auditada (`sence.guide_marked_sent`). El checklist
+  del pre-flight LEE la última marca desde `audit_log`.
+- **Por qué:** HU-5.8 pide "alerta temprana el día 1 bajo el umbral" sin
+  cuantificar. 13:00 da media jornada de margen (evita falsos positivos de la
+  mañana); 50% es conservador. La marca en `audit_log` evita una tabla nueva y
+  respeta el aislamiento del módulo SENCE (I-16): quien envía es
+  `comunicacion`, quien lee es `sence`.
+- **Alternativas descartadas:** evaluar a cualquier hora (falso positivo
+  matinal garantizado); tabla propia de marcas de guía (audit_log ya es
+  INSERT-only y auditable por diseño); plantilla de correo separada para la
+  guía (la de bienvenida ya la contiene; duplicarla = divergencia).
