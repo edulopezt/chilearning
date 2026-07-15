@@ -16,6 +16,7 @@ const ERROR_TEXT: Record<string, string> = {
   no_tenant: esCL.preflight.forbidden,
   not_found: esCL.preflight.notFound,
   not_configured: t.notConfigured,
+  audit_failed: t.auditFailed,
 };
 
 /** Botones de la guía Clave Única: envío real + marca manual (fallback). */
@@ -69,6 +70,12 @@ export function GuideForm({ actionId }: { actionId: string }) {
             <>
               {" · "}
               <strong>{sendState.summary.skipped}</strong> {t.summarySkipped}
+            </>
+          ) : null}
+          {!sendState.audited ? (
+            <>
+              {" — "}
+              <span className="text-amber-700 dark:text-amber-400">{t.sentUnaudited}</span>
             </>
           ) : null}
         </p>

@@ -38,6 +38,34 @@ registró asistencia el día 1).
 - UI: `/admin/acciones/[id]/preflight` (checklist, tabla de RUN inválidos,
   guía, día-1) + enlace por fila en `/admin/acciones`.
 
+**Revisión adversarial (4 ojos, panel multi-agente con refutación cruzada) —
+6 hallazgos confirmados, 4 refutados; correcciones aplicadas:**
+- **R-1 (medium):** el checklist validaba el RUN NORMALIZADO pero el motor
+  valida el ALMACENADO crudo → un RUN sin normalizar en BD daba "falso verde"
+  y bloqueaba al alumno en cada intento. Fijo: el checklist valida EXACTAMENTE
+  lo que el motor consumirá (crudo), espejo fiel del pre-flight I-8.
+- **R-2 (low):** una acción TERMINADA (`ends_on` < hoy) caía en el warning
+  "ya comenzó". Fijo: rama `datesEnded` con error y texto honesto (309).
+- **R-3 (low):** la auditoría de la guía era best-effort silenciosa. Fijo: la
+  marca manual FALLA si no se puede auditar (`audit_failed`); el envío real
+  reporta `audited:false` y la UI lo dice (evita re-envíos duplicados).
+- **R-4 (low):** el índice `listUsers` (precedente del import 1.3) trunca en
+  10.000 usuarios en silencio → warning explícito; follow-up: profiles/RLS.
+- **R-5 (medium):** la query de sesiones del día-1 usaba `.limit(10_000)` que
+  PostgREST capa en 1000 EN SILENCIO → subconteo y falsa alerta justo en las
+  cohortes grandes (misma clase que R-1 del PR #31 — reincidencia cazada).
+  Fijo: paginación con orden estable + warning al tope.
+- **R-6 (low):** la ventana de 24 h perdía sesiones de la madrugada en el día
+  de 25 h del cambio de hora chileno → ventana de 26 h (el filtro fino por día
+  local ya lo hace `localIsoDate`).
+
+Refutados (documentados en el journal del panel): subconteo por expiración
+previa del mismo tick (T4 no implica asistencia) · "falso rojo" de línea 1 con
+cod_sence (by-design: higiene de datos pineada por test) · phishing por host
+header (Server Action autenticada + ingress de Traefik acotan el vector; el
+href además va escapado) · día-1 sin ambiente (la página ya muestra el ítem de
+ambiente encima de la tarjeta día-1).
+
 ---
 
 ## 2026-07-15 — Worker de expiración T4/T6/T9 + alertas de tasa de error (tarea 2.6, Hito 2)

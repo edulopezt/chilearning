@@ -18,7 +18,12 @@ import { emailSenderFromEnv, type EmailSender } from "@/modules/comunicacion/ema
 
 const MANAGERS = ["otec_admin", "coordinator"] as const;
 
-export type GuideError = "forbidden" | "no_tenant" | "not_found" | "not_configured";
+export type GuideError =
+  | "forbidden"
+  | "no_tenant"
+  | "not_found"
+  | "not_configured"
+  | "audit_failed";
 
 export interface GuideSendSummary {
   sent: number;
@@ -37,7 +42,10 @@ export async function sendClaveUnicaGuide(
   principal: Principal,
   actionId: string,
   deps: GuideDeps = {},
-): Promise<{ ok: true; summary: GuideSendSummary } | { ok: false; error: GuideError }> {
+): Promise<
+  | { ok: true; summary: GuideSendSummary; audited: boolean }
+  | { ok: false; error: GuideError }
+> {
   if (!principal.tenantId) return { ok: false, error: "no_tenant" };
   if (!authorize(principal, principal.tenantId, MANAGERS)) {
     return { ok: false, error: "forbidden" };
@@ -96,6 +104,14 @@ export async function sendClaveUnicaGuide(
       }
     }
     if ((data?.users ?? []).length < 200) break;
+    if (page === 50) {
+      // Revisión R-4 del PR #33: sobre 10.000 usuarios globales, los que caen
+      // después de la página 50 quedarían como "sin correo" en silencio.
+      // Follow-up anotado: resolver por getUserById o tabla profiles con RLS.
+      console.warn("[guia] índice de usuarios truncado en 10.000; destinatarios pueden faltar", {
+        actionId,
+      });
+    }
   }
 
   const summary: GuideSendSummary = { sent: 0, failed: 0, skipped: 0 };
@@ -121,8 +137,12 @@ export async function sendClaveUnicaGuide(
     else summary.failed += 1;
   }
 
-  await writeGuideAudit(guard, principal, actionId, "sence.guide_sent", summary);
-  return { ok: true, summary };
+  // Revisión R-3 del PR #33: los correos ya salieron (irreversible), pero un
+  // envío masivo SIN rastro auditable viola P8 — y además el checklist (que
+  // LEE la marca) invitaría a un segundo envío duplicado. Se reporta al
+  // llamador para que la UI lo diga en vez de tragar el fallo.
+  const audited = await writeGuideAudit(guard, principal, actionId, "sence.guide_sent", summary);
+  return { ok: true, summary, audited };
 }
 
 /** Marca manual (fallback sin proveedor): deja constancia auditada. */
@@ -142,7 +162,15 @@ export async function markGuideSent(
     .maybeSingle();
   if (!action) return { ok: false, error: "not_found" };
 
-  await writeGuideAudit(guard, principal, actionId, "sence.guide_marked_sent", null);
+  // La marca ES el registro: si la auditoría falla, la operación falló (R-3).
+  const audited = await writeGuideAudit(
+    guard,
+    principal,
+    actionId,
+    "sence.guide_marked_sent",
+    null,
+  );
+  if (!audited) return { ok: false, error: "audit_failed" };
   return { ok: true };
 }
 
@@ -152,7 +180,7 @@ async function writeGuideAudit(
   actionId: string,
   auditAction: "sence.guide_sent" | "sence.guide_marked_sent",
   summary: GuideSendSummary | null,
-): Promise<void> {
+): Promise<boolean> {
   const { error } = await guard.db.from("audit_log").insert(
     guard.withTenant({
       actor_user_id: principal.userId,
@@ -164,5 +192,7 @@ async function writeGuideAudit(
   );
   if (error) {
     console.error("[guia] auditoría del envío de guía falló", { message: error.message });
+    return false;
   }
+  return true;
 }

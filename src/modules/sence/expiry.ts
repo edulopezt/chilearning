@@ -537,17 +537,42 @@ export async function runDay1Check(
 
     // Sesiones de HOY (iniciada o cerrada) de inscritos no exentos de la acción.
     // Join embebido (NUNCA `.in()` con la lista de ids: "URI too long" con
-    // cohortes grandes — lección del PR #32). La ventana >= now-24h acota el
-    // barrido y el filtro fino por día LOCAL se hace en JS.
-    const { data: sessData, error: sessError } = await serviceDb
-      .from("sence_sessions")
-      .select("enrollment_id, created_at, enrollments!inner(action_id, exento)")
-      .eq("enrollments.action_id", action.id)
-      .eq("enrollments.exento", false)
-      .in("status", ["iniciada", "cerrada"])
-      .gte("created_at", new Date(cfg.now - 24 * 3_600_000).toISOString())
-      .lte("created_at", nowIso)
-      .limit(10_000);
+    // cohortes grandes — lección del PR #32) y PAGINADO (revisión R-5 del
+    // PR #33: PostgREST capa CUALQUIER limit en max_rows=1000 en silencio;
+    // sin paginar, la cohorte grande subcontaba y disparaba una falsa alerta
+    // justo donde más duele). Ventana de 26 h (no 24: el día del cambio de
+    // hora chileno dura 25 h — revisión R-6); el filtro fino por día LOCAL se
+    // hace en JS con localIsoDate.
+    const windowStart = new Date(cfg.now - 26 * 3_600_000).toISOString();
+    const sessions: Day1SessionRow[] = [];
+    let sessError: { message: string } | null = null;
+    for (let page = 0; page < EVENTS_MAX_PAGES; page += 1) {
+      const from = page * EVENTS_PAGE_SIZE;
+      const { data, error } = await serviceDb
+        .from("sence_sessions")
+        .select("enrollment_id, created_at, enrollments!inner(action_id, exento)")
+        .eq("enrollments.action_id", action.id)
+        .eq("enrollments.exento", false)
+        .in("status", ["iniciada", "cerrada"])
+        .gte("created_at", windowStart)
+        .lte("created_at", nowIso)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + EVENTS_PAGE_SIZE - 1);
+      if (error) {
+        sessError = error;
+        break;
+      }
+      const batch = (data ?? []) as unknown as Day1SessionRow[];
+      sessions.push(...batch);
+      if (batch.length < EVENTS_PAGE_SIZE) break;
+      if (page === EVENTS_MAX_PAGES - 1) {
+        log.warn("[sence][worker] sesiones de día-1 truncadas por tope de páginas", {
+          codigoAccion: action.codigo_accion,
+          maxRows: EVENTS_MAX_PAGES * EVENTS_PAGE_SIZE,
+        });
+      }
+    }
     if (sessError) {
       log.error("[sence][worker] fallo leyendo sesiones para día-1", {
         message: sessError.message,
@@ -555,7 +580,7 @@ export async function runDay1Check(
       continue;
     }
     const withSessionToday = new Set(
-      ((sessData ?? []) as unknown as Day1SessionRow[])
+      sessions
         .filter((r) => localIsoDate(Date.parse(r.created_at), tz) === today)
         .map((r) => r.enrollment_id),
     ).size;

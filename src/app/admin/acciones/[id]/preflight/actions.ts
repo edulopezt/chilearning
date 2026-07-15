@@ -14,7 +14,7 @@ import {
 export type GuideActionState =
   | { status: "idle" }
   | { status: "error"; error: GuideError }
-  | { status: "sent"; summary: GuideSendSummary }
+  | { status: "sent"; summary: GuideSendSummary; audited: boolean }
   | { status: "marked" };
 
 /** Envía la guía Clave Única a los inscritos no exentos de la acción. */
@@ -35,7 +35,7 @@ export async function sendGuideAction(
   const result = await sendClaveUnicaGuide(principal, actionId, { courseUrl });
   if (!result.ok) return { status: "error", error: result.error };
   revalidatePath(`/admin/acciones/${actionId}/preflight`);
-  return { status: "sent", summary: result.summary };
+  return { status: "sent", summary: result.summary, audited: result.audited };
 }
 
 /** Marca manual (fallback sin proveedor de correo). */

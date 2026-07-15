@@ -249,6 +249,8 @@ export const esCL = {
       environmentRce: "La acción apunta a producción (rce).",
       datesMissing: "Faltan las fechas de inicio y/o término (sin rango no se registra asistencia).",
       datesInverted: "La fecha de inicio es posterior a la de término.",
+      datesEnded:
+        "El período de ejecución ya TERMINÓ según sus fechas: los intentos de asistencia serán previsiblemente rechazados (código 309). Si la acción sigue vigente, corrige las fechas.",
       datesStarted: "La acción ya comenzó según sus fechas.",
       datesOk: "Fechas definidas y coherentes.",
       runsEmpty: "La acción no tiene inscritos todavía.",
@@ -285,6 +287,10 @@ export const esCL = {
       markedOk: "Guía marcada como enviada.",
       notConfigured:
         "El proveedor de correo no está configurado (falta RESEND_API_KEY). Puedes marcarla como enviada si la hiciste llegar por otra vía.",
+      auditFailed:
+        "No se pudo dejar constancia en la bitácora. Reintenta: sin registro auditable la operación no cuenta.",
+      sentUnaudited:
+        "los correos salieron, pero NO quedó constancia en la bitácora — reintenta el envío o marca manualmente para dejar registro.",
       error: "No se pudo completar la operación.",
       summary: "enviados",
       summaryFailed: "fallidos",

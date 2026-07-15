@@ -16,7 +16,6 @@
  * digitado / DV inválido / configuración rota).
  */
 
-import { normalizeRun } from "./run";
 import {
   validateActionCode,
   validateRunField,
@@ -110,10 +109,14 @@ export function evaluateActionPreflight(input: ActionPreflightInput): ActionPref
   }
 
   // --- config_rut_otec ---
+  // CRUDO, sin normalizar (revisión R-1 del PR #33): el motor pasa el valor
+  // ALMACENADO tal cual a su pre-flight I-8; validar una copia normalizada
+  // aquí produce un "falso verde" si la BD guardara un valor sin normalizar.
+  // El checklist valida EXACTAMENTE lo que el motor consumirá.
   if (input.config === null) {
     items.push({ id: "config_rut_otec", status: "error", detailKey: "noConfig" });
   } else {
-    const violations = validateRunField("rutOtec", normalizeRun(input.config.rutOtec));
+    const violations = validateRunField("rutOtec", input.config.rutOtec);
     items.push(
       violations.length === 0
         ? { id: "config_rut_otec", status: "ok", detailKey: "rutOk" }
@@ -173,6 +176,11 @@ export function evaluateActionPreflight(input: ActionPreflightInput): ActionPref
       items.push({ id: "dates", status: "error", detailKey: "datesMissing" });
     } else if (startsOn > endsOn) {
       items.push({ id: "dates", status: "error", detailKey: "datesInverted" });
+    } else if (endsOn < input.todayIsoDate) {
+      // Acción TERMINADA (revisión R-2 del PR #33): los intentos de asistencia
+      // serán previsiblemente rechazados (código 309 si las fechas comunicadas
+      // a SENCE coinciden). No es "ya comenzó": es que ya se acabó.
+      items.push({ id: "dates", status: "error", detailKey: "datesEnded" });
     } else if (startsOn < input.todayIsoDate) {
       items.push({ id: "dates", status: "warning", detailKey: "datesStarted" });
     } else {
@@ -181,11 +189,15 @@ export function evaluateActionPreflight(input: ActionPreflightInput): ActionPref
   }
 
   // --- runs: el gate del hito — RUN inválidos plantados DEBEN aparecer. ---
-  // Igual que el import CSV: se normaliza ANTES de validar (una K mayúscula
-  // digitada se salva; lo que queda inválido es un error real de datos).
+  // ⚠ CRUDO, sin normalizar (revisión R-1 del PR #33): el motor valida
+  // `enrollment.run` tal cual está ALMACENADO (engine → validatePreflight).
+  // El import CSV normaliza antes de persistir, así que el flujo soportado
+  // siempre guarda normalizado; si algo llegó a la BD sin normalizar
+  // (edición manual, SQL ad-hoc), el alumno chocará con el motor — y este
+  // checklist DEBE decirlo, no taparlo validando una copia arreglada.
   const invalidRuns: InvalidRunRow[] = [];
   for (const e of input.enrollments) {
-    const violations = validateRunField("runAlumno", normalizeRun(e.run));
+    const violations = validateRunField("runAlumno", e.run);
     if (violations.length > 0) {
       invalidRuns.push({
         enrollmentId: e.enrollmentId,
