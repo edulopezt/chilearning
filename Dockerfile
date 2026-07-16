@@ -24,8 +24,12 @@ COPY . .
 # diseño (la anon key va en el navegador); Coolify las pasa como build args.
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+# DSN público de Sentry: el cliente lo inlina en el bundle EN EL BUILD (no es
+# secreto por diseño). Coolify lo pasa como build arg si existe la env homónima.
+ARG NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
@@ -45,6 +49,11 @@ RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 worker
 COPY --from=worker-build --chown=worker:nodejs /app/dist/worker ./dist/worker
 USER worker
+# El worker es un proceso de fondo (BullMQ), SIN servidor HTTP: deshabilita
+# explícitamente el healthcheck para que Coolify no espere estado de salud del
+# contenedor (el `HEALTHCHECK` del stage `runner` no aplica aquí). Sin esto el
+# rolling update del worker falla ("map has no entry for key Health").
+HEALTHCHECK NONE
 CMD ["node", "dist/worker/index.js"]
 
 # ---------- runner (app web) ----------
