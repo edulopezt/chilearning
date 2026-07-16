@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { handleCallback } from "@/modules/sence/engine";
-import { buildEngineDeps, senceServiceClient } from "@/modules/sence/server-deps";
+import { buildCallbackDeps, senceServiceClient } from "@/modules/sence/server-deps";
 
 /**
  * POST /api/sence/cb — receptor ÚNICO de los 4 callbacks de SENCE (inicio/cierre,
@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
 
   // Sin nonce en la URL: nunca correlaciona una sesión (se persiste unmatched).
   // El receptor real es /api/sence/cb/{nonce}. Esta ruta solo cae basura/ataques.
-  const deps = buildEngineDeps(request);
+  // H4-R-005: deps mínimas sin la clave de cifrado (I-1: persistir siempre).
+  const deps = buildCallbackDeps();
   const db = senceServiceClient();
   await handleCallback(db, params, deps, null);
 

@@ -4,6 +4,7 @@ import {
   buildIdSesionAlumno,
   computeDedupeHash,
   parseFechaHora,
+  pickField,
   resolveEndpoint,
   resolvePublicOrigin,
   stripToken,
@@ -133,9 +134,37 @@ describe("resolvePublicOrigin (callback detrás de proxy, anti-spoofing)", () =>
     ).toBe("https://seminarea.chilearning.cl");
   });
 
-  it("sin headers de proxy, usa el origin de la URL cruda", () => {
+  it("sin headers de proxy, usa el origin canónico de config", () => {
     expect(resolvePublicOrigin(h({}), "https://directo.chilearning.cl/api/sence/start", ROOT)).toBe(
       "https://directo.chilearning.cl",
     );
+  });
+
+  it("FAIL-CLOSED (H4-R-015): con host no válido ancla al origin canónico, no a request.url reflejada", () => {
+    // El 2º argumento es ahora el origin CANÓNICO de configuración (APP_BASE_URL o
+    // https del dominio raíz), NO request.url. Un `Host` bogus del atacante no
+    // desvía el callback: siempre cae al canónico, siempre https.
+    expect(
+      resolvePublicOrigin(h({ host: "attacker.com" }), "https://seminarea.chilearning.cl", ROOT),
+    ).toBe("https://seminarea.chilearning.cl");
+    expect(
+      resolvePublicOrigin(h({ "x-forwarded-host": "attacker.com" }), "https://seminarea.chilearning.cl", ROOT),
+    ).toBe("https://seminarea.chilearning.cl");
+  });
+});
+
+describe("pickField (tolerancia a nombres de campo con espacios, H4-R-001 / §1.2)", () => {
+  it("lee la clave exacta", () => {
+    expect(pickField({ IdSesionAlumno: "abc" }, "IdSesionAlumno")).toBe("abc");
+  });
+  it("tolera un espacio colgante en la clave (errata del manual, Anexo 3)", () => {
+    expect(pickField({ "IdSesionAlumno ": "abc" }, "IdSesionAlumno")).toBe("abc");
+    expect(pickField({ " GlosaError ": "300" }, "GlosaError")).toBe("300");
+  });
+  it("prefiere la clave exacta si conviven exacta y con espacio", () => {
+    expect(pickField({ IdSesionSence: "S-1", "IdSesionSence ": "S-2" }, "IdSesionSence")).toBe("S-1");
+  });
+  it("devuelve undefined si no está en ninguna forma", () => {
+    expect(pickField({ Otro: "x" }, "IdSesionAlumno")).toBeUndefined();
   });
 });

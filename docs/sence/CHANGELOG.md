@@ -7,6 +7,41 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-16 — Fixes CONFIRMED de la revisión adversarial H4 (tarea 4.1b)
+
+**Sin cambio de contrato SENCE.** Aplica los 6 hallazgos CONFIRMED seguros del
+informe [`REVISION-ADVERSARIAL-H4.md`](REVISION-ADVERSARIAL-H4.md) (implementan el
+contrato o refuerzan la defensa en profundidad; ninguno cambia una transición
+T1–T9 ni el README congelado). Decisión de registro: `D-047`.
+
+- **H4-R-002 (HIGH):** `callback_nonce` (secreto anti-falsificación H-2) era legible
+  por cualquier cuenta de staff del tenant vía PostgREST (grant de tabla sin revoke
+  de columna — mismo patrón que `token_encrypted` #22) → un insider podía forjar
+  callbacks y alterar la asistencia de OTRO alumno. Migración
+  `20260716120000_sence_sessions_hide_callback_nonce.sql`: revoca el grant de tabla
+  y re-otorga SELECT solo en las columnas no sensibles. El motor lee el nonce vía
+  service-role. + test RLS que afirma que el cliente no puede leerlo.
+- **H4-R-001:** `pickField` (en `domain/protocol.ts`) tolera nombres de campo con
+  espacio colgante (`"IdSesionAlumno "`, errata del manual §1.2/Anexo 3) en la
+  correlación/clasificación de `handleCallback`; el payload CRUDO se persiste
+  intacto (I-1). + tests de integración de los 4 tipos de callback con claves
+  espaciadas (cumple la promesa de `SPEC_INTEGRACION_SENCE §5.2`).
+- **H4-R-005:** el receptor de callbacks usa `buildCallbackDeps` (solo
+  `now`+`sessionMaxMs`), NUNCA parsea la clave de cifrado — una
+  `SENCE_TOKEN_ENCRYPTION_KEY` ausente/rota ya no tumba el callback con 500 ni pierde
+  la asistencia (I-1). `handleCallback` acepta el tipo estrecho `CallbackDeps`.
+- **H4-R-007:** el error del SELECT de correlación se registra (sin PII ni token) y
+  se reintenta una vez, en vez de degradar a `unmatched` en silencio.
+- **H4-R-015:** `resolvePublicOrigin` fail-closed — si el host reenviado no valida,
+  ancla al origin CANÓNICO de config (`APP_BASE_URL`/https del dominio raíz), nunca
+  refleja `request.url` (que sale http tras el proxy y es influenciable por el cliente).
+- **H4-R-016:** un segundo `start` sobre la misma inscripción (doble-click, o la de
+  3 h vencida que el worker aún no barrió) devuelve un resultado tipado
+  `already_open` → la ruta redirige 303 a `/mi-curso`, en vez de un 500 crudo (I-9).
+
+Los rulings (T8, restart de la pendiente, gate M-4, etc.) y los follow-ups quedan en
+el informe para decisión de Edu.
+
 ## 2026-07-16 — Revisión adversarial pre-piloto del módulo (tarea 4.1b)
 
 **Sin cambio de contrato SENCE.** Auditoría multi-agente (26 agentes: 6 lentes →

@@ -177,8 +177,10 @@ describe("runExpiryTick — T4 (abandono de Clave Única)", () => {
     const first = await startSession(guard, enrollmentId, STUDENT_A, engineDeps());
     expect(first.kind).toBe("ready");
 
-    // 2. Reintento con la pendiente viva: el índice único lo bloquea (el brick).
-    await expect(startSession(guard, enrollmentId, STUDENT_A, engineDeps())).rejects.toThrow();
+    // 2. Reintento con la pendiente viva: el índice único lo detecta y el motor
+    //    devuelve un resultado TIPADO `already_open` (H4-R-016), no un 500 crudo.
+    const blocked = await startSession(guard, enrollmentId, STUDENT_A, engineDeps());
+    expect(blocked.kind).toBe("already_open");
 
     // 3. El worker expira la abandonada (T4)...
     await runExpiryTick(svc, {

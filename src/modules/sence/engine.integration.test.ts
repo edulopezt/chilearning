@@ -347,3 +347,79 @@ describe("motor SENCE end-to-end contra el mock (gate F0)", () => {
     expect(data?.[0]?.tenant_id).toBeNull();
   });
 });
+
+describe("robustez del motor (revisión adversarial H4)", () => {
+  /** Inicia una sesión pendiente SIN pasar por el mock (control directo del callback). */
+  async function startPending(): Promise<{ sessionId: string; idSesionAlumno: string; nonce: string }> {
+    const r = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
+    if (r.kind !== "ready") throw new Error(`start no quedó ready: ${r.kind}`);
+    const nonce = r.fields.UrlRetoma!.split("/").pop()!;
+    return { sessionId: r.sessionId, idSesionAlumno: r.fields.IdSesionAlumno!, nonce };
+  }
+  async function nonceOf(sessionId: string): Promise<string> {
+    return (await sessionRow(sessionId)).callback_nonce as string;
+  }
+
+  // H4-R-001 (§1.2): el correlador/clasificador tolera nombres de campo con espacio
+  // colgante (errata documentada de SENCE, Anexo 3). Cubre los 4 tipos de callback,
+  // cumpliendo la promesa de SPEC_INTEGRACION_SENCE §5.2.
+  it("H4-R-001: tolera espacio colgante en las claves — start_ok", async () => {
+    const { sessionId, idSesionAlumno, nonce } = await startPending();
+    const res = await handleCallback(
+      svc,
+      { "IdSesionAlumno ": idSesionAlumno, "IdSesionSence ": "S-SPACE", "FechaHora ": nowFechaHora() },
+      deps,
+      nonce,
+    );
+    expect(res.eventKind).toBe("start_ok");
+    const row = await sessionRow(sessionId);
+    expect(row.status).toBe("iniciada");
+    expect(row.id_sesion_sence).toBe("S-SPACE");
+  });
+
+  it("H4-R-001: tolera espacio colgante — start_error", async () => {
+    const { sessionId, idSesionAlumno, nonce } = await startPending();
+    const res = await handleCallback(svc, { "IdSesionAlumno ": idSesionAlumno, "GlosaError ": "211" }, deps, nonce);
+    expect(res.eventKind).toBe("start_error");
+    const row = await sessionRow(sessionId);
+    expect(row.status).toBe("error");
+    expect(row.error_codes).toContain("211");
+  });
+
+  it("H4-R-001: tolera espacio colgante — close_ok", async () => {
+    await scenario({ match: { endpoint: "start" }, respond: { kind: "start_ok", idSesionSence: "S-CL", fechaHora: nowFechaHora() } });
+    const { sessionId, idSesionAlumno } = await start();
+    const res = await handleCallback(svc, { "IdSesionAlumno ": idSesionAlumno }, deps, await nonceOf(sessionId));
+    expect(res.eventKind).toBe("close_ok");
+    expect((await sessionRow(sessionId)).status).toBe("cerrada");
+  });
+
+  it("H4-R-001: tolera espacio colgante — close_error", async () => {
+    await scenario({ match: { endpoint: "start" }, respond: { kind: "start_ok", idSesionSence: "S-CE", fechaHora: nowFechaHora() } });
+    const { sessionId, idSesionAlumno } = await start();
+    const res = await handleCallback(svc, { "IdSesionAlumno ": idSesionAlumno, "GlosaError ": "300" }, deps, await nonceOf(sessionId));
+    expect(res.eventKind).toBe("close_error");
+    expect((await sessionRow(sessionId)).status).toBe("error");
+  });
+
+  it("H4-R-005: el callback persiste aunque las deps NO traigan la clave de cifrado", async () => {
+    const { sessionId, idSesionAlumno, nonce } = await startPending();
+    // Deps MÍNIMAS (como buildCallbackDeps): sin encryptionKey. El callback no la
+    // necesita; una clave rota jamás debe perder la asistencia (I-1).
+    const res = await handleCallback(
+      svc,
+      { IdSesionAlumno: idSesionAlumno, IdSesionSence: "S-NOKEY", FechaHora: nowFechaHora() },
+      { now: () => Date.now(), sessionMaxMs: deps.sessionMaxMs },
+      nonce,
+    );
+    expect(res.persisted).toBe(true);
+    expect((await sessionRow(sessionId)).status).toBe("iniciada");
+  });
+
+  it("H4-R-016: un segundo start sobre la misma inscripción devuelve already_open (no lanza)", async () => {
+    const first = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
+    expect(first.kind).toBe("ready");
+    const second = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
+    expect(second.kind).toBe("already_open");
+  });
+});

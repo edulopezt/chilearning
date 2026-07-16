@@ -36,14 +36,19 @@ export function resolveEndpoint(
  * SENCE (desvío del `IdSesionSence`). Por eso el host reenviado se acepta SOLO
  * si es el dominio raíz o un subdominio suyo — el mismo criterio que
  * `resolveTenantFromHost` en el middleware — y el esquema se FUERZA a `https`
- * (SENCE lo exige). Si no valida, se cae al origin de la URL cruda. El hostname
- * se parsea como URL para descartar puerto, userinfo (`a@b`) y path (anti-bypass).
- * Función pura (sin IO): el dominio raíz permitido entra por parámetro para no
- * romper el aislamiento del módulo (I-16).
+ * (SENCE lo exige). El hostname se parsea como URL para descartar puerto,
+ * userinfo (`a@b`) y path (anti-bypass).
+ *
+ * FAIL-CLOSED (H4-R-015): si el host reenviado NO valida, se ancla al origin
+ * CANÓNICO de configuración (`canonicalOrigin`, siempre https) — NUNCA se refleja
+ * `request.url`, que tras el proxy sale como `http://host-interno` y que un
+ * cliente puede influir con un `Host` bogus (self-exfil del `IdSesionSence` o
+ * self-DoS por un callback no-https). Función pura (sin IO): tanto el dominio
+ * raíz como el origin canónico entran por parámetro (aislamiento del módulo, I-16).
  */
 export function resolvePublicOrigin(
   header: (name: string) => string | null | undefined,
-  fallbackUrl: string,
+  canonicalOrigin: string,
   allowedRootDomain: string,
 ): string {
   const first = (v: string | null | undefined): string | undefined =>
@@ -54,7 +59,8 @@ export function resolvePublicOrigin(
   if (host && root && (host === root || host.endsWith(`.${root}`))) {
     return `https://${host}`;
   }
-  return new URL(fallbackUrl).origin;
+  // Solo el origin del canónico (descarta cualquier path/trailing slash).
+  return new URL(canonicalOrigin).origin;
 }
 
 /** Hostname limpio (sin puerto/userinfo/path) o undefined si no parsea. */
@@ -102,6 +108,27 @@ export function stripToken(payload: Record<string, unknown>): Record<string, unk
     clean[k] = v;
   }
   return clean;
+}
+
+/**
+ * Lee un campo del callback tolerando nombres con espacios colgantes (H4-R-001):
+ * SENCE puede enviar `"IdSesionAlumno "` (errata del manual, Anexo 3; regla de
+ * precedencia §1.2: "tolerar nombres de campo con espacios colgantes" al RECIBIR).
+ * Prueba primero la clave exacta y, si no está, la primera clave cuyo `trim()`
+ * coincida — así el correlador/clasificador ve el valor aunque la clave venga con
+ * espacios, y el payload CRUDO (con sus claves originales) se persiste intacto (I-1).
+ * Espeja lo que `computeDedupeHash`/`stripToken` ya hacen con las claves.
+ */
+export function pickField(
+  params: Record<string, string>,
+  name: string,
+): string | undefined {
+  const exact = params[name];
+  if (exact !== undefined) return exact;
+  for (const k of Object.keys(params)) {
+    if (k.trim() === name) return params[k];
+  }
+  return undefined;
 }
 
 /** Parsea la `FechaHora` de SENCE (`aaaa-mm-dd hh:mm:ss`, hora Chile) a epoch ms. */
