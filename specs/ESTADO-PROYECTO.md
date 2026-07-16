@@ -237,13 +237,18 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   clave + `includeLocalVariables:false` mandado en doc); pipeline `ops/backup/` (pg_dump→age→R2) +
   ensayo restauración #3 real; docs Uptime Kuma/Sentry. 🔒 **Falta (handoff):** SDK Sentry+DSN, cuenta
   R2+clave age, Uptime Kuma self-host.
+  ✅ **3.10 Meta/WhatsApp** (#58, M9) — checklist de verificación Meta Business producido
+  (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); es trámite externo (handoff a Edu), el canal opera
+  en Hito 5. **Pendientes por hacer del Hito 3:** 3.5, 3.11, 3.12, 3.3, 3.9, 3.8.
 - 🔶 **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10 —
   **#57**: `/api/health` + HEALTHCHECK, scrubber de PII/token de Sentry (puro+testeado; 4-ojos F1–F4),
   `ops/backup/` (pg_dump→age→R2) + ensayo restauración #3 real, docs Uptime Kuma/Sentry. 🔒 **Handoff:**
   SDK Sentry+DSN (con `includeLocalVariables:false`+scrubber), cuenta R2+clave age, Uptime Kuma.
 - ⬜ **3.8** E2E Playwright de los 3 flujos críticos — Plan §11.
 - ⬜ **3.9** Automatizaciones n8n (recordatorios asistencia, correos a inactivos, informes al coordinador) — HU-5.9.
-- ⬜ **3.10** Iniciar verificación Meta Business para WhatsApp (trámite lento) — M9.
+- ✅ **3.10** Iniciar verificación Meta Business para WhatsApp (trámite lento) — M9 — **#58**:
+  checklist `docs/whatsapp/META-BUSINESS-VERIFICATION.md` producido. El trámite (no-código) lo ejecuta
+  Edu; el canal opera en Hito 5 (5.11). No bloquea nada.
 - ⬜ **3.11** Portal Supervisor completo (invitaciones, alcance por acción, vigencia, auditoría) — HU-12.1/12.2.
 - ⬜ **3.12** Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10.
 
