@@ -22,6 +22,8 @@ export interface CourseView {
   courseId: string;
   courseName: string;
   exento: boolean;
+  /** Código SENCE del curso (para la etiqueta de grupo del alumno, HU-2.2). */
+  codSence: string | null;
   attendanceLock: boolean;
   lessons: Lesson[];
   /** ids de lecciones que el alumno ya completó (task 1.5). */
@@ -58,7 +60,7 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
 
   const { data: course } = await supabase
     .from("courses")
-    .select("id, name")
+    .select("id, name, cod_sence")
     .eq("id", action.course_id)
     .maybeSingle();
   if (!course) return null;
@@ -90,6 +92,7 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
     courseId: course.id,
     courseName: course.name,
     exento: enrollment.exento,
+    codSence: (course.cod_sence as string | null) ?? null,
     attendanceLock: action.attendance_lock,
     lessons: (lessons ?? []) as Lesson[],
     completedLessonIds: (progress ?? []).map((r) => r.lesson_id as string),

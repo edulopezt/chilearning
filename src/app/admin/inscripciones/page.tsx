@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 interface ActionOption {
   id: string;
   label: string;
+  /** Código SENCE del curso (para generar la plantilla con el grupo real, HU-2.2). */
+  codSence: string | null;
 }
 
 /** Import de alumnos por CSV (task 1.3, HU-2.2/3.2/3.3). Admin/coordinador. */
@@ -29,14 +31,18 @@ export default async function ImportEnrollmentsPage() {
   const guard = tenantGuard(principal.tenantId);
   const { data } = await guard
     .from("actions")
-    .select("id, codigo_accion, course:courses(name)");
+    .select("id, codigo_accion, course:courses(name, cod_sence)");
 
   const actions: ActionOption[] = (data ?? []).map((a) => {
-    const course = a.course as { name?: string } | { name?: string }[] | null;
-    const courseName = Array.isArray(course) ? course[0]?.name : course?.name;
+    const rel = a.course as
+      | { name?: string; cod_sence?: string | null }
+      | { name?: string; cod_sence?: string | null }[]
+      | null;
+    const course = Array.isArray(rel) ? rel[0] : rel;
     return {
       id: a.id as string,
-      label: courseName ? `${courseName} · ${a.codigo_accion}` : String(a.codigo_accion),
+      label: course?.name ? `${course.name} · ${a.codigo_accion}` : String(a.codigo_accion),
+      codSence: course?.cod_sence ?? null,
     };
   });
 

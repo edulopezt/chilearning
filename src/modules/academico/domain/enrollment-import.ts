@@ -1,4 +1,5 @@
 import { isValidRun, MAX_RUN_LENGTH, normalizeRun } from "@/modules/sence/domain/run";
+import { parseGrupo } from "@/modules/academico/domain/enrollment-group";
 
 /**
  * Import de inscripciones desde CSV/Excel (task 1.3, HU-2.2/3.2/3.3).
@@ -11,10 +12,13 @@ import { isValidRun, MAX_RUN_LENGTH, normalizeRun } from "@/modules/sence/domain
  *   nombre, email, run, exento (opcional), apellidos (opcional — task 2.4:
  *   el export SENCE separa NOMBRES/APELLIDOS; jamás se parte un nombre
  *   compuesto de forma heurística, así que si falta la columna, apellidos
- *   queda vacío).
+ *   queda vacío), grupo (opcional — planillas reales del OTEC:
+ *   `Sence-<código del curso>` = alumno SENCE, `Becario` = exento I-14;
+ *   el código se valida contra el curso de la acción destino para que una
+ *   planilla no caiga en el curso equivocado).
  */
 
-export const IMPORT_COLUMNS = ["nombre", "apellidos", "email", "run", "exento"] as const;
+export const IMPORT_COLUMNS = ["nombre", "apellidos", "email", "run", "exento", "grupo"] as const;
 export type ImportColumn = (typeof IMPORT_COLUMNS)[number];
 
 /** Largo máximo de nombre/apellidos (check de la columna en enrollments). */
@@ -32,7 +36,7 @@ export interface ValidEnrollmentRow {
   exento: boolean;
 }
 
-export type RowErrorField = "nombre" | "apellidos" | "email" | "run" | "exento" | "row";
+export type RowErrorField = "nombre" | "apellidos" | "email" | "run" | "exento" | "grupo" | "row";
 
 export interface RowError {
   rowNumber: number;
@@ -118,12 +122,22 @@ function parseExento(raw: string | undefined): boolean | null {
   return null; // valor no reconocido → error de fila
 }
 
+export interface ValidateOptions {
+  /**
+   * Código SENCE del curso de la acción destino, para validar el grupo
+   * `Sence-<código>` de la planilla (HU-2.2). `null` = el curso NO tiene
+   * código SENCE (usar `Sence-…` es error de fila); `undefined` = validación
+   * de coincidencia apagada (solo formato) — para usos sin contexto de acción.
+   */
+  actionCodSence?: string | null;
+}
+
 /**
  * Valida el contenido completo de un CSV y devuelve el reporte fila a fila.
  * No lanza: los problemas de formato del encabezado se reportan como un error
  * de fila 0.
  */
-export function validateEnrollmentCsv(text: string): ImportReport {
+export function validateEnrollmentCsv(text: string, opts: ValidateOptions = {}): ImportReport {
   const rows = parseCsv(text).filter((r) => r.some((c) => c.trim() !== "")); // descarta líneas vacías
   const errors: RowError[] = [];
 
@@ -138,6 +152,7 @@ export function validateEnrollmentCsv(text: string): ImportReport {
     email: header.indexOf("email"),
     run: header.indexOf("run"),
     exento: header.indexOf("exento"),
+    grupo: header.indexOf("grupo"),
   };
 
   const missing = (["nombre", "email", "run"] as const).filter((c) => idx[c] === -1);
@@ -169,6 +184,7 @@ export function validateEnrollmentCsv(text: string): ImportReport {
     const email = cell(idx.email);
     const runRaw = cell(idx.run);
     const exentoRaw = idx.exento >= 0 ? cell(idx.exento) : "";
+    const grupoRaw = idx.grupo >= 0 ? cell(idx.grupo) : "";
 
     const rowErrors: RowError[] = [];
 
@@ -207,6 +223,51 @@ export function validateEnrollmentCsv(text: string): ImportReport {
       rowErrors.push({ rowNumber, field: "exento", message: `Valor de "exento" no reconocido: "${exentoRaw}" (usa Sí/No).` });
     }
 
+    // Grupo operativo del OTEC (HU-2.2): decide `exento` cuando viene y se
+    // valida contra el curso de la acción (planilla equivocada = filas rechazadas).
+    const grupo = parseGrupo(grupoRaw);
+    if (grupo.kind === "invalid") {
+      // Con el código del curso a mano, el mensaje dice el valor EXACTO esperado.
+      const expected = opts.actionCodSence ? `"Sence-${opts.actionCodSence}"` : `"Sence-<código del curso>"`;
+      rowErrors.push({
+        rowNumber,
+        field: "grupo",
+        message: `Valor de "grupo" no reconocido: "${grupoRaw}" (usa ${expected} o "Becario").`,
+      });
+    } else if (grupo.kind === "sence") {
+      if (opts.actionCodSence === null) {
+        rowErrors.push({
+          rowNumber,
+          field: "grupo",
+          message: `El grupo "${grupoRaw}" no aplica: el curso de la acción destino no tiene código SENCE.`,
+        });
+      } else if (opts.actionCodSence !== undefined && grupo.code !== opts.actionCodSence) {
+        rowErrors.push({
+          rowNumber,
+          field: "grupo",
+          message: `El grupo "${grupoRaw}" no coincide con el código SENCE del curso de esta acción (Sence-${opts.actionCodSence}). ¿Planilla equivocada?`,
+        });
+      }
+      // Contradicción explícita entre columnas (solo si exento venía escrito).
+      if (exentoRaw !== "" && exento === true) {
+        rowErrors.push({
+          rowNumber,
+          field: "grupo",
+          message: `La fila dice exento "Sí" pero el grupo es "${grupoRaw}" (alumno SENCE): corrige una de las dos columnas.`,
+        });
+      }
+    } else if (grupo.kind === "becario" && exentoRaw !== "" && exento === false) {
+      rowErrors.push({
+        rowNumber,
+        field: "grupo",
+        message: `La fila dice exento "No" pero el grupo es "Becario": corrige una de las dos columnas.`,
+      });
+    }
+
+    // El grupo manda sobre `exento` cuando viene: Becario → exento; Sence → no.
+    const effectiveExento =
+      grupo.kind === "becario" ? true : grupo.kind === "sence" ? false : (exento ?? false);
+
     // Duplicados DENTRO del archivo (no insertar basura).
     if (run !== "" && isValidRun(run)) {
       const prev = seenRuns.get(run);
@@ -231,7 +292,7 @@ export function validateEnrollmentCsv(text: string): ImportReport {
     // ocurrencia queda registrada y la segunda es la que se reporta duplicada.
     seenRuns.set(run, rowNumber);
     seenEmails.set(emailKey, rowNumber);
-    valid.push({ rowNumber, nombre, apellidos, email, run, exento: exento ?? false });
+    valid.push({ rowNumber, nombre, apellidos, email, run, exento: effectiveExento });
   }
 
   return { valid, errors, totalRows: rows.length - 1 };

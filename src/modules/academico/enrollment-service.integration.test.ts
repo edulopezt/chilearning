@@ -265,4 +265,36 @@ describe("correo de bienvenida al inscribir (Hito 2, cierra follow-up de 1.6)", 
     expect(r.imported).toBe(2);
     expect(r.emails).toEqual({ sent: 0, failed: 0, skipped: 2 });
   });
+
+  it("columna grupo (HU-2.2): valida contra el cod_sence REAL del curso destino y desglosa", async () => {
+    // El curso demo del seed tiene cod_sence 1234567890: el servicio debe
+    // leerlo (embed service-role) y pasarlo al validador — camino completo.
+    createdEmails.push("grupo.sence@otec.cl", "grupo.becario@otec.cl");
+    const csv =
+      "nombre,email,run,grupo\n" +
+      "Grupo Sence,grupo.sence@otec.cl,5126663-3,Sence-1234567890\n" + // código correcto
+      "Grupo Beca,grupo.becario@otec.cl,11111111-1,Becario\n" +
+      "Grupo Malo,grupo.malo@otec.cl,12345678-5,Sence-9999999999\n"; // otro curso → rechazada
+    const r = await importEnrollmentsFromCsv(admin, DEMO_ACTION, csv);
+    if ("error" in r) throw new Error(`inesperado: ${r.error}`);
+
+    expect(r.imported).toBe(2);
+    expect(r.groups).toEqual({ sence: 1, becario: 1, senceLabel: "Sence-1234567890" });
+    expect(r.report.errors).toEqual([
+      expect.objectContaining({ rowNumber: 3, field: "grupo" }),
+    ]);
+
+    // La exención viene del grupo (Becario → exento; Sence → no).
+    const { data: enr } = await svc
+      .from("enrollments")
+      .select("run, exento")
+      .eq("action_id", DEMO_ACTION)
+      .in("run", ["5126663-3", "11111111-1"]);
+    expect(enr!.find((x) => x.run === "5126663-3")?.exento).toBe(false);
+    expect(enr!.find((x) => x.run === "11111111-1")?.exento).toBe(true);
+
+    // La fila rechazada NO creó usuario (gate F1).
+    const { data: users } = await svc.auth.admin.listUsers({ page: 1, perPage: 200 });
+    expect(users.users.map((u) => u.email?.toLowerCase())).not.toContain("grupo.malo@otec.cl");
+  });
 });
