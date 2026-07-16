@@ -11,7 +11,7 @@ import { completedLessonIds, setLessonProgress } from "@/modules/academico/progr
 import type { Principal } from "@/modules/core/domain/rbac";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
-const STUDENT_ID = "aaaaaaaa-0000-4000-8000-000000000005"; // alumno@otec-andes.test (inscrito)
+const STUDENT_ID = "aaaaaaaa-0000-4000-8000-000000000005"; // alumno@seminarea.test (inscrito)
 const OTHER_ID = "aaaaaaaa-0000-4000-8000-000000000004"; // tutor (no inscrito como alumno)
 const ENROLLMENT = "e0000000-0000-4000-8000-000000000001";
 

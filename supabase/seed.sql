@@ -6,7 +6,7 @@
 -- =============================================================================
 
 insert into public.tenants (id, slug, name, rut, plan, status) values
-  ('11111111-1111-4111-8111-111111111111', 'otec-andes',    'OTEC Demo Andes SpA',     '76111111-6', 'standard', 'active'),
+  ('11111111-1111-4111-8111-111111111111', 'seminarea',    'Seminarea SpA',     '76111111-6', 'standard', 'active'),
   ('22222222-2222-4222-8222-222222222222', 'otec-pacifico', 'OTEC Demo Pacífico Ltda', '76222222-1', 'standard', 'active');
 
 -- ---------- Usuarios ficticios (auth.users) ----------
@@ -28,14 +28,14 @@ select
   now(), now(), '', '', '', ''
 from (values
   ('00000000-0000-4000-8000-00000000000a', 'superadmin@chilearning.test'),
-  -- Tenant A: OTEC Demo Andes
-  ('aaaaaaaa-0000-4000-8000-000000000001', 'admin@otec-andes.test'),
-  ('aaaaaaaa-0000-4000-8000-000000000002', 'coordinacion@otec-andes.test'),
-  ('aaaaaaaa-0000-4000-8000-000000000003', 'relator@otec-andes.test'),
-  ('aaaaaaaa-0000-4000-8000-000000000004', 'tutor@otec-andes.test'),
-  ('aaaaaaaa-0000-4000-8000-000000000005', 'alumno@otec-andes.test'),
-  ('aaaaaaaa-0000-4000-8000-000000000006', 'empresa@otec-andes.test'),
-  ('aaaaaaaa-0000-4000-8000-000000000007', 'supervision@otec-andes.test'),
+  -- Tenant A: Seminarea
+  ('aaaaaaaa-0000-4000-8000-000000000001', 'admin@seminarea.test'),
+  ('aaaaaaaa-0000-4000-8000-000000000002', 'coordinacion@seminarea.test'),
+  ('aaaaaaaa-0000-4000-8000-000000000003', 'relator@seminarea.test'),
+  ('aaaaaaaa-0000-4000-8000-000000000004', 'tutor@seminarea.test'),
+  ('aaaaaaaa-0000-4000-8000-000000000005', 'alumno@seminarea.test'),
+  ('aaaaaaaa-0000-4000-8000-000000000006', 'empresa@seminarea.test'),
+  ('aaaaaaaa-0000-4000-8000-000000000007', 'supervision@seminarea.test'),
   -- Tenant B: OTEC Demo Pacífico
   ('bbbbbbbb-0000-4000-8000-000000000001', 'admin@otec-pacifico.test'),
   ('bbbbbbbb-0000-4000-8000-000000000002', 'coordinacion@otec-pacifico.test'),
@@ -79,7 +79,7 @@ insert into public.supervisor_grants (tenant_id, user_id, email, scope) values
 insert into public.platform_admins (user_id) values
   ('00000000-0000-4000-8000-00000000000a');
 
--- ---------- Curso demo con candado SENCE (Hito 0) — tenant Andes ----------
+-- ---------- Curso demo con candado SENCE (Hito 0) — tenant Seminarea ----------
 -- Datos ficticios. El token del OTEC NO va aquí (se cifra y se configura por UI/
 -- servidor con la clave AES): token_encrypted queda NULL en el seed.
 insert into public.sence_otec_config (tenant_id, rut_otec, default_environment) values
@@ -94,7 +94,7 @@ insert into public.actions (id, tenant_id, course_id, codigo_accion, training_li
    'c0000000-0000-4000-8000-000000000001', 'ACC-DEMO-0001', 3, 'rcetest', true,
    '2026-07-01', '2026-12-31', 'active');
 
--- Inscribe al alumno demo (alumno@otec-andes.test) con un RUN ficticio válido.
+-- Inscribe al alumno demo (alumno@seminarea.test) con un RUN ficticio válido.
 insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento, first_names, last_names) values
   ('e0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
    'ac000000-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000005',

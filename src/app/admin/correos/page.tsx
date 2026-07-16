@@ -43,13 +43,13 @@ export default async function EmailsPage() {
   const invitation = renderInvitationEmail({
     brand,
     recipientName: "Ana Díaz",
-    acceptUrl: "https://otec-andes.chilearning.cl/login",
+    acceptUrl: "https://seminarea.chilearning.cl/login",
   });
   const welcome = renderWelcomeEmail({
     brand,
     recipientName: "Ana Díaz",
     courseName: "Prevención de riesgos e-learning",
-    courseUrl: "https://otec-andes.chilearning.cl/mi-curso",
+    courseUrl: "https://seminarea.chilearning.cl/mi-curso",
   });
 
   return (

@@ -16,7 +16,7 @@ const admin: Principal = { userId: "aaaaaaaa-0000-4000-8000-000000000001", tenan
 const student: Principal = { userId: "s", tenantId: TENANT_A, roles: ["student"] };
 
 let svc: SupabaseClient;
-const valid = { primaryColor: "#1e3a8a", accentColor: "#0ea5e9", logoUrl: "https://cdn.otec.cl/logo.png", name: "OTEC Andes", rut: "76111111-6" };
+const valid = { primaryColor: "#1e3a8a", accentColor: "#0ea5e9", logoUrl: "https://cdn.otec.cl/logo.png", name: "Seminarea", rut: "76111111-6" };
 
 beforeAll(() => {
   const out = execSync("supabase status -o env", { encoding: "utf8" });
@@ -46,7 +46,7 @@ describe("editor de marca (task 1.10, HU-1.2)", () => {
     const state = await getBrandingState(admin);
     expect(state?.branding.primaryColor).toBe("#1e3a8a");
     expect(state?.branding.logoUrl).toBe("https://cdn.otec.cl/logo.png");
-    expect(state?.name).toBe("OTEC Andes");
+    expect(state?.name).toBe("Seminarea");
   });
 
   it("deja traza del cambio en audit_log (P8)", async () => {

@@ -34,8 +34,8 @@ describe("security headers", () => {
 
 describe("csrf assertSameOrigin", () => {
   it("permite mismo dominio raíz y bloquea cross-site", () => {
-    expect(assertSameOrigin("https://otec-andes.chilearning.cl", "otec-andes.chilearning.cl")).toBe(true);
-    expect(assertSameOrigin("https://evil.com", "otec-andes.chilearning.cl")).toBe(false);
+    expect(assertSameOrigin("https://seminarea.chilearning.cl", "seminarea.chilearning.cl")).toBe(true);
+    expect(assertSameOrigin("https://evil.com", "seminarea.chilearning.cl")).toBe(false);
   });
   it("es conservador: sin Origin o malformado no bloquea", () => {
     expect(assertSameOrigin(null, "x.chilearning.cl")).toBe(true);

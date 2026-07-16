@@ -25,6 +25,17 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-16
+- **D-046 (Edu): el tenant demo pasa a ser `seminarea`** (cliente real, staging en
+  `seminarea.chilearning.cl`). Mismo UUID; solo slug/nombre/correos semilla (`admin@seminarea.test`, …).
+  Los datos del seed siguen siendo FICTICIOS (regla: nunca datos reales en fixtures); el RUT del tenant
+  es placeholder hasta que Edu cargue el real por la app. `otec-pacifico` queda como tenant B de pruebas.
+  **Corte de infra PENDIENTE (tras el merge del rename):** (1) SQL cloud: `tenants.slug/name` +
+  correos `auth.users`/`identities` `@otec-andes.test`→`@seminarea.test`; (2) Coolify: fqdn de la app
+  (ambos dominios en transición) + `APP_BASE_URL` del worker; (3) Supabase Auth `site_url`;
+  (4) re-apuntar los monitores de Uptime Kuma; (5) refrescar `STAGING-CREDENTIALS.txt`.
+- **HANDOFF INFRA ✅ (2026-07-16):** Resend + Sentry deployados en app/worker; backup off-site cifrado
+  FUNCIONANDO (primer dump real en R2, cron diario); Uptime Kuma monitoreando con alertas. Fixes reales
+  del despliegue: #70, #72, #73, #74, #75. Detalle en `STAGING-CREDENTIALS.txt` (local).
 - **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16) — HITO 3 COMPLETO (12/12) ✅:** se avanzó el
   **Hito 3 de 0/12 a 12/12 tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62, #64, #66, #68),
   cada una con revisión adversarial 4-ojos antes del merge (la de 3.11 fue **multi-agente**: 4 lentes +
@@ -35,11 +46,7 @@
   cuenta R2+clave `age` · Sentry DSN · Uptime Kuma · **Supabase Pro** (2FA enforcement) · confirmar §7-R7 del
   certificado + firma real · endurecer CSP a enforcing · iniciar trámite Meta · **n8n en Coolify** +
   `N8N_WEBHOOK_URL`/`SECRET` (`docs/n8n/WORKFLOWS.md`) · `APP_BASE_URL` para los correos del worker.
-  aprobado. **Handoff a Edu** (nada bloquea el desarrollo, pero se necesita para producción-real):
-  `RESEND_API_KEY`+dominio · cuenta R2+clave `age` (backup off-site) · Sentry DSN (+ conectar el
-  scrubber ya hecho + `includeLocalVariables:false`) · Uptime Kuma · **Supabase Pro** (2FA enforcement)
-  · confirmar **§7-R7** del certificado + firma real del representante · endurecer CSP a enforcing tras
-  verificar en navegador · iniciar trámite Meta (checklist en `docs/whatsapp/`).
+  (Nota: Resend, R2+age, Sentry, Kuma y APP_BASE_URL quedaron HECHOS ese mismo día — ver HANDOFF INFRA ✅.)
 - **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · Hito 2 ✅ (9/9) · **Hito 3 ✅ (12/12)**
 - **Hito 2 CERRADO** — las 9 tareas mergeadas (#31–#41), cada una con revisión adversarial
   4-ojos aplicada; migraciones M1–M4 + bucket `submissions` en el cloud; worker VIVO en staging.
@@ -97,7 +104,8 @@
   scroll horizontal a 360px. Nuevo job `e2e` en CI. **Cierra el gate del Hito 3.**
 - **Hito 3: 12/12 mergeadas. Pendientes: NINGUNO** (los items B/C tienen handoff documentado).
 - **PRs mergeados a `main`:** 61 · **Tests:** ~987 verdes (484 unit + 326 RLS + 155 integración + E2E 3 flujos)
-- **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
+- **Staging:** VIVO en https://otec-andes.chilearning.cl — pasa a https://seminarea.chilearning.cl
+  en el CORTE DE INFRA pendiente de D-046 (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
 
@@ -107,7 +115,7 @@
 
 1. **Herramientas:** Node ≥24, `pnpm`, Docker Desktop **encendido**, Supabase CLI, `gh` (auth `edulopezt`).
 2. **Local:** `pnpm install` → `supabase start` → `supabase db reset` (migra + siembra 2 OTECs × 8 roles + curso demo).
-3. **App local:** `pnpm dev` → http://localhost:3000. Login: `admin@otec-andes.test` / `Password123!`.
+3. **App local:** `pnpm dev` → http://localhost:3000. Login: `admin@seminarea.test` / `Password123!`.
 4. **Verde antes de tocar nada:** `pnpm lint && pnpm typecheck && pnpm test:unit`; con Supabase arriba `pnpm test:rls && pnpm test:integration`.
 5. **Ciclo por tarea:** rama `feat/h<hito>-<tarea>-<desc>` → dominio+tests → servicio (tenantGuard) → UI (verificar 360/1440px) → PR con CI verde → merge → **si hubo migración, aplicarla al cloud** (ver más abajo).
 6. **Memoria persistente** (contexto rápido): `MEMORY.md` en el dir de memoria del proyecto (índice), con `estado-hito-0`, `estado-hito-1`, `staging-deploy`, etc.

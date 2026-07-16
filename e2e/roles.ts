@@ -9,9 +9,9 @@ export const AUTH = {
 export const PASSWORD = "Password123!";
 
 export const USERS: { role: keyof typeof AUTH; email: string }[] = [
-  { role: "admin", email: "admin@otec-andes.test" },
-  { role: "coordinator", email: "coordinacion@otec-andes.test" },
-  { role: "student", email: "alumno@otec-andes.test" },
+  { role: "admin", email: "admin@seminarea.test" },
+  { role: "coordinator", email: "coordinacion@seminarea.test" },
+  { role: "student", email: "alumno@seminarea.test" },
 ];
 
 export const TENANT_A = "11111111-1111-4111-8111-111111111111";

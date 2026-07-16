@@ -9,7 +9,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Auth Hook, no un JWT falso). Proyectos desktop (1440×900) y móvil (Pixel 5) — RNF-6.
  */
 
-const BASE_URL = process.env.E2E_BASE_URL ?? "http://otec-andes.localtest.me:3000";
+const BASE_URL = process.env.E2E_BASE_URL ?? "http://seminarea.localtest.me:3000";
 
 export default defineConfig({
   testDir: "./e2e",

@@ -11,9 +11,11 @@ const ROOT = "chilearning.cl";
 
 describe("isValidTenantSlug", () => {
   it("acepta slugs válidos", () => {
-    expect(isValidTenantSlug("otec-andes")).toBe(true);
+    expect(isValidTenantSlug("seminarea")).toBe(true);
     expect(isValidTenantSlug("abc")).toBe(true);
     expect(isValidTenantSlug("a1b2c3")).toBe(true);
+    // Guion interior permitido (tenant B real del seed depende de esto).
+    expect(isValidTenantSlug("otec-pacifico")).toBe(true);
   });
 
   it("rechaza demasiado cortos, con mayúsculas, guiones al borde o caracteres inválidos", () => {
@@ -21,7 +23,7 @@ describe("isValidTenantSlug", () => {
     expect(isValidTenantSlug("Otec")).toBe(false);
     expect(isValidTenantSlug("-otec")).toBe(false);
     expect(isValidTenantSlug("otec-")).toBe(false);
-    expect(isValidTenantSlug("otec_andes")).toBe(false);
+    expect(isValidTenantSlug("semi_narea")).toBe(false);
     expect(isValidTenantSlug("a".repeat(31))).toBe(false);
   });
 
@@ -35,15 +37,17 @@ describe("isValidTenantSlug", () => {
 
 describe("resolveTenantFromHost", () => {
   it("extrae el slug de un subdominio de tenant", () => {
-    expect(resolveTenantFromHost("otec-andes.chilearning.cl", ROOT)).toEqual({
-      slug: "otec-andes",
+    expect(resolveTenantFromHost("seminarea.chilearning.cl", ROOT)).toEqual({
+      slug: "seminarea",
       isRootDomain: false,
       isReserved: false,
     });
+    // Slug con guion interior (tenant B del seed).
+    expect(resolveTenantFromHost("otec-pacifico.chilearning.cl", ROOT).slug).toBe("otec-pacifico");
   });
 
   it("tolera el puerto y las mayúsculas", () => {
-    expect(resolveTenantFromHost("OTEC-Andes.Chilearning.CL:3000", ROOT).slug).toBe("otec-andes");
+    expect(resolveTenantFromHost("SeminArea.Chilearning.CL:3000", ROOT).slug).toBe("seminarea");
   });
 
   it("detecta el dominio raíz sin subdominio", () => {
@@ -78,7 +82,7 @@ describe("resolveTenantFromHost", () => {
   });
 
   it("funciona con dominios de desarrollo/sslip", () => {
-    expect(resolveTenantFromHost("otec-andes.localtest.me", "localtest.me").slug).toBe("otec-andes");
+    expect(resolveTenantFromHost("seminarea.localtest.me", "localtest.me").slug).toBe("seminarea");
     expect(
       resolveTenantFromHost("demo.216.185.51.57.sslip.io", "216.185.51.57.sslip.io").slug,
     ).toBe("demo");

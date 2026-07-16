@@ -48,7 +48,7 @@ setup("seed certificate for public verification", async () => {
     hours: 24,
     startsOn: "2026-06-01",
     endsOn: "2026-06-30",
-    otecName: "OTEC Demo Andes SpA",
+    otecName: "Seminarea SpA",
   };
   const { error } = await db.from("certificates").upsert(
     {

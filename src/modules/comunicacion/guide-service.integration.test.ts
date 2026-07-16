@@ -101,14 +101,14 @@ describe("sendClaveUnicaGuide (HU-5.8)", () => {
     const outbox: OutgoingEmail[] = [];
     const result = await sendClaveUnicaGuide(ADMIN, actionId, {
       emailSender: fakeSender(outbox),
-      courseUrl: "https://otec-andes.chilearning.cl/mi-curso",
+      courseUrl: "https://seminarea.chilearning.cl/mi-curso",
     });
     if (!result.ok) throw new Error(result.error);
 
     expect(result.summary).toEqual({ sent: 2, failed: 0, skipped: 0 });
     expect(outbox).toHaveLength(2);
     expect(outbox[0]?.html).toContain("Clave Única");
-    expect(outbox[0]?.html).toContain("https://otec-andes.chilearning.cl/mi-curso");
+    expect(outbox[0]?.html).toContain("https://seminarea.chilearning.cl/mi-curso");
 
     const { data: audits } = await svc
       .from("audit_log")
