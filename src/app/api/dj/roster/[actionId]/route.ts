@@ -1,15 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
 
 import { getPrincipal } from "@/modules/core/auth/session";
 import { toCsv } from "@/modules/reportes/domain/cumplimiento";
 import { buildXlsx } from "@/modules/reportes/xlsx";
 import { exportRoster } from "@/modules/dj/dj-service";
 
+const paramsSchema = z.object({ actionId: z.string().uuid() });
+
 /** Nómina de DJ para la GCA (task 3.3): `?formato=xlsx|csv`. */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ actionId: string }> }): Promise<Response> {
   const principal = await getPrincipal();
   if (!principal) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const { actionId } = await params;
+  const parsed = paramsSchema.safeParse(await params);
+  if (!parsed.success) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  const { actionId } = parsed.data;
   const result = await exportRoster(principal, actionId);
   if (!result) return NextResponse.json({ error: "not_found" }, { status: 404 });
 

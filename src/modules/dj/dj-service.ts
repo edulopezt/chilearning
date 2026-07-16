@@ -65,9 +65,12 @@ export async function setDjState(principal: Principal, checklistId: string, next
   if (!cur) return { ok: false, error: "not_found" };
   const t = applyTransition(cur.state as DjState, next);
   if (!t.changed) return { ok: false, error: "invalid_transition" };
-  const { error } = await guard.db.from("dj_checklist").update({ state: next, notes: notes ?? null, updated_by: principal.userId }).eq("tenant_id", tenantId).eq("id", checklistId);
-  if (error) return { ok: false, error: "not_found" };
-  await writeAudit(guard, { actorUserId: principal.userId, action: "dj.state_changed", entity: "dj_checklist", entityId: checklistId, details: { from: cur.state, to: next, notes: notes ?? "" } });
+  // El RPC persiste el estado y su auditoría en UNA transacción (F1): el estado
+  // no puede quedar sin rastro. `p_from` cierra la carrera TOCTOU bajo lock.
+  const { data: appliedId, error } = await guard.db.rpc("dj_set_state", {
+    p_tenant_id: tenantId, p_checklist_id: checklistId, p_from: cur.state, p_to: next, p_notes: notes ?? null, p_actor: principal.userId,
+  });
+  if (error || !appliedId) return { ok: false, error: "invalid_transition" }; // null = fila cambió/desapareció
   return { ok: true };
 }
 

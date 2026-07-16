@@ -81,5 +81,12 @@ describe("dj-service — siembra, transiciones, authz, nómina", () => {
     expect(roster).not.toBeNull();
     expect(roster!.headers.length).toBe(7);
     expect(roster!.rows.length).toBe(2);
+
+    // F1 (4-ojos): el RPC exige `p_from` bajo lock (concurrencia). Con un `p_from`
+    // desfasado devuelve NULL y NO cambia el estado ni audita.
+    const stale = await svc.rpc("dj_set_state", { p_tenant_id: TENANT_A, p_checklist_id: target.id, p_from: "pendiente_emitir", p_to: "anulada", p_notes: null, p_actor: admin.userId });
+    expect(stale.data).toBeNull();
+    const stillEmitida = await svc.from("dj_checklist").select("state").eq("id", target.id).single();
+    expect(stillEmitida.data!.state).toBe("emitida");
   });
 });

@@ -12,11 +12,12 @@ export const dynamic = "force-dynamic";
 
 const t = esCL.dj;
 
-/** Checklist de DJ por acción (task 3.3, HU-5.6). Staff/coordinación gestiona; supervisor lee. */
+/** Checklist de DJ por acción (task 3.3, HU-5.6). Staff-only: otec_admin/coordinator
+ *  gestionan, instructor lee. Sin supervisor (cumplimiento SENCE interno, ver 3.12). */
 export default async function DjPage({ params }: { params: Promise<{ id: string }> }) {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
-  const canView = principal.tenantId && authorize(principal, principal.tenantId, ["otec_admin", "coordinator", "instructor", "supervisor"]);
+  const canView = principal.tenantId && authorize(principal, principal.tenantId, ["otec_admin", "coordinator", "instructor"]);
   if (!canView) {
     return <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 p-6"><p className="text-muted-foreground">{t.forbidden}</p></main>;
   }
