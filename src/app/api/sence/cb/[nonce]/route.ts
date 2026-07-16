@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { enforce } from "@/lib/rate-limit";
 import { handleCallback } from "@/modules/sence/engine";
 import { buildEngineDeps, senceServiceClient } from "@/modules/sence/server-deps";
 
@@ -13,6 +14,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ nonce: string }> },
 ) {
+  // Rate-limit por IP (fail-open sin Redis). EXENTO de chequeo de origen: es un
+  // POST cross-origin legítimo desde SENCE, protegido por el nonce de sesión. 3.6.
+  const ip = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
+  const limited = await enforce([{ surface: "sence_cb", dim: "ip", id: ip, limit: 60, windowSec: 60 }]);
+  if (limited) return limited;
+
   const { nonce } = await params;
   const params_ = await readForm(request);
 

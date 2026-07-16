@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { assertSameOrigin } from "@/lib/csrf";
+import { enforce } from "@/lib/rate-limit";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { readRequestBody } from "@/modules/sence/request-body";
@@ -10,16 +12,31 @@ import { buildEngineDeps } from "@/modules/sence/server-deps";
 
 const bodySchema = z.object({ enrollmentId: z.string().uuid() });
 
+function clientIp(request: NextRequest): string {
+  return (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
+}
+
 /**
  * POST /api/sence/start — inicia el registro de asistencia (T1). Solo el alumno
  * inscrito. Devuelve una página que auto-envía el form POST hacia SENCE. Acepta
  * JSON o form-urlencoded (el botón del curso hace un submit nativo).
  */
 export async function POST(request: NextRequest) {
+  // Anti-CSRF: rechaza un POST cross-site (mismo-origen del botón del curso). 3.6.
+  if (!assertSameOrigin(request.headers.get("origin"), request.headers.get("host"))) {
+    return NextResponse.json({ error: "forbidden_origin" }, { status: 403 });
+  }
   const principal = await getPrincipal();
   if (!principal || !principal.tenantId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  // Rate-limit (fail-open sin Redis): 10/min por usuario, 30/min por IP. 3.6.
+  const limited = await enforce([
+    { surface: "sence_start", dim: "user", id: `${principal.tenantId}:${principal.userId}`, limit: 10, windowSec: 60 },
+    { surface: "sence_start", dim: "ip", id: clientIp(request), limit: 30, windowSec: 60 },
+  ]);
+  if (limited) return limited;
 
   const parsed = bodySchema.safeParse(await readRequestBody(request));
   if (!parsed.success) {
