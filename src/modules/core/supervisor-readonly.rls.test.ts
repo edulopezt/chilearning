@@ -123,6 +123,12 @@ const BUSINESS_TABLES: Record<string, Record<string, unknown>> = {
     user_id: SUPERVISOR_ID,
     kind: "grade.published",
   },
+  dj_checklist: {
+    tenant_id: TENANT_A,
+    action_id: "ac000000-0000-4000-8000-000000000001",
+    enrollment_id: "e0000000-0000-4000-8000-000000000001",
+    state: "pendiente_emitir",
+  },
 };
 
 let db: SupabaseClient;
