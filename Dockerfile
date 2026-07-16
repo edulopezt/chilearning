@@ -60,4 +60,8 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
+# Healthcheck (task 3.7): golpea /api/health (público). Coolify/Docker reinician
+# el contenedor si la app deja de responder.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=25s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1
 CMD ["node", "server.js"]

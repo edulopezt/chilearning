@@ -11,9 +11,13 @@
 |---|---|---|---|---|---|
 | 1 | 2026-07-14 | dev (Supabase local) | Borrado total de `memberships` (14 filas) → restauración | ✅ 14 → 0 → 14 filas | < 1 min |
 | 2 | 2026-07-15 | dev (Supabase local) | Esquema completo Hito 0: borrado de `courses`/`actions`/`enrollments`/`lessons` → restauración | ✅ todos los conteos restaurados (tenants 2, memberships 14, courses 1, lessons 2, enrollments 1) | 34 s |
+| 3 | 2026-07-16 | dev (Supabase local) | **Ensayo del pipeline off-site (task 3.7):** `pg_dump` del esquema completo Hito 3 (`ops/backup/backup.sh`) → verificación del dump | ✅ dump 468 KB con todas las tablas nuevas (tenants, certificates, survey_responses, message_threads, …); conteos OK (tenants 2, memberships 14). El paso `age`+`rclone`→R2 queda para el ensayo con cuenta real (handoff) | < 1 min |
 
 > RTO objetivo ≤ 4 h; en dev el restore canónico toma segundos. El **ensayo #3**
-> con backup off-site real (R2) se registrará al montar staging/prod (Hito 3).
+> (arriba) validó el mecanismo `pg_dump` del pipeline `ops/backup/`; falta el
+> ensayo **con R2 real** (cifrado `age` + `rclone` a Cloudflare R2), que es el
+> **ensayo #2 del criterio §8.3** y se hará con la cuenta R2 de Edu (handoff) — el
+> #2-de-2 exigido antes del piloto lo cubre la tarea 4.4.
 
 ---
 
