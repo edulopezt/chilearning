@@ -7,6 +7,23 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-16 — Mensaje es-CL al alumno en vez de JSON crudo (H4-R-010/012, I-9)
+
+**Sin cambio de contrato SENCE.** Cierra los follow-ups de UX de la revisión H4: el
+alumno nunca ve texto técnico ni JSON crudo (I-9), ni queda sin contexto tras un error.
+
+- **H4-R-012 — `/api/sence/start` y `/close`** ya no devuelven JSON en los caminos de
+  error (pre-vuelo, `bad_request`, `not_closable`). Como el botón del curso hace un
+  submit NATIVO, la respuesta se RENDERIZA: nuevo `renderMessagePage` (es-CL, con enlace
+  de vuelta al curso). El alumno exento se redirige a su curso (no JSON `{exempt}`).
+- **H4-R-010 — mensaje del error SENCE visible:** el callback ahora redirige a
+  `/mi-curso` (no `/dashboard`), y la barra de asistencia muestra el mensaje es-CL
+  TRADUCIDO cuando la sesión quedó en `error` (via `studentMessageForCodes`, nuevo
+  helper de `errors.ts` que reusa la política de agregación de `resolveGlosaError` —
+  Q-07: prefiere el código accionable 311/312). Antes el alumno aterrizaba en
+  `/dashboard` sin saber qué pasó. `course-view` expone `error_codes`.
+- Cero código crudo ni PII al alumno; strings en `es-CL.ts`. + tests del helper.
+
 ## 2026-07-16 — Rulings H4 (D-048), parte II — robustez/UX (Q-04, Q-07, Q-02)
 
 **Enmienda del contrato (E-4, E-5, E-6; manual sigue v1.1.6).** Implementa tres

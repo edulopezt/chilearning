@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   const db = senceServiceClient();
   await handleCallback(db, params, deps, null);
 
-  const target = new URL("/dashboard", request.url);
+  const target = new URL("/mi-curso", request.url);
   const res = NextResponse.redirect(target, { status: 303 });
   res.headers.set("cache-control", "no-store, max-age=0");
   return res;

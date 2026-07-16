@@ -961,6 +961,14 @@ export const esCL = {
     expired: "Tu sesión SENCE expiró. Vuelve a registrar tu asistencia para continuar.",
     lessonsTitle: "Contenido del curso",
     videoNote: "Video de la lección",
+    // Mensajes de la barra de asistencia cuando algo falla (I-9: nunca texto
+    // técnico crudo al alumno; H4-R-010/012).
+    attendanceProblem: "Hubo un problema con tu asistencia",
+    startError:
+      "No pudimos iniciar tu registro de asistencia. Vuelve a intentarlo; si el problema continúa, avísale a tu relator(a) u OTEC.",
+    closeError:
+      "No pudimos cerrar tu sesión de asistencia en este momento. Vuelve a tu curso e inténtalo de nuevo.",
+    backToCourse: "Volver a mi curso",
   },
   sence: {
     /**

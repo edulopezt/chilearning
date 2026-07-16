@@ -646,3 +646,13 @@ export function resolveGlosaError(raw: string): SenceGlosaResolution {
     actions,
   };
 }
+
+/**
+ * Mensaje es-CL para el alumno a partir de los códigos ya parseados de una sesión
+ * en `error` (`sence_sessions.error_codes`) — I-9. Reusa la política de agregación
+ * de {@link resolveGlosaError} (Q-07: prefiere el código accionable por el alumno).
+ * Lista vacía → `fallback`. NUNCA devuelve el código crudo ni la glosa oficial.
+ */
+export function studentMessageForCodes(codes: readonly string[]): string {
+  return resolveGlosaError(codes.join(";")).studentMessage;
+}
