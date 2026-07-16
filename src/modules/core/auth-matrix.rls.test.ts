@@ -52,7 +52,7 @@ beforeAll(() => {
 
 describe("Auth Hook inyecta los claims correctos según la fuente de verdad", () => {
   it("otec_admin@A: tenant A + rol otec_admin", async () => {
-    const { claims } = await login("admin@otec-andes.test");
+    const { claims } = await login("admin@seminarea.test");
     expect(claims.tenant_id).toBe(TENANT_A);
     expect(claims.roles).toEqual(["otec_admin"]);
   });
@@ -72,7 +72,7 @@ describe("Auth Hook inyecta los claims correctos según la fuente de verdad", ()
 
 describe("RLS con login real respeta la matriz (spec §3)", () => {
   it("otec_admin@A ve SOLO su tenant y su auditoría", async () => {
-    const { db } = await login("admin@otec-andes.test");
+    const { db } = await login("admin@seminarea.test");
     const tenants = await db.from("tenants").select("id");
     expect(tenants.data?.map((r) => r.id)).toEqual([TENANT_A]);
 
@@ -82,14 +82,14 @@ describe("RLS con login real respeta la matriz (spec §3)", () => {
   });
 
   it("student@A NO lee la auditoría (matriz §3)", async () => {
-    const { db } = await login("alumno@otec-andes.test");
+    const { db } = await login("alumno@seminarea.test");
     const audit = await db.from("audit_log").select("id");
     expect(audit.error).toBeNull();
     expect(audit.data).toEqual([]);
   });
 
   it("coordinator@A no puede escalar su membership a otec_admin (login real)", async () => {
-    const { db } = await login("coordinacion@otec-andes.test");
+    const { db } = await login("coordinacion@seminarea.test");
     const { error } = await db
       .from("memberships")
       .update({ roles: ["otec_admin"] })
@@ -106,11 +106,11 @@ describe("RLS con login real respeta la matriz (spec §3)", () => {
   it("superadmin ve ambos tenants (login real)", async () => {
     const { db } = await login("superadmin@chilearning.test");
     const tenants = await db.from("tenants").select("slug");
-    expect(tenants.data?.map((r) => r.slug).sort()).toEqual(["otec-andes", "otec-pacifico"]);
+    expect(tenants.data?.map((r) => r.slug).sort()).toEqual(["otec-pacifico", "seminarea"]);
   });
 
   it("student@A no ve la BITÁCORA de eventos SENCE (solo admin/supervisor)", async () => {
-    const { db } = await login("alumno@otec-andes.test");
+    const { db } = await login("alumno@seminarea.test");
     const events = await db.from("sence_events").select("id");
     expect(events.error).toBeNull();
     expect(events.data).toEqual([]);
@@ -119,7 +119,7 @@ describe("RLS con login real respeta la matriz (spec §3)", () => {
   it("student@A solo ve las sesiones SENCE de SUS propias inscripciones (matriz §3)", async () => {
     // El alumno demo no tiene sesiones seed; la policy select_own le permitiría
     // ver SOLO las de sus enrollments. Aquí verificamos que no ve las ajenas.
-    const { db } = await login("alumno@otec-andes.test");
+    const { db } = await login("alumno@seminarea.test");
     const sessions = await db.from("sence_sessions").select("enrollment_id, tenant_id");
     expect(sessions.error).toBeNull();
     // Todas las filas visibles (si las hay) son de su tenant.

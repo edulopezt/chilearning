@@ -166,7 +166,7 @@ describe("import de inscripciones (task 1.3, HU-2.2/3.2/3.3)", () => {
 });
 
 describe("correo de bienvenida al inscribir (Hito 2, cierra follow-up de 1.6)", () => {
-  const COURSE_URL = "https://otec-andes.chilearning.cl/mi-curso";
+  const COURSE_URL = "https://seminarea.chilearning.cl/mi-curso";
   const WELCOME_CSV =
     "nombre,email,run,exento\n" +
     "Wanda Correo,welcome1@otec.cl,16032460-0,no\n" +

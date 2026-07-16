@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { escapeHtml, renderInvitationEmail, renderWelcomeEmail } from "./email-templates";
 
-const brand = { orgName: "OTEC Andes", primaryColor: "#1e3a8a" };
+const brand = { orgName: "Seminarea", primaryColor: "#1e3a8a" };
 
 describe("escapeHtml", () => {
   it("escapa caracteres peligrosos", () => {
@@ -11,13 +11,13 @@ describe("escapeHtml", () => {
 });
 
 describe("renderInvitationEmail", () => {
-  const email = renderInvitationEmail({ brand, recipientName: "Ana", acceptUrl: "https://otec-andes.chilearning.cl/activar?t=abc" });
+  const email = renderInvitationEmail({ brand, recipientName: "Ana", acceptUrl: "https://seminarea.chilearning.cl/activar?t=abc" });
 
   it("tiene asunto, html y texto con el nombre y la organización", () => {
-    expect(email.subject).toContain("OTEC Andes");
+    expect(email.subject).toContain("Seminarea");
     expect(email.html).toContain("Ana");
-    expect(email.html).toContain("OTEC Andes");
-    expect(email.text).toContain("https://otec-andes.chilearning.cl/activar?t=abc");
+    expect(email.html).toContain("Seminarea");
+    expect(email.text).toContain("https://seminarea.chilearning.cl/activar?t=abc");
   });
 
   it("aplica el color de marca al botón", () => {
@@ -38,7 +38,7 @@ describe("renderInvitationEmail", () => {
 });
 
 describe("renderWelcomeEmail", () => {
-  const email = renderWelcomeEmail({ brand, recipientName: "Juan", courseName: "Prevención de riesgos", courseUrl: "https://otec-andes.chilearning.cl/mi-curso" });
+  const email = renderWelcomeEmail({ brand, recipientName: "Juan", courseName: "Prevención de riesgos", courseUrl: "https://seminarea.chilearning.cl/mi-curso" });
 
   it("incluye la guía de Clave Única y el curso", () => {
     expect(email.html).toContain("Clave Única");

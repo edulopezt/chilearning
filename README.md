@@ -53,8 +53,8 @@ La app corre contra el **Supabase local** (no la nube). Sus claves las imprime
    - `TENANT_ROOT_DOMAIN=localtest.me`
    - `SENCE_ENV=mock` y `SENCE_MOCK_URL=http://127.0.0.1:4010`
    - `SENCE_TOKEN_ENCRYPTION_KEY` = 32 bytes base64 (`openssl rand -base64 32`)
-5. `pnpm dev` → http://localhost:3000. Login demo: `alumno@otec-andes.test`
-   (o `admin@otec-andes.test`, `superadmin@chilearning.test`) / `Password123!`.
+5. `pnpm dev` → http://localhost:3000. Login demo: `alumno@seminarea.test`
+   (o `admin@seminarea.test`, `superadmin@chilearning.test`) / `Password123!`.
 6. Para probar el flujo SENCE completo: en otra terminal `pnpm sence:mock`, y
    configura el token cifrado del OTEC demo (o hazlo desde el panel de admin
    cuando exista). El alumno verá el curso en `/mi-curso` con candado SENCE.

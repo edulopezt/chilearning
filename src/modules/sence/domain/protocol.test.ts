@@ -80,12 +80,12 @@ describe("resolvePublicOrigin (callback detrás de proxy, anti-spoofing)", () =>
 
   it("usa x-forwarded-host cuando es un subdominio del root, forzando https", () => {
     const origin = resolvePublicOrigin(
-      h({ "x-forwarded-proto": "http", "x-forwarded-host": "otec-andes.chilearning.cl", host: "internal:3000" }),
+      h({ "x-forwarded-proto": "http", "x-forwarded-host": "seminarea.chilearning.cl", host: "internal:3000" }),
       "http://internal:3000/api/sence/start",
       ROOT,
     );
     // esquema forzado a https aunque el proxy diga http
-    expect(origin).toBe("https://otec-andes.chilearning.cl");
+    expect(origin).toBe("https://seminarea.chilearning.cl");
   });
 
   it("acepta el propio dominio raíz", () => {
@@ -97,10 +97,10 @@ describe("resolvePublicOrigin (callback detrás de proxy, anti-spoofing)", () =>
   it("RECHAZA un host externo forjado (open-redirect) y cae al fallback", () => {
     const origin = resolvePublicOrigin(
       h({ "x-forwarded-host": "evil.com", "x-forwarded-proto": "https" }),
-      "https://otec-andes.chilearning.cl/api/sence/start",
+      "https://seminarea.chilearning.cl/api/sence/start",
       ROOT,
     );
-    expect(origin).toBe("https://otec-andes.chilearning.cl");
+    expect(origin).toBe("https://seminarea.chilearning.cl");
   });
 
   it("no se deja engañar por userinfo (evil.com@otec...) ni por path inyectado", () => {
@@ -120,17 +120,17 @@ describe("resolvePublicOrigin (callback detrás de proxy, anti-spoofing)", () =>
 
   it("toma el primer valor de listas separadas por coma", () => {
     const origin = resolvePublicOrigin(
-      h({ "x-forwarded-host": "otec-andes.chilearning.cl, evil.com" }),
+      h({ "x-forwarded-host": "seminarea.chilearning.cl, evil.com" }),
       "http://internal/x",
       ROOT,
     );
-    expect(origin).toBe("https://otec-andes.chilearning.cl");
+    expect(origin).toBe("https://seminarea.chilearning.cl");
   });
 
   it("cae al Host header si no hay x-forwarded-host", () => {
     expect(
-      resolvePublicOrigin(h({ host: "otec-andes.chilearning.cl" }), "http://internal/x", ROOT),
-    ).toBe("https://otec-andes.chilearning.cl");
+      resolvePublicOrigin(h({ host: "seminarea.chilearning.cl" }), "http://internal/x", ROOT),
+    ).toBe("https://seminarea.chilearning.cl");
   });
 
   it("sin headers de proxy, usa el origin de la URL cruda", () => {

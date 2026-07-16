@@ -53,7 +53,7 @@ beforeAll(async () => {
   const snapshot = {
     studentName: "Ana Díaz", run: FULL_RUN, runMasked: "12.XXX.XXX-X", courseName: "Curso RLS",
     hours: 40, startsOn: "2026-07-01", endsOn: "2026-07-31", finalGrade: 6.5, codSence: "1234567890",
-    actionCode: "ACC-DEMO-0001", attendancePct: 90, otecName: "OTEC Demo Andes SpA", otecRut: "76.111.111-6",
+    actionCode: "ACC-DEMO-0001", attendancePct: 90, otecName: "Seminarea SpA", otecRut: "76.111.111-6",
     brandPrimary: "#1e3a8a", brandAccent: "#0ea5e9", logoUrl: null, isSence: true, issuedAtISO: "2026-07-16T12:00:00.000Z",
   };
   const ins = await svc.from("certificates").insert({
