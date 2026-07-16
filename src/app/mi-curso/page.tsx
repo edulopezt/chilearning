@@ -61,9 +61,14 @@ export default async function MiCursoPage() {
         {view.exento ? (
           <p className="text-sm text-green-700 dark:text-green-400">{esCL.course.exento}</p>
         ) : null}
-        <Link href="/mi-curso/certificados" className="text-sm underline">
-          {esCL.certificateStudent.sectionTitle} →
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link href="/mi-curso/certificados" className="text-sm underline">
+            {esCL.certificateStudent.sectionTitle} →
+          </Link>
+          <Link href="/mi-curso/comunicacion" className="text-sm underline">
+            {esCL.communication.title} →
+          </Link>
+        </div>
       </header>
 
       {/* Barra de estado de asistencia */}
