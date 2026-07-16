@@ -24,7 +24,29 @@
 
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
-- **Fecha:** 2026-07-16
+- **Fecha:** 2026-07-17
+- **🅿️ HITO 4 PARQUEADO (decisión de Edu, 2026-07-17): todo lo ejecutable está CERRADO; el piloto
+  (4.2/4.5) espera mundo real** — curso de Seminarea codificado en SENCE + grupo de alumnos. El Hito 5
+  parte en una sesión nueva. Sesión de cierre (2026-07-17, PRs #88–#93):
+  - ✅ Gates del checklist **verificados con evidencia** (#92): CI verde, Kuma 3/3 re-apuntado a
+    seminarea + monitor #3 del callback (POST, 303, creados por Edu), worker tickeando, migración del
+    nonce en cloud, backup+restore §8.3, test RLS `H4-R-002`. **Hueco cazado y resuelto:** `SENTRY_DSN`
+    de la app estaba marcada build-time en Coolify → el server-side no reportaba; fix = desmarcar +
+    redeploy (verificado en runtime).
+  - ✅ **Q-03 rate-limit del callback APLICADO+VERIFICADO+VERSIONADO** (#91): archivo dinámico de
+    Traefik (la UI de Coolify 4.1.2 no expone labels); ráfaga → 429, resto de la app intacto.
+  - ✅ **Config SENCE real de Edu:** token real del OTEC cargado (cifrado, verificado en BD sin leerlo)
+    + ambiente `rce`. Bug aparente "se revierte a rcetest" era solo refresco de UI (la BD quedó bien).
+  - ✅ **Grupos operativos de planilla (#93, HU-2.2):** columna `grupo` en el import CSV
+    (`Sence-<código del curso>` validado contra la acción destino / `Becario` → exento I-14), etiqueta
+    en import + cumplimiento + certificados + portal del alumno; plantilla CSV generada POR ACCIÓN con
+    el código real. 4-ojos multi-agente (14 agentes): 8 CONFIRMED corregidos, 2 REFUTED con evidencia.
+  - **Decisión (2026-07-17):** NO se generan datos falsos ni pruebas forzadas contra SENCE; la
+    validación real ocurre en el primer curso del piloto (rcetest sigue bloqueado del lado de SENCE).
+  - **Regla de re-entrada al piloto:** re-verificar los gates del checklist (~30 min) antes de activar;
+    si algo del Hito 5 toca `src/modules/sence/`, re-pasa 4-ojos y el checklist se re-firma.
+  - **Pendientes menores (no bloquean):** probar en vivo la alerta de correo de Kuma; evento de prueba
+    en Sentry; 2FA (requiere Supabase Pro).
 - **📋 SESIÓN HITO 4 — parte ejecutable por el agente (2026-07-16):** se avanzó lo que NO depende de
   producción SENCE ni de la ventana de Edu. **PRs mergeados #78–#82 (CI verde en los 4 jobs):**
   - ✅ **4.1b — revisión adversarial COMPLETA de `src/modules/sence/`** (#80, D-047): panel multi-agente

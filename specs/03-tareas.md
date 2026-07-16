@@ -83,10 +83,10 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 ## Hito 4 — PILOTO REAL (semanas 6–8) 🎯
 
 - 4.1 🔶 Checklist pre-producción SENCE: certificación `rcetest` completa firmada + revisión adversarial del módulo `sence/` — **revisión adversarial ✅ hecha 2026-07-16** (#80, D-047: panel multi-agente, 19 hallazgos, 1 HIGH `callback_nonce` corregido en #81 con 4-ojos + migración al cloud) + **checklist pre-producción ✅** (#82). Certificación `rcetest` 🔒 PARQUEADA (bloqueo del lado de SENCE; validación diferida al primer curso real)
-- 4.2 🔒 Acción real de franquicia con grupo pequeño (curso de la OTEC de Edu) en ambiente producción SENCE — la ejecuta Edu; depende de los rulings H4-Q-01..Q-04 y del checklist 4.1a firmado
+- 4.2 🔒 **PARQUEADA (2026-07-17, decisión de Edu)** Acción real de franquicia con grupo pequeño en producción SENCE — espera **mundo real**: curso de Seminarea codificado en SENCE + grupo de alumnos. Todo lo demás está listo: rulings D-048 ✅, checklist 4.1a con gates técnicos verificados ✅, token real cargado + ambiente `rce` ✅, grupos operativos de planilla (Sence-XXXX/Becario) ✅ (#93). **Regla de re-entrada:** antes de activar, re-verificar los gates del checklist (~30 min: worker/Kuma/Sentry/backup/staging) — pueden derivar en semanas
 - 4.3 ✅ Monitoreo intensivo diario del piloto + canal de soporte a alumnos + plan B documentado — **hecho 2026-07-16** (#78): `docs/ops/` con Plan B de contingencia (6 escenarios: VPS/Supabase/SENCE/worker/bug/periféricos), runbook de monitoreo diario y runbook de rotación de secretos (cierra RNF-8). Contacto SENCE: `controlelearning@sence.cl`
-- 4.4 🔶 **Ensayo de restauración 2** (criterio spec §8.3) — **preparación completa 2026-07-16** (dump cifrado real de R2 descargado + checksum verificado, `rclone`/`age` listos, guía escrita); 🔒 falta la ventana con Edu para el descifrado (clave `age` privada offline)
-- 4.5 ⬜ Retro del piloto → ajustes al spec (P1) → segunda acción real (post-piloto)
+- 4.4 ✅ **Ensayo de restauración 2** (criterio spec §8.3) — **hecho 2026-07-16** (#89, ensayo #4 en `docs/RESTORE.md`): end-to-end REAL con Edu (dump cifrado de R2 → SHA-256 → descifrado `age` → restore en BD limpia → integridad verificada) en ~49 s. **§8.3 CUMPLIDO**
+- 4.5 🔒 PARQUEADA (sigue a 4.2) Retro del piloto → ajustes al spec (P1) → segunda acción real (post-piloto)
 
 ## Hito 5 — De producto propio a SaaS vendible (semanas 9–14)
 
