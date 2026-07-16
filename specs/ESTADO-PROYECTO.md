@@ -29,6 +29,10 @@
   `seminarea.chilearning.cl`). Mismo UUID; solo slug/nombre/correos semilla (`admin@seminarea.test`, …).
   Los datos del seed siguen siendo FICTICIOS (regla: nunca datos reales en fixtures); el RUT del tenant
   es placeholder hasta que Edu cargue el real por la app. `otec-pacifico` queda como tenant B de pruebas.
+  **Corte de infra PENDIENTE (tras el merge del rename):** (1) SQL cloud: `tenants.slug/name` +
+  correos `auth.users`/`identities` `@otec-andes.test`→`@seminarea.test`; (2) Coolify: fqdn de la app
+  (ambos dominios en transición) + `APP_BASE_URL` del worker; (3) Supabase Auth `site_url`;
+  (4) re-apuntar los monitores de Uptime Kuma; (5) refrescar `STAGING-CREDENTIALS.txt`.
 - **HANDOFF INFRA ✅ (2026-07-16):** Resend + Sentry deployados en app/worker; backup off-site cifrado
   FUNCIONANDO (primer dump real en R2, cron diario); Uptime Kuma monitoreando con alertas. Fixes reales
   del despliegue: #70, #72, #73, #74, #75. Detalle en `STAGING-CREDENTIALS.txt` (local).
@@ -42,11 +46,7 @@
   cuenta R2+clave `age` · Sentry DSN · Uptime Kuma · **Supabase Pro** (2FA enforcement) · confirmar §7-R7 del
   certificado + firma real · endurecer CSP a enforcing · iniciar trámite Meta · **n8n en Coolify** +
   `N8N_WEBHOOK_URL`/`SECRET` (`docs/n8n/WORKFLOWS.md`) · `APP_BASE_URL` para los correos del worker.
-  aprobado. **Handoff a Edu** (nada bloquea el desarrollo, pero se necesita para producción-real):
-  `RESEND_API_KEY`+dominio · cuenta R2+clave `age` (backup off-site) · Sentry DSN (+ conectar el
-  scrubber ya hecho + `includeLocalVariables:false`) · Uptime Kuma · **Supabase Pro** (2FA enforcement)
-  · confirmar **§7-R7** del certificado + firma real del representante · endurecer CSP a enforcing tras
-  verificar en navegador · iniciar trámite Meta (checklist en `docs/whatsapp/`).
+  (Nota: Resend, R2+age, Sentry, Kuma y APP_BASE_URL quedaron HECHOS ese mismo día — ver HANDOFF INFRA ✅.)
 - **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · Hito 2 ✅ (9/9) · **Hito 3 ✅ (12/12)**
 - **Hito 2 CERRADO** — las 9 tareas mergeadas (#31–#41), cada una con revisión adversarial
   4-ojos aplicada; migraciones M1–M4 + bucket `submissions` en el cloud; worker VIVO en staging.
@@ -104,7 +104,8 @@
   scroll horizontal a 360px. Nuevo job `e2e` en CI. **Cierra el gate del Hito 3.**
 - **Hito 3: 12/12 mergeadas. Pendientes: NINGUNO** (los items B/C tienen handoff documentado).
 - **PRs mergeados a `main`:** 61 · **Tests:** ~987 verdes (484 unit + 326 RLS + 155 integración + E2E 3 flujos)
-- **Staging:** VIVO en https://seminarea.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
+- **Staging:** VIVO en https://otec-andes.chilearning.cl — pasa a https://seminarea.chilearning.cl
+  en el CORTE DE INFRA pendiente de D-046 (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
 

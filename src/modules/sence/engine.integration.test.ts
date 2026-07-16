@@ -31,7 +31,7 @@ const STUDENT_A = "aaaaaaaa-0000-4000-8000-000000000005";
 const OTHER_STUDENT = "aaaaaaaa-0000-4000-8000-000000000006"; // empresa user, para exento
 const MOCK_PORT = 4114;
 const MOCK_BASE = `http://127.0.0.1:${MOCK_PORT}`;
-const VALID_OTEC = "76111111-6"; // rut del seed (tenant Andes)
+const VALID_OTEC = "76111111-6"; // rut del seed (tenant Seminarea)
 const VALID_TOKEN = "00000000-0000-4000-8000-000000000000";
 const KEY = parseEncryptionKey(Buffer.from("0".repeat(32)).toString("base64"));
 

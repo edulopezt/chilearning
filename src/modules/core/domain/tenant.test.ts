@@ -14,6 +14,8 @@ describe("isValidTenantSlug", () => {
     expect(isValidTenantSlug("seminarea")).toBe(true);
     expect(isValidTenantSlug("abc")).toBe(true);
     expect(isValidTenantSlug("a1b2c3")).toBe(true);
+    // Guion interior permitido (tenant B real del seed depende de esto).
+    expect(isValidTenantSlug("otec-pacifico")).toBe(true);
   });
 
   it("rechaza demasiado cortos, con mayúsculas, guiones al borde o caracteres inválidos", () => {
@@ -40,6 +42,8 @@ describe("resolveTenantFromHost", () => {
       isRootDomain: false,
       isReserved: false,
     });
+    // Slug con guion interior (tenant B del seed).
+    expect(resolveTenantFromHost("otec-pacifico.chilearning.cl", ROOT).slug).toBe("otec-pacifico");
   });
 
   it("tolera el puerto y las mayúsculas", () => {

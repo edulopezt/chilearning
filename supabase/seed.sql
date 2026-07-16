@@ -79,7 +79,7 @@ insert into public.supervisor_grants (tenant_id, user_id, email, scope) values
 insert into public.platform_admins (user_id) values
   ('00000000-0000-4000-8000-00000000000a');
 
--- ---------- Curso demo con candado SENCE (Hito 0) — tenant Andes ----------
+-- ---------- Curso demo con candado SENCE (Hito 0) — tenant Seminarea ----------
 -- Datos ficticios. El token del OTEC NO va aquí (se cifra y se configura por UI/
 -- servidor con la clave AES): token_encrypted queda NULL en el seed.
 insert into public.sence_otec_config (tenant_id, rut_otec, default_environment) values

@@ -1,5 +1,10 @@
 # RUNBOOK — Sesión de certificación `rcetest` en STAGING (supervisada)
 
+> **⚠ D-046 (2026-07-16):** las URLs `seminarea.chilearning.cl` y los correos `@seminarea.test`
+> de este runbook valen **solo tras el corte de infra** del rename (dominio en Coolify + datos
+> cloud). Hasta ese corte, el staging vivo responde en `otec-andes.chilearning.cl` con correos
+> `@otec-andes.test`. Verifica el estado del corte en `specs/ESTADO-PROYECTO.md` (D-046).
+
 > **⛔ ESTADO 2026-07-15 — CERT PARQUEADA. LEE ESTO ANTES DE SEGUIR EL RUNBOOK.**
 > Se intentó la certificación end-to-end (token + RUN reales) y **falló por el lado de SENCE**,
 > no por el código. Hallazgo: **el `rcetest` de SENCE todavía sirve el login viejo de _Clave
