@@ -7,6 +7,28 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-16 — Rulings H4 (D-048), parte I — máquina de estados de cierre (Q-01, Q-05)
+
+**Enmienda del contrato (E-1, E-2, E-3; manual sigue v1.1.6).** Implementa dos
+rulings de `REVISION-ADVERSARIAL-H4.md` decididos por Edu ([D-048](../../specs/DECISIONES.md)),
+que refinan la INTERPRETACIÓN del cierre sin cambiar lo que el motor envía a SENCE.
+
+- **Q-01 — cierre sobre `iniciada` sin puerta temporal (E-1):** en `domain/session.ts`,
+  `isPastCloseDeadline` deja de gatear el estado `iniciada` (T5/T7); solo gatea T8
+  (`error(close)`). Un `close_ok`/`close_error` que llega tras `expires_at` pero antes de
+  que el worker corra T6 **aplica su transición** en vez de quedar `late` → se acaban los
+  falsos `expirada` en cierres cerca del límite de 3 h. La carrera con el worker la resuelve
+  el CAS.
+- **Q-05 — T8 alcanzable (E-2):** `buildCloseForm` (motor) acepta una sesión en `error(close)`
+  con `IdSesionSence` (antes exigía `iniciada`), y el candado (`domain/attendance-lock.ts`)
+  ofrece **reintentar el cierre** para `error(close)` (antes: re-registrar). Así una sesión con
+  cierre fallido no queda colgada ante SENCE. El alumno puede además reiniciar (el índice único
+  no cuenta `error(close)`); ambas vías coexisten. Requiere leer `error_origin` en la vista del
+  curso. ⚠ Verificar con SENCE la tolerancia a doble sesión simultánea de la misma acción/alumno.
+- Tests: `session.test.ts` (T5/T7 sin puerta, T8 gated antes/después de `expires_at`),
+  `attendance-lock.test.ts` (error(close)→cerrar, error(start)→registrar), integración
+  (`buildCloseForm` sobre `error(close)`).
+
 ## 2026-07-16 — Fixes CONFIRMED de la revisión adversarial H4 (tarea 4.1b)
 
 **Sin cambio de contrato SENCE.** Aplica los 6 hallazgos CONFIRMED seguros del

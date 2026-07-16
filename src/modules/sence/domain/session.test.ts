@@ -333,3 +333,41 @@ describe("I-5 — GlosaError parsed as a ;-separated list", () => {
     expect(classifyCallback({ idSesionAlumno: "A1", glosaError: "303" }, pending).errorCodes).toEqual(["303"]);
   });
 });
+
+describe("D-048/Q-01 — el cierre sobre `iniciada` NO tiene puerta temporal (solo T8 la tiene)", () => {
+  it("close_ok que llega tras expires_at pero antes del worker CIERRA (T5), no queda late", () => {
+    const started = startedSession();
+    const past = started.expiresAt! + 4_000; // 4 s pasado el límite, antes de T6
+    const r = applyCallback(started, { idSesionAlumno: "A1" }, applyTiming(past));
+    expect(r.event?.late).toBe(false);
+    expect(r.transition).toBe("T5");
+    expect(r.state.status).toBe("cerrada");
+  });
+
+  it("close_error que llega tras expires_at aplica T7 (error close), no queda late", () => {
+    const started = startedSession();
+    const past = started.expiresAt! + 4_000;
+    const r = applyCallback(started, { idSesionAlumno: "A1", glosaError: "300" }, applyTiming(past));
+    expect(r.event?.late).toBe(false);
+    expect(r.transition).toBe("T7");
+    expect(r.state.status).toBe("error");
+    expect(r.state.errorOrigin).toBe("close");
+  });
+
+  it("T8 SÍ mantiene la puerta temporal: close_ok sobre error(close) tras expires_at queda late (I-15)", () => {
+    const err = closeErrorSession();
+    const pastErr = err.expiresAt! + 4_000;
+    const r = applyCallback(err, { idSesionAlumno: "A1" }, applyTiming(pastErr));
+    expect(r.event?.late).toBe(true);
+    expect(r.transition).toBeNull();
+    expect(r.state.status).toBe("error"); // no revive
+  });
+
+  it("T8 alcanzable ANTES de expires_at: close_ok sobre error(close) cierra (T8)", () => {
+    const err = closeErrorSession();
+    const withinDeadline = err.expiresAt! - 1_000;
+    const r = applyCallback(err, { idSesionAlumno: "A1" }, applyTiming(withinDeadline));
+    expect(r.transition).toBe("T8");
+    expect(r.state.status).toBe("cerrada");
+  });
+});
