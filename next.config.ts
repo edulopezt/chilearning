@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 import { buildSecurityHeaders } from "./src/lib/security-headers";
 
@@ -27,4 +28,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry (task 3.7): envuelve la config para instrumentar y (si hay AUTH token en
+// CI) subir sourcemaps. Sin DSN/token no hace nada en runtime ni en build.
+export default withSentryConfig(nextConfig, {
+  org: "edulopezt",
+  project: "chilearning",
+  silent: !process.env.CI,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  widenClientFileUpload: true,
+  disableLogger: true,
+  // No subir sourcemaps si no hay token (dev/local): evita fallos de build.
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});
+
