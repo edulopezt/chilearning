@@ -25,17 +25,22 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-16
-- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 11/12
-  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62, #64, #66), cada una con revisión
-  adversarial 4-ojos antes del merge (la de 3.11 fue **multi-agente**: 4 lentes + verificación) que cazó y
-  corrigió **7 HIGH + 3 MED reales**. CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging
-  vivo (200). **Queda 1 tarea:** 3.8 (E2E Playwright — greenfield, cierra el gate del hito). Diseño en el plan
+- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16) — HITO 3 COMPLETO (12/12) ✅:** se avanzó el
+  **Hito 3 de 0/12 a 12/12 tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62, #64, #66, #68),
+  cada una con revisión adversarial 4-ojos antes del merge (la de 3.11 fue **multi-agente**: 4 lentes +
+  verificación) que cazó y corrigió **7 HIGH + 3 MED reales**. CI verde en cada PR (incluye el nuevo job
+  **`e2e`**); migraciones aditivas aplicadas al cloud; staging vivo (200). **Gate del hito verde:** los 3
+  flujos E2E (encuesta, subrutas anti-#41, verificación pública con RUN enmascarado) corren desktop+móvil.
+  **Handoff a Edu** (nada bloquea el desarrollo; se necesita para producción-real): `RESEND_API_KEY`+dominio ·
+  cuenta R2+clave `age` · Sentry DSN · Uptime Kuma · **Supabase Pro** (2FA enforcement) · confirmar §7-R7 del
+  certificado + firma real · endurecer CSP a enforcing · iniciar trámite Meta · **n8n en Coolify** +
+  `N8N_WEBHOOK_URL`/`SECRET` (`docs/n8n/WORKFLOWS.md`) · `APP_BASE_URL` para los correos del worker.
   aprobado. **Handoff a Edu** (nada bloquea el desarrollo, pero se necesita para producción-real):
   `RESEND_API_KEY`+dominio · cuenta R2+clave `age` (backup off-site) · Sentry DSN (+ conectar el
   scrubber ya hecho + `includeLocalVariables:false`) · Uptime Kuma · **Supabase Pro** (2FA enforcement)
   · confirmar **§7-R7** del certificado + firma real del representante · endurecer CSP a enforcing tras
   verificar en navegador · iniciar trámite Meta (checklist en `docs/whatsapp/`).
-- **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · **Hito 2 ✅ (9/9)**
+- **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · Hito 2 ✅ (9/9) · **Hito 3 ✅ (12/12)**
 - **Hito 2 CERRADO** — las 9 tareas mergeadas (#31–#41), cada una con revisión adversarial
   4-ojos aplicada; migraciones M1–M4 + bucket `submissions` en el cloud; worker VIVO en staging.
   ✅ 2.6 worker (#31) · ✅ correo Resend (#32) · ✅ 2.7 pre-flight (#33) · ✅ 2.4 panel+export
@@ -49,7 +54,7 @@
   rutas del #41, corregido en el hotfix **#43**. (Corrección: el CI **sí** corre `next build` desde
   0.1 (`ci.yml:28`); el hueco real es que un conflicto de slug de rutas es error de RUNTIME que
   `next build` no caza — lo cubre el E2E de 3.8.)
-- **Hito 3 EN CURSO** (turno autónomo 2026-07-16, plan aprobado, alcance A/B/C): ✅ **3.1 encuesta**
+- **Hito 3 ✅ CERRADO** (turno autónomo 2026-07-16, plan aprobado, alcance A/B/C): ✅ **3.1 encuesta**
   (#45, HU-6.3) — anonimato ESTRUCTURAL; 4-ojos corrigió HIGH (join por `submitted_at`) + supresión
   <3. ✅ **3.2 certificados PDF** (#46, HU-7.1/7.2) — folio + QR + verificación pública (RUN
   enmascarado, RPC anon), snapshot congelado inmutable, revocación; 4-ojos corrigió HIGH (descarga
@@ -86,8 +91,12 @@
   (a n8n solo agregado seudonimizado por HMAC; el correo PII lo manda el worker por EmailSender), opt-out
   del alumno + config por acción, dedup diario. 4-ojos SHIP (MED de link relativo corregido). Categoría B:
   no-op sin n8n (handoff `docs/n8n/WORKFLOWS.md`).
-- **Pendientes del Hito 3:** 3.8 (E2E Playwright).
-- **PRs mergeados a `main`:** 58 · **Tests:** ~975 verdes (484 unit + 326 RLS + 155 integración)
+  ✅ **3.8 E2E Playwright** (#68, Plan §11) — harness real (app + Supabase local + login por UI con Auth
+  Hook + tenant por subdominio vía `localtest.me`), desktop + móvil. **3 flujos verdes en CI** (encuesta;
+  subrutas de acción = **guardia anti-#41**; verificación pública con RUN enmascarado) + smoke por rol sin
+  scroll horizontal a 360px. Nuevo job `e2e` en CI. **Cierra el gate del Hito 3.**
+- **Hito 3: 12/12 mergeadas. Pendientes: NINGUNO** (los items B/C tienen handoff documentado).
+- **PRs mergeados a `main`:** 61 · **Tests:** ~987 verdes (484 unit + 326 RLS + 155 integración + E2E 3 flujos)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -277,12 +286,12 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   R2+clave age, Uptime Kuma self-host.
   ✅ **3.10 Meta/WhatsApp** (#58, M9) — checklist de verificación Meta Business producido
   (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); es trámite externo (handoff a Edu), el canal opera
-  en Hito 5. **Pendientes por hacer del Hito 3:** 3.8 (E2E Playwright).
+  en Hito 5. **Hito 3 COMPLETO (12/12)** — no quedan tareas pendientes.
 - 🔶 **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10 —
   **#57**: `/api/health` + HEALTHCHECK, scrubber de PII/token de Sentry (puro+testeado; 4-ojos F1–F4),
   `ops/backup/` (pg_dump→age→R2) + ensayo restauración #3 real, docs Uptime Kuma/Sentry. 🔒 **Handoff:**
   SDK Sentry+DSN (con `includeLocalVariables:false`+scrubber), cuenta R2+clave age, Uptime Kuma.
-- ⬜ **3.8** E2E Playwright de los 3 flujos críticos — Plan §11.
+- ✅ **3.8** E2E Playwright de los 3 flujos críticos — Plan §11 (#68). Harness real (login por UI, tenant por subdominio, desktop+móvil); 3 flujos verdes en CI + smoke; job `e2e`. Guardia anti-#41.
 - ✅ **3.9** Automatizaciones n8n (recordatorios asistencia, correos a inactivos, informes al coordinador) — HU-5.9 (#66). RNF-10 por construcción; opt-out + config; degrada no-op sin n8n.
 - ✅ **3.10** Iniciar verificación Meta Business para WhatsApp (trámite lento) — M9 — **#58**:
   checklist `docs/whatsapp/META-BUSINESS-VERIFICATION.md` producido. El trámite (no-código) lo ejecuta
