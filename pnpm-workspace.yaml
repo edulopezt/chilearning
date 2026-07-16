@@ -1,5 +1,6 @@
 # Builds nativos aprobados explícitamente (pnpm approve-builds; sin esto el CI falla)
 allowBuilds:
+  '@sentry/cli': true
   esbuild: true
   # msgpackr (bullmq) trae fallback JS puro: sin build nativo a propósito.
   msgpackr-extract: false
