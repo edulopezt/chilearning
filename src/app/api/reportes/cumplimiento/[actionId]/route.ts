@@ -11,8 +11,8 @@ import { buildXlsx } from "@/modules/reportes/xlsx";
 
 /**
  * Export del panel de cumplimiento (task 2.4, HU-5.5): `?formato=xlsx|csv`.
- * Ruta NEUTRAL (no /admin): la comparten coordinador/admin y el portal del
- * fiscalizador (2.5) — el servicio autoriza (VIEWERS incluye supervisor).
+ * STAFF (otec_admin/coordinator). El fiscalizador NO usa esta ruta: tiene la suya
+ * GATED y auditada en `/api/supervisor/reportes/[actionId]` (task 3.11).
  */
 export async function GET(
   request: NextRequest,

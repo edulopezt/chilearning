@@ -67,6 +67,14 @@ from (values
 ) as m(tenant_id, user_id, roles)
 join public.tenants t on t.id = m.tenant_id::uuid;
 
+-- ---------- Grants de supervisor (task 3.11) ----------
+-- Los supervisores semilla conservan acceso tenant-wide (sin expiración). El
+-- backfill de la migración NO los ve porque el seed corre DESPUÉS de migrar; por
+-- eso se crean aquí. Refleja el estado post-backfill de un tenant en producción.
+insert into public.supervisor_grants (tenant_id, user_id, email, scope) values
+  ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000007', 'supervisor-a@demo.chilearning.cl', 'tenant'),
+  ('22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000007', 'supervisor-b@demo.chilearning.cl', 'tenant');
+
 -- ---------- Superadmin de plataforma (NO es una membership — D-006) ----------
 insert into public.platform_admins (user_id) values
   ('00000000-0000-4000-8000-00000000000a');

@@ -129,6 +129,17 @@ const BUSINESS_TABLES: Record<string, Record<string, unknown>> = {
     enrollment_id: "e0000000-0000-4000-8000-000000000001",
     state: "pendiente_emitir",
   },
+  supervisor_grants: {
+    tenant_id: TENANT_A,
+    user_id: SUPERVISOR_ID,
+    email: "pirata@sup.cl",
+    scope: "tenant",
+  },
+  supervisor_grant_actions: {
+    tenant_id: TENANT_A,
+    grant_id: "00000000-0000-4000-8000-000000000000",
+    action_id: "ac000000-0000-4000-8000-000000000001",
+  },
 };
 
 let db: SupabaseClient;
