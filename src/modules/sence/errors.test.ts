@@ -779,6 +779,20 @@ describe("resolveGlosaError — full GlosaError to student message + system acti
     expect(r.actions).toContain(SenceErrorAction.RetryAllowed);
   });
 
+  it("D-048/Q-07: el mensaje al alumno prefiere el código ACCIONABLE (311) aunque el dominante sea más severo ('204;311')", () => {
+    const r = resolveGlosaError("204;311");
+    // El alerting/severidad los sigue mandando el más severo (204, TenantConfig).
+    expect(r.dominantCode).toBe(204);
+    expect(r.severity).toBe(SenceErrorSeverity.TenantConfig);
+    // Pero el MENSAJE al alumno es el que él puede accionar (311, Clave Única).
+    expect(r.studentMessage).toBe(esCL.sence.errors.claveUnicaRunMismatch);
+  });
+
+  it("D-048/Q-07: sin código accionable, el mensaje sigue siendo el del dominante ('204;200')", () => {
+    const r = resolveGlosaError("204;200");
+    expect(r.studentMessage).toBe(esCL.sence.errors.technicalIssue); // 200, el dominante
+  });
+
   it("falls back and alerts the team for an empty GlosaError", () => {
     const r = resolveGlosaError("");
     expect(r.codes).toEqual([]);

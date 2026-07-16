@@ -7,6 +7,25 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-16 — Rulings H4 (D-048), parte II — robustez/UX (Q-04, Q-07, Q-02)
+
+**Enmienda del contrato (E-4, E-5, E-6; manual sigue v1.1.6).** Implementa tres
+rulings de `REVISION-ADVERSARIAL-H4.md` decididos por Edu ([D-048](../../specs/DECISIONES.md)).
+
+- **Q-04 (E-6) — re-emisión de la sesión pendiente:** `startSession`, ante el 23505 del índice
+  único, si la sesión viva es `iniciada_pendiente` RE-EMITE su MISMO form (mismo `IdSesionAlumno`
+  + nonce) en vez de bloquear/`already_open` → el alumno reintenta Clave Única al instante y ya no
+  queda "brickeado" hasta el worker. `SENCE_PENDING_TIMEOUT_MINUTES` por defecto 60 → **15 min**.
+  Una sesión ACTIVA (`iniciada`) sigue devolviendo `already_open` (redirect al curso).
+- **Q-07 (E-5) — mensaje accionable al alumno:** `resolveGlosaError` — con `GlosaError` multi-código,
+  el `studentMessage` prefiere un código `StudentRecoverable` (311/312) si aparece; el
+  `dominantCode`/`severity` del alerting siguen mandados por el más severo.
+- **Q-02 (E-4) — contador del gate M-4:** `handleCallback` registra cada descarte por M-4 (sin PII:
+  razón + largo) para detectar patrones anómalos (monitor de logs + rate-limit del edge, Q-03; el
+  descarte NO persiste fila, así que no alimenta la alerta de spike de `unmatched`).
+- Tests: integración de re-emit vs `already_open` (Q-04), `errors.test.ts` (Q-07 accionable vs
+  dominante), `timing.test.ts` (default 15 min). Suites de estados/expiry actualizadas al re-emit.
+
 ## 2026-07-16 — Rulings H4 (D-048), parte I — máquina de estados de cierre (Q-01, Q-05)
 
 **Enmienda del contrato (E-1, E-2, E-3; manual sigue v1.1.6).** Implementa dos

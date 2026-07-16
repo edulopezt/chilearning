@@ -170,25 +170,29 @@ describe("runExpiryTick — T4 (abandono de Clave Única)", () => {
     expect(await sessionStatus(sessionId)).toBe("iniciada_pendiente");
   });
 
-  it("desbloquea el enrollment 'brickeado' por el índice único parcial", async () => {
+  it("una pendiente abandonada NO brickea al alumno (Q-04 re-emite) y el worker la expira (T4)", async () => {
     // 1. El alumno inicia y abandona Clave Única (queda pendiente, sin callback).
     const enrollmentId = await freshEnrollment();
     const guard = guardFor(TENANT_A);
     const first = await startSession(guard, enrollmentId, STUDENT_A, engineDeps());
     expect(first.kind).toBe("ready");
 
-    // 2. Reintento con la pendiente viva: el índice único lo detecta y el motor
-    //    devuelve un resultado TIPADO `already_open` (H4-R-016), no un 500 crudo.
-    const blocked = await startSession(guard, enrollmentId, STUDENT_A, engineDeps());
-    expect(blocked.kind).toBe("already_open");
+    // 2. Reintento con la pendiente viva: con Q-04 (D-048) el motor RE-EMITE el form
+    //    de la MISMA pendiente (mismo IdSesionAlumno) en vez de bloquear — el alumno
+    //    reintenta Clave Única al instante, ya no queda "brickeado" hasta el worker.
+    const reemit = await startSession(guard, enrollmentId, STUDENT_A, engineDeps());
+    expect(reemit.kind).toBe("ready");
+    if (reemit.kind === "ready" && first.kind === "ready") {
+      expect(reemit.sessionId).toBe(first.sessionId); // misma sesión, no una nueva
+    }
 
-    // 3. El worker expira la abandonada (T4)...
+    // 3. Si el alumno de verdad abandona, el worker expira la pendiente (T4)...
     await runExpiryTick(svc, {
       now: Date.now() + PENDING_TIMEOUT_MS + MINUTE,
       pendingTimeoutMs: PENDING_TIMEOUT_MS,
     });
 
-    // 4. ...y el alumno puede volver a iniciar asistencia.
+    // 4. ...y un nuevo intento crea una sesión nueva.
     const retry = await startSession(guard, enrollmentId, STUDENT_A, engineDeps());
     expect(retry.kind).toBe("ready");
   });

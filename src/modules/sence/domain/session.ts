@@ -173,7 +173,7 @@ export interface SessionTiming {
 
 /** Default operative durations (I-13 / T4). Callers should pass config values. */
 export const DEFAULT_SESSION_MAX_MS = 3 * 60 * 60 * 1000; // 3 h
-export const DEFAULT_PENDING_TIMEOUT_MS = 60 * 60 * 1000; // 60 min
+export const DEFAULT_PENDING_TIMEOUT_MS = 15 * 60 * 1000; // 15 min (D-048/Q-04; antes 60)
 
 /**
  * Parse `GlosaError` into a list of codes (I-5): split on `;`, trim, drop empty.
