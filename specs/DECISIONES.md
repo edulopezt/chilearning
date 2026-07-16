@@ -592,3 +592,207 @@ entrada original.
   `course.cloned`, `action.reexecuted`, `action.activated`.
 - **Backfill:** las acciones existentes CON fechas → active (ya operaban); las
   demás quedan draft.
+
+---
+
+> **Nota de numeración (back-fill Hito 3):** las entradas D-026–D-045 son
+> reconstrucción del 2026-07-16. El ledger quedó congelado en D-025 (fin del Hito
+> 2) mientras el Hito 3 (tareas 3.1–3.12, PRs #45–#68) avanzó en un turno autónomo:
+> sus decisiones se registraron en `ESTADO-PROYECTO.md` y en las descripciones de
+> los PRs con etiquetas ad-hoc (HIGH/MED, F1/L1), no como entradas `D-NNN`. Este
+> back-fill las formaliza. Dos números quedaron FIJADOS por citas ya shipeadas en
+> el código y el ledger se alinea a ellas: **D-034 = scrubber de PII/token de
+> Sentry** (`src/lib/observability/scrub.ts:2`, `sentry.server.config.ts:8`) y
+> **D-035 = healthcheck `/api/health`** (`src/lib/observability/health.ts:2`,
+> `src/app/api/health/route.ts:10`), ambas de la tarea 3.7. Por eso, alrededor de
+> las tareas 3.5–3.7, el orden numérico NO es estrictamente secuencial por número
+> de tarea. El campo **Origen** de cada entrada deja la trazabilidad exacta.
+
+## D-026 — Anonimato estructural de la encuesta de satisfacción (ledger + respuestas separados + RPC `submit_survey`)
+
+- **ID:** D-026
+- **Fecha:** 2026-07-16
+- **Decisión:** la encuesta de cierre separa el ledger de "quién respondió" (`survey_submissions`, con `enrollment_id`) del contenido de las respuestas (`survey_responses`, con `enrollment_id` NULL en modo anónimo), ambas INSERT-only, y un RPC SECURITY DEFINER `submit_survey` inserta ledger + respuesta atómicamente (el `unique` del ledger corta el doble envío). El staff no puede mapear respuesta↔alumno.
+- **Por qué:** HU-6.3 exige que la encuesta pueda ser anónima y a la vez exigible como requisito de completitud; separar "constancia de haber respondido" de "contenido de la respuesta" logra ambas cosas sin que el contenido quede re-vinculable a un alumno. `hasCompletedSurvey` alimenta el gate de certificados (3.2).
+- **Alternativas descartadas:** guardar `enrollment_id` en las respuestas y ocultar la identidad solo por policy/UI (descartada: el dato sigue en BD, anonimato frágil dependiente de una sola capa — se optó por anonimato *estructural*).
+- **Origen:** reconstrucción 2026-07-16 · PR #45 · tarea 3.1 (03-tareas.md L70) / ESTADO-PROYECTO §Hito 3 (L264-268)
+
+## D-027 — Eliminar `survey_responses.submitted_at` y suprimir muestras anónimas <3 (4-ojos 3.1)
+
+- **ID:** D-027
+- **Fecha:** 2026-07-16
+- **Decisión:** la revisión adversarial 4-ojos del PR #45 eliminó la columna `survey_responses.submitted_at` y agregó supresión del detalle cuando una encuesta anónima tiene menos de 3 respuestas.
+- **Por qué:** HIGH — ledger y respuesta se insertan en la MISMA transacción del RPC, así que un `now()` compartido era idéntico byte-a-byte entre ambas filas y servía de clave de join para re-vincular cada respuesta anónima con su alumno (rompe P4). La agregación no usa la marca de tiempo (el ledger ya la registra), así que quitarla no cuesta nada. MEDIUM — con <3 respuestas el detalle sería atribuible al único que respondió.
+- **Alternativas descartadas:** conservar `submitted_at` argumentando que "el ledger ya identifica" (descartada: la simultaneidad transaccional la convertía en clave de re-identificación de las respuestas anónimas).
+- **Origen:** reconstrucción 2026-07-16 · PR #45 (fix 4-ojos) · tarea 3.1
+
+## D-028 — Folio atómico y snapshot §7-R7 congelado e inmutable del certificado
+
+- **ID:** D-028
+- **Fecha:** 2026-07-16
+- **Decisión:** el certificado asigna su folio con una tabla contador `certificate_counters` (por tenant × año) dentro del RPC `issue_certificate` (folios únicos bajo emisión concurrente/masiva), y en la emisión guarda un snapshot §7-R7 de sus datos que queda CONGELADO: el PDF es determinista sobre ese snapshot y regenerable on-demand, y un trigger de BD rechaza cualquier cambio al snapshot tras la emisión (inmutable incluso ante `service_role`).
+- **Por qué:** el folio de un certificado debe ser único e irrepetible por tenant → un contador transaccional en el mismo RPC que emite evita colisiones. Y el certificado es evidencia oficial: su contenido no puede variar aunque después cambien los datos del alumno o de la acción; la inmutabilidad en la capa de datos (trigger) es defensa independiente del código. *(El commit del PR #46 etiquetó este snapshot con un "D-112" ad-hoc, número que nunca se asignó en el ledger — precisamente el hueco que este back-fill cierra, materializándolo aquí como D-028.)*
+- **Alternativas descartadas:** inmutabilidad del snapshot solo por convención en código (descartada: un bug o el `service_role` la saltarían; el trigger es el cinturón, además de la convención). Para el folio: No registradas en el material fuente (reconstrucción).
+- **Origen:** reconstrucción 2026-07-16 · PR #46 (diseño + fix 4-ojos L2) · tarea 3.2 / ESTADO-PROYECTO §Hito 3 (L269-274)
+
+## D-029 — Verificación pública de certificado con RUN enmascarado (RPC `anon`)
+
+- **ID:** D-029
+- **Fecha:** 2026-07-16
+- **Decisión:** la verificación de autenticidad es pública (`/verificar/[token]`, en `PUBLIC_PATHS`) vía RPC `verify_certificate` ejecutable por `anon`; devuelve el RUN SIEMPRE enmascarado, nunca el completo. QR + folio la alimentan.
+- **Por qué:** HU-7.2 exige verificación pública; exponerla como RPC `anon` con RUN enmascarado permite validar la autenticidad sin autenticación y sin filtrar el RUN completo (P4).
+- **Alternativas descartadas:** mostrar el RUN completo en la página pública de verificación (descartada: fuga de dato personal, P4).
+- **Origen:** reconstrucción 2026-07-16 · PR #46 · tarea 3.2
+
+## D-030 — Blindaje de descarga y lectura del certificado (4-ojos 3.2)
+
+- **ID:** D-030
+- **Fecha:** 2026-07-16
+- **Decisión:** la descarga del PDF (`getCertificateDownloadUrl`) exige explícitamente ser staff O el alumno dueño de la inscripción y rechaza descargar certificados con `status != 'issued'`; además se quita `supervisor` de la policy `certificates_select`.
+- **Por qué:** HIGH-1 — la descarga usaba el cliente service-role (bypassa RLS) filtrando solo `tenant_id + id`, así que cualquier usuario autenticado del tenant podía bajar el PDF (con RUN completo) de otro. MEDIUM-2 — un certificado revocado seguía descargable sin marca de revocación. MEDIUM-3 — la policy daba a instructor/supervisor el RUN completo vía snapshot; el fiscalizador debe ver la lista curada sin RUN y verificar por `/verificar` (enmascarado).
+- **Alternativas descartadas:** descarga service-role filtrando solo tenant+id (descartada: fuga cross-alumno del RUN); dejar al `supervisor` en `certificates_select` (descartada: fuga cross-company del RUN vía snapshot).
+- **Origen:** reconstrucción 2026-07-16 · PR #46 (fix 4-ojos) · tarea 3.2
+
+## D-031 — Máquina de estados DJ/GCA con RPC atómico `dj_set_state` (staff-only, liquidación +60d)
+
+- **ID:** D-031
+- **Fecha:** 2026-07-16
+- **Decisión:** el checklist de Declaración Jurada por acción (`dj_checklist`) usa un enum `dj_state` con una máquina de transiciones legales PURA; el deadline de liquidación = `action.ends_on + DJ_SETTLEMENT_DAYS` (default 60); `ensureChecklist` es idempotente y excluye exentos; el cambio de estado + su auditoría pasan por un RPC SECURITY DEFINER `dj_set_state` en UNA transacción, con `p_from` verificado bajo `for update` (cierra el TOCTOU entre dos gestores). Es STAFF-ONLY (sin supervisor).
+- **Por qué:** la DJ es cumplimiento SENCE interno de la OTEC (no dato de empresa) → sin supervisor, mismo criterio que el expediente (3.12). F1 (MED) del 4-ojos: el estado y su auditoría no eran atómicos → un estado sin rastro; el RPC (espejo de `write_assignment_grade`, D-023) lo hace atómico mientras la máquina de dominio sigue siendo la única fuente de legalidad de la transición. Recordatorios n8n → follow-up en 3.9.
+- **Alternativas descartadas:** persistir estado y auditoría en dos statements separados (descartada por F1: estado sin rastro); dar al supervisor lectura de la DJ (descartada: la DJ es liquidación interna OTEC, no dato fiscalizable de empresa; acceso gated se difirió a 3.11).
+- **Origen:** reconstrucción 2026-07-16 · PR #62 (diseño + fix 4-ojos F1/F2/F4) · tarea 3.3 / ESTADO-PROYECTO §Hito 3 (L86-90)
+
+## D-032 — Canal de comunicación oficial 100% nativo (6 tablas + RLS de privacidad + SLA visible)
+
+- **ID:** D-032
+- **Fecha:** 2026-07-16
+- **Decisión:** anuncios, foro de consultas, mensajería asincrónica (exigible SENCE, HU-9.3) y calendario se implementan nativos (sin n8n/terceros) en 6 tablas con RLS de privacidad: el alumno solo ve sus propios mensajes (nunca los de otro alumno) y el supervisor no accede a mensajería. SLA de respuesta visible (semáforo). Notificaciones in-app + correo best-effort vía EmailSender (no-op sin RESEND). La publicación de anuncio hace la transición draft→published atómica con fan-out único.
+- **Por qué:** M9 — la comunicación oficial del curso debe ser trazable dentro del LMS y la mensajería alumno↔relator es exigible por SENCE; hacerla nativa evita depender de canales externos para lo crítico (P3). WhatsApp queda para el Hito 5.
+- **Alternativas descartadas:** delegar la comunicación oficial a n8n/terceros (descartada: P3/ADR-004, n8n es solo periferia); dar al supervisor acceso a mensajería (descartada: privacidad del alumno).
+- **Origen:** reconstrucción 2026-07-16 · PR #47 (diseño + fix 4-ojos L1-L3) · tarea 3.4 / ESTADO-PROYECTO §Hito 3 (L276-280)
+
+## D-033 — Derechos Ley 21.719: `consents` INSERT-only + supresión que CONSERVA SENCE y REDACTA perfil/comunicación
+
+- **ID:** D-033
+- **Fecha:** 2026-07-16
+- **Decisión:** `consents` (INSERT-only, un registro por versión de política, inmutable por trigger) + `dsr_requests`; consentimiento como gate al primer ingreso; export JSON del titular (acceso + portabilidad); y una supresión que, vía `classifyForErasure`, CONSERVA los registros SENCE/certificados/notas/auditoría (retención legal) y suprime/redacta el perfil y la comunicación.
+- **Por qué:** RNF-3 / HU-2.4 — los derechos deben operarse desde la UI sin tocar la BD a mano (P4), pero la Ley 21.719 y las obligaciones de retención SENCE conviven: ciertos registros deben conservarse. `classifyForErasure` codifica esa frontera. Los catálogos de retención/tratamientos quedan flagged para revisión legal (abogado, Hito 5). La ejecución real de la redacción se endurece en D-036 (fix 4-ojos).
+- **Alternativas descartadas:** borrado duro total del titular (descartada: destruiría evidencia SENCE de retención obligatoria; el borrado del usuario auth queda diferido/manual).
+- **Origen:** reconstrucción 2026-07-16 · PR #59 · tarea 3.5 / ESTADO-PROYECTO §Hito 3 (L281-285)
+
+## D-034 — Scrubber de PII/token de Sentry por predicado de clave + `includeLocalVariables:false`
+
+- **ID:** D-034
+- **Fecha:** 2026-07-16
+- **Decisión:** un scrubber puro (`src/lib/observability/scrub.ts`) actúa como `beforeSend` de Sentry en los 3 runtimes: redacta RUN, correo, el token SENCE cifrado y secretos por PREDICADO de clave (`token`/`key`/`secret`/`bearer`/…, no solo por regex de valor), quita cookies/headers de auth y el body de `/api/sence/*`; el SDK se cablea con `includeLocalVariables:false`, `sendDefaultPii:false`, sin Session Replay ni Logs, y gated por DSN (no-op sin DSN). *(Número FIJADO por la cita en `scrub.ts:2` y `sentry.server.config.ts:8`.)*
+- **Por qué:** F1 (HIGH) del 4-ojos — el token SENCE DESCIFRADO vive en una var de stack con forma UUID que NINGÚN regex de valor reconoce y cuya clave `token` no estaba en la lista; sin `includeLocalVariables:false` Sentry lo capturaría. El predicado por clave + esa opción son la red doble que impide que el token SENCE salga del proceso (RNF-10 / I-6). Session Replay y Logs quedan fuera por incompatibles con Ley 21.719 (grabarían PII en pantalla / logs con RUN).
+- **Alternativas descartadas:** redactar solo por regex de valor (descartada por F1: no reconoce el token descifrado); dejar `includeLocalVariables` en el default del SDK (`true`) (descartada: capturaría el token en la traza); habilitar Session Replay/Logs (descartada: grabaría PII, viola Ley 21.719/RNF-10).
+- **Origen:** reconstrucción 2026-07-16 · PR #57 (scrubber + fix 4-ojos F1) y PR #71 (wiring del SDK) · tarea 3.7 · citado por `scrub.ts:2` / `sentry.server.config.ts:8` / ESTADO-PROYECTO §Hito 3 (L291-295)
+
+## D-035 — Healthcheck `/api/health` con payload puro para Uptime Kuma
+
+- **ID:** D-035
+- **Fecha:** 2026-07-16
+- **Decisión:** `/api/health` (público, en `PUBLIC_PATHS`) expone un payload derivado por `buildHealthPayload` (puro): `status = "degraded"` solo si `checks.db === "fail"`, si no `"ok"`; incluye `version` (desde `SENTRY_RELEASE`/`APP_VERSION`), `checks` y `time`. La ruta hace un chequeo barato de BD (anon, timeout ~800 ms) → 200 ok / 503 degraded, cachea el resultado unos segundos y reutiliza el cliente anon. El contenedor web declara un `HEALTHCHECK` en el Dockerfile. Lo consume Uptime Kuma como monitor de disponibilidad. *(Número FIJADO por la cita en `health.ts:2` y `api/health/route.ts:10`.)*
+- **Por qué:** Plan §8/§10 exige monitoreo externo; un endpoint de salud con lógica PURA y testeable (status derivado solo del resultado de los chequeos) permite que Uptime Kuma y el `HEALTHCHECK` del contenedor decidan sin ambigüedad, y el caché + la reutilización del cliente anon evitan que un monitor frecuente amplifique carga contra la BD (F3/F4 del 4-ojos).
+- **Alternativas descartadas:** golpear la BD en cada request sin caché (descartada por F3/F4: amplifica carga); responder siempre 200 sin chequeo real de BD (descartada: no distingue "app viva" de "BD caída").
+- **Origen:** reconstrucción 2026-07-16 · PR #57 · tarea 3.7 · citado por `health.ts:2` / `api/health/route.ts:10` / ESTADO-PROYECTO §Hito 3 (L291-295)
+
+## D-036 — La supresión debe REDACTAR de verdad la comunicación, no solo el nombre (4-ojos 3.5)
+
+- **ID:** D-036
+- **Fecha:** 2026-07-16
+- **Decisión:** `applyErasure` redacta realmente el perfil de auth (nombre + correo tombstone), `forum_posts.body`, `messages.body` y `message_threads.subject` del titular (bajo tenantGuard); se agrega el grant `update on forum_posts to service_role` SOLO para esta supresión. `resolveDsr` ya no puede cerrar como "completed" una solicitud de tipo erasure sin pasar por la anonimización real. (Endurece la supresión definida en D-033.)
+- **Por qué:** HIGH — `applyErasure` AFIRMABA suprimir foro/mensajes/perfil pero solo anulaba `full_name`: un registro de cumplimiento FALSO, peor que no hacer nada (la ley se incumple mientras el sistema declara que se cumplió).
+- **Alternativas descartadas:** anular solo `full_name` y reportar la supresión como completa (descartada: cumplimiento falso).
+- **Origen:** reconstrucción 2026-07-16 · PR #59 (fix 4-ojos) · tarea 3.5
+
+## D-037 — Rate-limit POR-USUARIO (no por IP) en rutas SENCE, fail-open + CSRF
+
+- **ID:** D-037
+- **Fecha:** 2026-07-16
+- **Decisión:** `/api/sence/{start,close}` limitan por USUARIO (10/min) con ventana fija en Redis, FAIL-OPEN sin `REDIS_URL`, y aplican `assertSameOrigin` (CSRF); `/api/sence/cb/[nonce]` queda SIN rate-limit y EXENTO de same-origin (callback cross-origin legítimo de SENCE, protegido por el nonce). La resolución del backend Redis va dentro del try/catch (fail-open ante un throw del import dinámico).
+- **Por qué:** HIGH del 4-ojos — un rate-limit por IP tumbaba cohortes tras NAT compartido (empresa/laboratorio: >30 alumnos en una IP recibían 429 al registrar asistencia) y, en el callback, correr el límite ANTES de `handleCallback` violaba I-1 (persistir SIEMPRE), perdiendo la marca de asistencia sin reintento de SENCE. El anti-DoS del callback va en el edge/proxy. Sin cambio de contrato → no requiere re-certificación rcetest.
+- **Alternativas descartadas:** rate-limit por IP (descartada: colapsa cohortes tras NAT); limitar el callback antes de persistir (descartada: viola I-1, pierde evidencia); fail-closed sin Redis (descartada: rompería SENCE si falta el backend).
+- **Origen:** reconstrucción 2026-07-16 · PR #48 (fix 4-ojos H1/M2) · tarea 3.6 / docs/sence/CHANGELOG.md (2026-07-16)
+
+## D-038 — Cabeceras de seguridad enforcing + CSP en report-only (enforcing parqueado)
+
+- **ID:** D-038
+- **Fecha:** 2026-07-16
+- **Decisión:** se emiten HSTS (sin preload), X-Content-Type-Options, X-Frame-Options, Referrer-Policy y Permissions-Policy en modo ENFORCING; la CSP va en REPORT-ONLY (con `form-action` incluyendo `sistemas.sence.cl` — load-bearing del auto-submit de asistencia — más Bunny/YouTube-nocookie/Supabase/Sentry). Endurecer la CSP a enforcing queda parqueado hasta verificar en navegador. Se agrega Dependabot semanal + `docs/security/OWASP-REVIEW.md`.
+- **Por qué:** en un despliegue no supervisado de cara al piloto, una CSP enforcing mal calibrada rompería el auto-submit SENCE o el video; report-only recoge violaciones reales sin romper producción y se endurece cuando esté verificado.
+- **Alternativas descartadas:** CSP enforcing desde ya (descartada: riesgo de romper el auto-submit SENCE / el video sin verificación previa en navegador).
+- **Origen:** reconstrucción 2026-07-16 · PR #48 · tarea 3.6 / ESTADO-PROYECTO §Hito 3 (L286-290)
+
+## D-039 — Pipeline de backup off-site pg_dump→age→R2 en contenedor cron propio
+
+- **ID:** D-039
+- **Fecha:** 2026-07-16
+- **Decisión:** los backups off-site corren en `ops/backup/`: `backup.sh` hace `pg_dump` (v17, el server es PG 17.6) → cifra con `age` (clave privada OFFLINE, fuera del servidor) → sube a R2 con rclone; `prune.sh` aplica retención (comparte `r2-env.sh`). El contenedor es long-running con `crond` interno + backup inicial de validación al arrancar (sin depender de las Scheduled Tasks de Coolify). El pipeline aborta si el dump falla (dump a archivo + chequeo `-s`, en vez de `pg_dump|gzip` que ocultaba el fallo) y usa `RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true` para tokens R2 scoped al bucket.
+- **Por qué:** cumplir §8/§10 (backups cifrados off-site + ensayo de restauración). Cifrar con `age` de clave offline garantiza que un compromiso de R2 no exponga los datos. Los fixes salieron del primer despliegue real: `pg_dump` v16 rechaza el server PG 17, un pipe ocultaba el fallo de conexión cifrando un dump vacío, y un token R2 scoped moría con 403 al intentar `CreateBucket`.
+- **Alternativas descartadas:** `pg_dump | gzip` en pipe (descartada: enmascara el fallo de `pg_dump` y cifra un dump vacío); depender de las Scheduled Tasks de Coolify (descartada: se optó por `crond` interno en un contenedor long-running); `pg_dump` v16 (descartada: incompatible con el server PG 17.6).
+- **Origen:** reconstrucción 2026-07-16 · PR #57 (diseño) + PR #70/#74/#75 (fixes de despliegue real) · tarea 3.7
+
+## D-040 — El contenedor worker declara un HEALTHCHECK trivial que siempre pasa
+
+- **ID:** D-040
+- **Fecha:** 2026-07-16
+- **Decisión:** el stage worker del Dockerfile declara `HEALTHCHECK CMD true` (siempre healthy); el worker es un proceso de fondo sin HTTP. Además se pasa `ARG NEXT_PUBLIC_SENTRY_DSN` al build del cliente.
+- **Por qué:** Coolify parsea el Dockerfile completo (ve el HEALTHCHECK del stage runner web) y exige estado de salud del contenedor worker; sin estado, `docker inspect .State.Health` queda vacío y el rolling update aborta. `HEALTHCHECK NONE` no basta porque Coolify igual espera estado. Un check trivial lo deja healthy sin inventar un endpoint HTTP en un proceso que no lo tiene.
+- **Alternativas descartadas:** `HEALTHCHECK NONE` en el stage worker (descartada: Coolify igual exige estado y el rolling update aborta). Otras no registradas en la fuente.
+- **Origen:** reconstrucción 2026-07-16 · PR #72/#73 (fixes de infra Docker/Coolify)
+
+## D-041 — E2E Playwright con harness real: tenant por subdominio (`localtest.me`) + login por UI
+
+- **ID:** D-041
+- **Fecha:** 2026-07-16
+- **Decisión:** los E2E corren contra la app real (`next start`) + Supabase local, con login REAL por UI y `storageState` por rol (ejercita `@supabase/ssr` + el Auth Hook `custom_access_token`, no un JWT falso), y el tenant se resuelve por subdominio vía `localtest.me` (DNS público → 127.0.0.1). Proyectos desktop (1440×900) + móvil (Pixel 5), nuevo job `e2e` en CI. Los 3 flujos del gate: encuesta, subrutas de acción (guardia anti-#41) y verificación pública de certificado con RUN enmascarado.
+- **Por qué:** el bug #41 fue un conflicto de slug de rutas — error de RUNTIME que `next build` no caza; hacía falta un E2E que arranque la app real y navegue por subdominio para atraparlo (guardia anti-#41). Un login por UI real (no JWT mockeado) valida el Auth Hook y el multi-tenant por subdominio de punta a punta (P4: el RUN completo nunca aparece en la verificación pública).
+- **Alternativas descartadas:** inyectar un JWT falso en vez de login por UI (descartada: no ejercita el Auth Hook ni `@supabase/ssr`); confiar en `next build` para cazar conflictos de rutas (descartada: es error de runtime invisible al build — lección del #41).
+- **Origen:** reconstrucción 2026-07-16 · PR #68 · tarea 3.8 / ESTADO-PROYECTO §Hito 3 (L102-105)
+
+## D-042 — n8n reminders-tick RNF-10 por construcción: a n8n solo agregado seudonimizado (HMAC)
+
+- **ID:** D-042
+- **Fecha:** 2026-07-16
+- **Decisión:** los recordatorios (asistencia SENCE, inactivos, informe al coordinador) los computa y ENVÍA el worker (`reminders-tick`, horario), mandando el correo PII al destinatario real vía EmailSender; a n8n solo viaja un evento AGREGADO y seudonimizado por HMAC-SHA256 (POST firmado) — nunca RUN, nombre ni correo. Opt-out del alumno (`communication_opt_outs`) + config por acción (`automation_config`) + dedup diario vía el outbox de notificaciones. No-op sin `N8N_WEBHOOK_URL/SECRET`.
+- **Por qué:** RNF-10 exige que al procesamiento por lotes (n8n) jamás vayan datos personales; separar "quién manda el PII" (worker/EmailSender) de "qué ve n8n" (agregado seudonimizado) hace el cumplimiento estructural, no dependiente de configuración. n8n es periferia (P3/ADR-004). MED del 4-ojos: el worker no tiene origin de request, así que el link `/mi-curso` relativo era no-clickeable en el correo → `APP_BASE_URL` para construir la URL absoluta.
+- **Alternativas descartadas:** pasar datos del alumno a n8n para que arme el correo (descartada: viola RNF-10); poner la lógica de recordatorios en n8n (descartada: P3/ADR-004, n8n solo periferia); link relativo en el correo (descartada por el MED: no resuelve en clientes de correo).
+- **Origen:** reconstrucción 2026-07-16 · PR #66 (diseño + fix 4-ojos MED) · tarea 3.9 / ESTADO-PROYECTO §Hito 3 (L98-101)
+
+## D-043 — Verificación Meta Business como trámite externo documentado (canal WhatsApp en Hito 5)
+
+- **ID:** D-043
+- **Fecha:** 2026-07-16
+- **Decisión:** la tarea 3.10 entrega un checklist documentado (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`) para iniciar la verificación Meta Business; el trámite (no-código) lo ejecuta Edu y el canal WhatsApp recién opera en el Hito 5 (5.11). No bloquea nada del Hito 3.
+- **Por qué:** M9 — la verificación Meta es un trámite externo lento; arrancarlo temprano y por escrito evita que bloquee el canal cuando se necesite, sin introducir código de canal que aún no se usará.
+- **Alternativas descartadas:** No registradas en el material fuente (reconstrucción).
+- **Origen:** reconstrucción 2026-07-16 · PR #58 · tarea 3.10 / ESTADO-PROYECTO §Hito 3 (L296-298, L305-307)
+
+## D-044 — Portal supervisor: grants con vigencia/alcance que endurecen 6 policies vivas + auditoría por consulta
+
+- **ID:** D-044
+- **Fecha:** 2026-07-16
+- **Decisión:** el acceso de solo-lectura del supervisor pasa a estar gobernado por un GRANT con vigencia (expiry), revocación y alcance (todo el tenant o un set de acciones): `supervisor_grants` + `supervisor_grant_actions` + helpers SECURITY DEFINER (`supervisor_has_active_grant`/`_action_in_scope`/`_enrollment_in_scope`/`_session_in_scope`, `search_path=''`). Se endurecen 6 policies vivas (enrollments, sence_sessions, sence_events, grades, lesson_progress, alerts): la rama `has_role('supervisor')` ahora exige además grant activo Y en alcance (las tablas SENCE mantienen su contrato INSERT-only; solo se acota el SELECT). El portal usa service-role (bypassa RLS) → re-verifica en código y AUDITA cada lectura/descarga; `cumplimiento-service` pasa a staff-only con builders `*Unchecked` que solo el portal gated delega. Backfill de supervisores existentes.
+- **Por qué:** HU-12.1/12.2 — el fiscalizador OTIC/externo necesita acceso acotado y revocable, no permanente; el grant con alcance limita qué ve y la auditoría por consulta deja rastro de cada acceso. Defensa en profundidad: como el portal usa service-role, el chequeo en código complementa la RLS endurecida. MED del 4-ojos multi-agente: `alerts_select_admin` gateaba al supervisor solo por vigencia, no por alcance → un supervisor `scope='actions'` leía TODA alerta del tenant (incl. `sence_day1_low_attendance` con `action_id`/`codigo_accion`/cifras de asistencia de acciones fuera de alcance) → se escopa con `supervisor_action_in_scope` (alertas con acción) y el nuevo `supervisor_has_tenant_grant` (alertas tenant-wide).
+- **Alternativas descartadas:** acceso de supervisor permanente sin vigencia/alcance (descartada: el fiscalizador no debe ver todo el tenant para siempre); confiar solo en RLS sin re-chequeo en el portal (descartada: el portal usa service-role que bypassa RLS); gatear `alerts` solo por vigencia (descartada por el MED: filtra alertas fuera de alcance).
+- **Origen:** reconstrucción 2026-07-16 · PR #64 (diseño + fix 4-ojos MED) · tarea 3.11 / ESTADO-PROYECTO §Hito 3 (L91-97)
+
+## D-045 — Expediente de fiscalización: documentos definitivos INMUTABLES + ZIP, staff-only admin/coordinador
+
+- **ID:** D-045
+- **Fecha:** 2026-07-16
+- **Decisión:** el expediente por acción (`action_documents`, bucket privado con allowlist MIME) permite subir documentos con tipo/estado/fecha, marcar definitivos (borrador→definitivo) y descargar un ZIP con `MANIFIESTO.csv`; un trigger `action_documents_lock_definitive` impide modificar o borrar un documento definitivo, incluso con `service_role`. Es STAFF-ONLY restringido a otec_admin/coordinator (sin instructor, sin supervisor).
+- **Por qué:** HU-5.10 — el expediente contiene la OC OTIC con montos comerciales, por eso se acota a admin/coordinador (least-privilege; el 4-ojos quitó instructor) y sin supervisor. Los documentos definitivos son evidencia de fiscalización: su inmutabilidad en la capa de datos (trigger, incluso ante `service_role`) impide alterarlos tras cerrarlos. MED del 4-ojos: `uploadDocument` valida que la acción sea del tenant ANTES de usar `actionId` como segmento de la clave de storage (evita inyección de ruta / acciones ajenas).
+- **Alternativas descartadas:** incluir instructor/supervisor en el acceso (descartada: montos comerciales, least-privilege); inmutabilidad solo por convención de código (descartada: un `service_role` la saltaría; el trigger es el cinturón); usar `actionId` en la ruta sin validar pertenencia (descartada por el MED: inyección de ruta).
+- **Origen:** reconstrucción 2026-07-16 · PR #60 (diseño + fix 4-ojos MED) · tarea 3.12 / ESTADO-PROYECTO §Hito 3 (L83-85, L309-312)
+
+## D-046 — Renombrar el tenant demo `otec-andes` → `seminarea` (cliente real)
+
+- **ID:** D-046
+- **Fecha:** 2026-07-16
+- **Decisión:** el tenant demo cambia de slug/nombre `otec-andes` → `seminarea` (cliente real del piloto) conservando el MISMO UUID; solo cambian slug, nombre y los correos semilla (`admin@seminarea.test`, …). El staging pasa a `seminarea.chilearning.cl` (el dominio viejo `otec-andes.chilearning.cl` responde en transición). `otec-pacifico` queda como tenant B de pruebas.
+- **Por qué:** Seminarea es el cliente real con el que se ejecutará el piloto (Hito 4); renombrar el tenant demo in-place (mismo UUID) evita una migración/duplicación de datos y conserva el historial. Los datos del seed siguen siendo FICTICIOS (regla dura: nunca datos reales en fixtures); el RUT del tenant es placeholder hasta que Edu cargue el real por la app.
+- **Alternativas descartadas:** crear un tenant nuevo para Seminarea (descartada: obligaría a migrar/duplicar el demo; el rename in-place conserva UUID e historial); cambiar los datos del seed a reales (descartada: viola la regla de no usar datos reales en fixtures).
+- **Origen:** 2026-07-16 · PR #76 (rename) + #77 (corte de infra, staging verificado) / ESTADO-PROYECTO §Snapshot (L28-36)
