@@ -46,11 +46,13 @@
     cadena de integridad verificada de punta a punta, `rclone`/`age` listos, guía escrita). **Falta la
     ventana de ~30 min con Edu** para el descifrado (clave `age` privada offline). Artefacto + guía en
     el scratchpad de la sesión.
-  - **Rulings de Edu ✅ RESUELTOS (2026-07-16, D-048):** los 10 rulings de la revisión H4 decididos.
-    Pendiente de IMPLEMENTAR (bump contrato v1.1.6→v1.1.7 + código + 4-ojos): Q-01 cerrar tardío,
-    Q-02 formalizar M-4, Q-04 re-emitir la pendiente + timeout ~15 min, Q-05 arreglar T8, Q-07 mensaje
-    accionable al alumno. Q-03 = config de infra (Traefik/Coolify). Q-06/08/09/10 = doc/sin cambio.
-    Follow-ups de UX aparte (H4-R-010/012: mensaje es-CL al alumno).
+  - **Rulings de Edu ✅ RESUELTOS + IMPLEMENTADOS (2026-07-16, D-048):** los 10 decididos; los 5 de
+    código/contrato ya en `main` con contrato enmendado (§Enmiendas E-1..E-6, cada uno con 4-ojos):
+    **PR #85** (parte I, máquina de estados: Q-01 cierre tardío = cierra en vez de falso `expirada`,
+    Q-05 T8 alcanzable) + **PR #86** (parte II, robustez/UX: Q-04 re-emitir la pendiente + timeout
+    15 min, Q-07 mensaje accionable al alumno, Q-02 contador M-4). Q-03 (rate-limit del callback en el
+    edge) = handoff documentado (`docs/ops/RATE-LIMIT-CALLBACK-SENCE.md`). Q-06/08/09/10 = doc/sin
+    cambio. Follow-ups de UX aparte (H4-R-010/012: mensaje es-CL al alumno, aún pendiente).
 - **D-046 (Edu): el tenant demo pasa a ser `seminarea`** (cliente real, staging en
   `seminarea.chilearning.cl`). Mismo UUID; solo slug/nombre/correos semilla (`admin@seminarea.test`, …).
   Los datos del seed siguen siendo FICTICIOS (regla: nunca datos reales en fixtures); el RUT del tenant
@@ -130,7 +132,7 @@
   subrutas de acción = **guardia anti-#41**; verificación pública con RUN enmascarado) + smoke por rol sin
   scroll horizontal a 360px. Nuevo job `e2e` en CI. **Cierra el gate del Hito 3.**
 - **Hito 3: 12/12 mergeadas. Pendientes: NINGUNO** (los items B/C tienen handoff documentado).
-- **PRs mergeados a `main`:** 68 (incl. #76–#82) · **Tests:** ~1000 verdes (489 unit + 327 RLS + 162 integración + E2E 3 flujos)
+- **PRs mergeados a `main`:** 73 (incl. #78–#86: revisión H4, fixes, runbooks, rulings) · **Tests:** ~1015 verdes (unit + RLS + integración + E2E 3 flujos)
 - **Staging:** VIVO en https://seminarea.chilearning.cl (D-046 ejecutado; el dominio viejo
   otec-andes.chilearning.cl sigue respondiendo en transición) (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
@@ -358,11 +360,12 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 
 > Durante el piloto el agente entra en **modo soporte**: cero features nuevas, fixes con prioridad máxima.
 >
-> **Rulings de Edu ✅ RESUELTOS (2026-07-16, D-048):** los 10 decididos. **Pendiente de IMPLEMENTAR**
-> (bump contrato v1.1.6→v1.1.7 + código + 4-ojos): Q-01 (cerrar el `close_ok` tardío — hoy crea falsos
-> `expirada`), Q-02 (formalizar M-4 en I-1 + contador de descartes), Q-04 (`/start` re-emite la
-> pendiente + timeout ~15 min), Q-05 (arreglar T8 = reintento de cierre), Q-07 (mensaje al alumno =
-> código accionable 311/312). Q-03 = config de Traefik/Coolify (infra). Q-06/08/09/10 = doc/sin cambio.
+> **Rulings de Edu ✅ RESUELTOS + IMPLEMENTADOS (2026-07-16, D-048):** los 10 decididos; los 5 de
+> código/contrato ya en `main` con el contrato enmendado (§Enmiendas E-1..E-6, cada PR con 4-ojos):
+> **#85** (Q-01 cierre tardío cierra en vez de falso `expirada`; Q-05 T8 alcanzable) + **#86** (Q-04
+> re-emitir la pendiente + timeout 15 min; Q-07 mensaje accionable 311/312; Q-02 contador M-4).
+> **Q-03** (rate-limit del callback en el edge) = handoff documentado en `docs/ops/RATE-LIMIT-CALLBACK-SENCE.md`.
+> Q-06/08/09/10 = doc/sin cambio. Follow-up de UX pendiente: H4-R-010/012 (mensaje es-CL al alumno).
 > **Follow-ups (informe H4):** UX del mensaje es-CL al alumno (H4-R-010/012), reconciliación evento↔estado
 > en el worker (H4-R-006), scoping del rol `company` (H4-R-008), alerta de vida del tick (H4-R-013).
 
