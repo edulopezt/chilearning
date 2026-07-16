@@ -63,6 +63,7 @@ async function remindersTick(db: SupabaseClient): Promise<void> {
     n8n: n8nEmitterFromEnv(process.env),
     resolveRecipients: await resolveRecipientsFactory(db),
     inactiveDays: Number(process.env.REMINDERS_INACTIVE_DAYS) || undefined,
+    appBaseUrl: process.env.APP_BASE_URL,
   });
   console.log("[worker][reminders] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
 }

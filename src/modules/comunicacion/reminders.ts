@@ -31,6 +31,9 @@ export interface RemindersDeps {
   /** Resuelve correo+nombre por user_id (producción: admin API; tests: stub). */
   readonly resolveRecipients: (userIds: readonly string[]) => Promise<Map<string, { email: string; name: string }>>;
   readonly inactiveDays?: number;
+  /** Base URL absoluta para los enlaces del correo (el worker no tiene origin;
+   *  4-ojos MED: un enlace relativo no es clickeable en el cliente de correo). */
+  readonly appBaseUrl?: string;
 }
 
 export interface RemindersSummary {
@@ -147,7 +150,8 @@ export async function runRemindersTick(db: SupabaseClient, deps: RemindersDeps):
     if (!action) continue;
     const { data: course } = await db.from("courses").select("name").eq("tenant_id", tenantId).eq("id", action.course_id as string).maybeSingle();
     const courseName = (course?.name as string) ?? "Tu curso";
-    const ctx = { tenantId, actionId, courseName, courseUrl: `/mi-curso` };
+    const base = (deps.appBaseUrl ?? "").replace(/\/$/, "");
+    const ctx = { tenantId, actionId, courseName, courseUrl: `${base}/mi-curso` };
 
     const enrollments = await loadEnrollmentData(db, tenantId, actionId, dayStartIso, deps.now);
     if (enrollments.length === 0) continue;

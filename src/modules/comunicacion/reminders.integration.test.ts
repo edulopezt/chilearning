@@ -88,12 +88,13 @@ describe("recordatorios — RNF-10, correo PII, opt-out, dedup", () => {
   it("solo A recibe correo; n8n recibe agregado SIN PII; opt-out excluido; dedup en la 2ª corrida", async () => {
     const { sender, sent } = captureSender();
     const { n8n, events } = captureN8n();
-    const summary = await runRemindersTick(svc, { now: NOW, secret: SECRET, emailSender: sender, n8n, resolveRecipients: resolve });
+    const summary = await runRemindersTick(svc, { now: NOW, secret: SECRET, emailSender: sender, n8n, resolveRecipients: resolve, appBaseUrl: "https://test.example/" });
 
     expect(summary.emailsSent).toBe(1);
-    // El correo PII fue a A (destinatario real).
+    // El correo PII fue a A (destinatario real) con enlace ABSOLUTO (4-ojos MED).
     expect(sent).toHaveLength(1);
     expect(sent[0]!.to).toBe(EMAIL_A);
+    expect(sent[0]!.html).toContain("https://test.example/mi-curso");
 
     // El evento a n8n: 1 destinatario (A), sin B (asistió) ni C (opt-out), y SIN PII.
     const noAtt = events.find((e) => e.kind === "no_attendance");
