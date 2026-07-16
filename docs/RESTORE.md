@@ -12,12 +12,24 @@
 | 1 | 2026-07-14 | dev (Supabase local) | Borrado total de `memberships` (14 filas) → restauración | ✅ 14 → 0 → 14 filas | < 1 min |
 | 2 | 2026-07-15 | dev (Supabase local) | Esquema completo Hito 0: borrado de `courses`/`actions`/`enrollments`/`lessons` → restauración | ✅ todos los conteos restaurados (tenants 2, memberships 14, courses 1, lessons 2, enrollments 1) | 34 s |
 | 3 | 2026-07-16 | dev (Supabase local) | **Ensayo del pipeline off-site (task 3.7):** `pg_dump` del esquema completo Hito 3 (`ops/backup/backup.sh`) → verificación del dump | ✅ dump 468 KB con todas las tablas nuevas (tenants, certificates, survey_responses, message_threads, …); conteos OK (tenants 2, memberships 14). El paso `age`+`rclone`→R2 queda para el ensayo con cuenta real (handoff) | < 1 min |
+| **4** | **2026-07-16** | **backup REAL de R2 → restore local (tarea 4.4, §8.3)** | **Ensayo end-to-end COMPLETO:** descargar el dump cifrado real de R2 (`db-…T080000Z.sql.gz.age`) → verificar SHA-256 (cadena R2→contenedor→host→local idéntica) → **descifrar con la clave `age` privada de Edu** → `gunzip` → restaurar en una BD limpia (`restore_drill`) en el Postgres local → verificar integridad | ✅ **datos íntegros** (tenants 2, memberships 14, sence_sessions 2, sence_events 3, audit_log 2, auth.users 15); 40 tablas con RLS; triggers INSERT-only de `sence_events` presentes. Solo **2 errores no-fatales** en internals de Supabase (`vault.secrets`, un parámetro restringido), ninguno en datos de negocio | **~49 s** (descifrado + restore; RTO ≪ 4 h) |
 
-> RTO objetivo ≤ 4 h; en dev el restore canónico toma segundos. El **ensayo #3**
-> (arriba) validó el mecanismo `pg_dump` del pipeline `ops/backup/`; falta el
-> ensayo **con R2 real** (cifrado `age` + `rclone` a Cloudflare R2), que es el
-> **ensayo #2 del criterio §8.3** y se hará con la cuenta R2 de Edu (handoff) — el
-> #2-de-2 exigido antes del piloto lo cubre la tarea 4.4.
+> **✅ Criterio §8.3 CUMPLIDO** (restauración ensayada con éxito ≥ 2 veces antes del piloto): el
+> **ensayo #4** es el end-to-end REAL (backup off-site cifrado de R2 + descifrado `age` + restore),
+> además de los locales #1–#3. La clave `age` privada de Edu (offline, `age-key.txt`) descifra el
+> backup correctamente — **verificado**: su clave pública derivada coincide con el recipiente del backup.
+>
+> **Hallazgos del ensayo #4 (fricción real, para un restore de producción):**
+> 1. **`--no-privileges`**: `ops/backup/backup.sh` dumpea con `pg_dump --no-owner --no-privileges`, así
+>    que el backup trae esquema (tablas, policies, triggers, índices) + DATOS pero **NO los GRANTs de
+>    columna/tabla**. Un restore real debe **re-aplicar los grants corriendo las migraciones** tras
+>    cargar los datos (las migraciones están en Git). Por eso en el restore `callback_nonce` aparece
+>    "sin grant": no hay ningún grant en el dump, no es que la migración lo ocultara.
+> 2. **Cluster completo**: el dump incluye los esquemas gestionados de Supabase (`auth`, `storage`,
+>    `vault`, `extensions`, …). Restaurar en una BD **nueva dentro del Postgres de Supabase** (los roles
+>    `authenticated`/`anon`/`service_role` existen a nivel de cluster) funciona con solo 2 errores
+>    benignos. Un restore de producción va a un **proyecto Supabase nuevo/limpio** (que ya provee esos
+>    esquemas y roles) — ver el checklist de abajo.
 
 ---
 
@@ -61,9 +73,10 @@ docker exec -i supabase_db_lms-marca psql -U postgres -d postgres < snapshot.sql
 
 ---
 
-## Staging y producción (pendiente — Hito 3)
+## Staging y producción (backup off-site ✅ montado y restore ✅ ensayado)
 
-Cuando se monte el backup off-site (tarea del Hito 3, ADR/plan §7-§9):
+El backup off-site cifrado está FUNCIONANDO (cron diario a R2) y el restore end-to-end quedó
+**ensayado con éxito** (ensayo #4, §8.3). Parámetros:
 
 - **Backup:** dump cifrado diario de la BD gestionada de Supabase → Cloudflare R2
   (`R2_*` en `.env`), retención ≥ 30 días. RPO objetivo ≤ 24 h.
@@ -73,14 +86,46 @@ Cuando se monte el backup off-site (tarea del Hito 3, ADR/plan §7-§9):
 - **Regla dura (P6):** la restauración de producción la aprueba y supervisa Edu;
   jamás se toca producción a mano fuera de este procedimiento.
 
-### Checklist de un restore de producción (borrador, a validar en el ensayo #2)
+### Checklist de un restore de producción (VALIDADO en el ensayo #4, 2026-07-16)
 
-- [ ] Confirmar el alcance del incidente y declarar RPO/RTO objetivo del evento
-- [ ] Descargar el último dump válido desde R2 y verificar su checksum
-- [ ] Descifrar el dump
-- [ ] Restaurar en un proyecto Supabase **nuevo/limpio** (no sobre el dañado)
-- [ ] Correr migraciones pendientes si el dump es más antiguo que el esquema
-- [ ] Verificar integridad: conteos por tabla, `audit_log`/`sence_events` intactos
-- [ ] Repuntar la app (variables de entorno) al proyecto restaurado
-- [ ] Smoke test: login, un curso, un registro SENCE en `rcetest`
-- [ ] Registrar el ensayo/incidente en la tabla de arriba con su tiempo real
+Comandos reales del ensayo #4 (ajustar el destino a un proyecto Supabase nuevo en un incidente real):
+
+1. **Confirmar alcance** y declarar RPO/RTO del evento.
+2. **Descargar** el último dump válido de R2 (desde el contenedor de backup, sin exponer secretos):
+   ```sh
+   ssh clawbot 'docker exec <contenedor-backup> sh -c ". /ops/r2-env.sh; rclone copy \
+     \"r2:\$R2_BUCKET/db/AAAA/MM/db-XXXX.sql.gz.age\" /tmp/drill/"'
+   # docker cp al host + scp al equipo de restore
+   ```
+3. **Verificar checksum** (`Get-FileHash -Algorithm SHA256` / `sha256sum`) contra el origen.
+4. **Descifrar** con la clave `age` privada (la custodia Edu OFFLINE, `age-key.txt` — jamás en el chat/repo):
+   ```sh
+   age -d -i <ruta>/age-key.txt db-XXXX.sql.gz.age | gunzip -c > db.sql
+   ```
+5. **Restaurar** en un proyecto Supabase **nuevo/limpio** (no sobre el dañado). En el ensayo se usó una
+   BD nueva en el Postgres local; en producción, un proyecto Supabase nuevo (provee `auth`/`storage` +
+   roles):
+   ```sh
+   psql "$TARGET_DB_URL" -v ON_ERROR_STOP=0 < db.sql   # 2 errores benignos esperados (vault.secrets, 1 parámetro)
+   ```
+6. **Re-aplicar los GRANTs** corriendo las migraciones (el dump usa `--no-privileges`, así que NO trae
+   grants — ver Hallazgo #1 arriba). En producción: aplicar el SQL de `supabase/migrations/` por la
+   Management API (idempotencia: los `create` fallarán, pero los `grant`/`revoke` re-aplican los permisos;
+   o mantener un script de solo-grants). ⚠ Este paso es OBLIGATORIO o el cliente autenticado no verá nada.
+7. **Verificar integridad:** conteos por tabla clave, triggers INSERT-only presentes, RLS activa:
+   ```sql
+   select 'tenants',count(*) from public.tenants
+   union all select 'memberships',count(*) from public.memberships
+   union all select 'sence_sessions',count(*) from public.sence_sessions
+   union all select 'sence_events',count(*) from public.sence_events
+   union all select 'audit_log',count(*) from public.audit_log;
+   select count(*) from pg_tables t join pg_class c on c.relname=t.tablename
+     where t.schemaname='public' and c.relrowsecurity;  -- RLS activa
+   ```
+8. **Repuntar la app** (variables de entorno) al proyecto restaurado.
+9. **Smoke test:** login, un curso, un registro SENCE en `rcetest`.
+10. **Borrado seguro** del dump plano descifrado (PII, Ley 21.719) y de la BD de prueba.
+11. **Registrar** el ensayo/incidente en la tabla de arriba con su tiempo real.
+
+> **Regla dura (P6):** la restauración de producción la aprueba y supervisa Edu; jamás se toca
+> producción a mano fuera de este procedimiento.

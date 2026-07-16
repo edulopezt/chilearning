@@ -42,10 +42,13 @@
     RUNBOOK-ROTACION-SECRETOS}.md` (cierra RNF-8).
   - ✅ **Back-fill del ledger** (#79): `specs/DECISIONES.md` D-026..D-046 formalizadas (el Hito 3 no las
     había volcado); D-047 = la revisión H4.
-  - 🔶 **4.4 — ensayo de restauración #2:** preparación COMPLETA (dump cifrado real descargado de R2 con
-    cadena de integridad verificada de punta a punta, `rclone`/`age` listos, guía escrita). **Falta la
-    ventana de ~30 min con Edu** para el descifrado (clave `age` privada offline). Artefacto + guía en
-    el scratchpad de la sesión.
+  - ✅ **4.4 — ensayo de restauración #2 (§8.3) HECHO:** end-to-end REAL con la clave `age` de Edu —
+    backup cifrado de R2 → SHA-256 verificado → descifrado `age` → restore en BD limpia → integridad OK
+    (tenants 2, memberships 14, sence_events 3, auth.users 15; 40 tablas RLS; triggers INSERT-only) en
+    **~49 s** (RTO ≪ 4 h). 2 errores benignos en internals de Supabase. **§8.3 CUMPLIDO.** Hallazgos
+    documentados en `docs/RESTORE.md` (el dump usa `--no-privileges` → re-aplicar grants vía migraciones
+    en un restore real; restaurar en un proyecto Supabase nuevo). La clave `age` privada está en
+    `age-key.txt` de Edu y **descifra el backup — verificado**.
   - **Rulings de Edu ✅ RESUELTOS + IMPLEMENTADOS (2026-07-16, D-048):** los 10 decididos; los 5 de
     código/contrato ya en `main` con contrato enmendado (§Enmiendas E-1..E-6, cada uno con 4-ojos):
     **PR #85** (parte I, máquina de estados: Q-01 cierre tardío = cierra en vez de falso `expirada`,
@@ -352,10 +355,10 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   **Depende de:** los rulings de Edu de la revisión H4 (H4-Q-01..Q-04) + el checklist 4.1a firmado.
 - ✅ **4.3** Monitoreo diario + soporte a alumnos + **plan B** escrito — **#78**: `docs/ops/` con Plan B
   de contingencia (6 escenarios), runbook de monitoreo diario y runbook de rotación de secretos (cierra RNF-8).
-- 🔶 **4.4** **Ensayo de restauración 2** (spec §8.3) — **preparación COMPLETA** (dump cifrado real de R2
-  descargado + checksum verificado de punta a punta, `rclone`/`age` listos, guía escrita). 🔒 **Falta la
-  ventana con Edu** para el descifrado (clave `age` privada offline). Los 3 ensayos previos fueron locales;
-  este es el #2-de-2 real que exige §8.3.
+- ✅ **4.4** **Ensayo de restauración 2** (spec §8.3) — **HECHO 2026-07-16** (end-to-end real: backup
+  cifrado de R2 → SHA-256 → descifrado con la clave `age` de Edu → restore en BD limpia → integridad OK,
+  RTO ~49 s ≪ 4 h). **§8.3 CUMPLIDO** (≥ 2 ensayos con éxito). Hallazgos (`--no-privileges` → re-aplicar
+  grants vía migraciones; restaurar en proyecto Supabase nuevo) documentados en `docs/RESTORE.md` (ensayo #4).
 - ⬜ **4.5** Retro del piloto → ajustes al spec (P1) → segunda acción real. (Post-piloto.)
 
 > Durante el piloto el agente entra en **modo soporte**: cero features nuevas, fixes con prioridad máxima.
