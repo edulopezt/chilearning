@@ -13,3 +13,15 @@ export const USERS: { role: keyof typeof AUTH; email: string }[] = [
   { role: "coordinator", email: "coordinacion@otec-andes.test" },
   { role: "student", email: "alumno@otec-andes.test" },
 ];
+
+export const TENANT_A = "11111111-1111-4111-8111-111111111111";
+
+/** Certificado sembrado para el flujo de verificación pública (#3). */
+export const CERT = {
+  token: "e2e-verify-token-0001",
+  folio: "CERT-2026-E2E001",
+  studentName: "Ana E2E Pérez",
+  runMasked: "5.•••.•••-3",
+  runFull: "5126663-3", // NO debe aparecer en la página pública
+  courseName: "Curso E2E de Verificación",
+} as const;

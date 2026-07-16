@@ -27,7 +27,7 @@ export default defineConfig({
     locale: "es-CL",
   },
   projects: [
-    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    { name: "setup", testMatch: /(auth|data)\.setup\.ts/ },
     {
       name: "chromium-desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
