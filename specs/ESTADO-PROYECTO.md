@@ -53,9 +53,9 @@
     código/contrato ya en `main` con contrato enmendado (§Enmiendas E-1..E-6, cada uno con 4-ojos):
     **PR #85** (parte I, máquina de estados: Q-01 cierre tardío = cierra en vez de falso `expirada`,
     Q-05 T8 alcanzable) + **PR #86** (parte II, robustez/UX: Q-04 re-emitir la pendiente + timeout
-    15 min, Q-07 mensaje accionable al alumno, Q-02 contador M-4). Q-03 (rate-limit del callback en el
-    edge) = handoff documentado (`docs/ops/RATE-LIMIT-CALLBACK-SENCE.md`). Q-06/08/09/10 = doc/sin
-    cambio. Follow-ups de UX aparte (H4-R-010/012: mensaje es-CL al alumno, aún pendiente).
+    15 min, Q-07 mensaje accionable al alumno, Q-02 contador M-4). **Q-03** (rate-limit del callback) =
+    ✅ APLICADO en staging vía archivo dinámico de Traefik (`ops/traefik/sence-cb-ratelimit.yaml`).
+    Q-06/08/09/10 = doc/sin cambio. **H4-R-010/012 (mensaje es-CL al alumno) = ✅ HECHO (#88).**
 - **D-046 (Edu): el tenant demo pasa a ser `seminarea`** (cliente real, staging en
   `seminarea.chilearning.cl`). Mismo UUID; solo slug/nombre/correos semilla (`admin@seminarea.test`, …).
   Los datos del seed siguen siendo FICTICIOS (regla: nunca datos reales en fixtures); el RUT del tenant
@@ -367,7 +367,9 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 > código/contrato ya en `main` con el contrato enmendado (§Enmiendas E-1..E-6, cada PR con 4-ojos):
 > **#85** (Q-01 cierre tardío cierra en vez de falso `expirada`; Q-05 T8 alcanzable) + **#86** (Q-04
 > re-emitir la pendiente + timeout 15 min; Q-07 mensaje accionable 311/312; Q-02 contador M-4).
-> **Q-03** (rate-limit del callback en el edge) = handoff documentado en `docs/ops/RATE-LIMIT-CALLBACK-SENCE.md`.
+> **Q-03** (rate-limit del callback en el edge) = ✅ **APLICADO y verificado en staging** vía archivo
+> dinámico de Traefik (`ops/traefik/sence-cb-ratelimit.yaml` → `/data/coolify/proxy/dynamic/`; la UI de
+> Coolify 4.1.2 no expone labels). Ráfaga → 429; `/api/health` intacto.
 > Q-06/08/09/10 = doc/sin cambio. Follow-up de UX pendiente: H4-R-010/012 (mensaje es-CL al alumno).
 > **Follow-ups (informe H4):** UX del mensaje es-CL al alumno (H4-R-010/012), reconciliación evento↔estado
 > en el worker (H4-R-006), scoping del rol `company` (H4-R-008), alerta de vida del tick (H4-R-013).

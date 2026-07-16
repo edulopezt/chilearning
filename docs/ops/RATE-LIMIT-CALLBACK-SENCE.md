@@ -17,24 +17,29 @@ vivir en el proxy.
 ## Qué configurar (Traefik, vía labels de Coolify)
 
 Aplicar un **middleware de rate-limit de Traefik SOLO a la ruta del callback**, generoso (un callback
-legítimo por sesión de alumno, ráfagas bajas) pero que corte una inundación. Ejemplo de labels en la
-app `chilearning-staging` de Coolify (ajustar `average`/`burst` con datos del piloto):
+legítimo por sesión de alumno, ráfagas bajas) pero que corte una inundación.
 
-```
-traefik.http.middlewares.sence-cb-rl.ratelimit.average=30
-traefik.http.middlewares.sence-cb-rl.ratelimit.period=1m
-traefik.http.middlewares.sence-cb-rl.ratelimit.burst=15
-traefik.http.middlewares.sence-cb-rl.ratelimit.sourcecriterion.ipstrategy.depth=1
-# Router SOLO para /api/sence/cb (no tocar el resto de la app):
-traefik.http.routers.sence-cb.rule=Host(`seminarea.chilearning.cl`) && PathPrefix(`/api/sence/cb`)
-traefik.http.routers.sence-cb.middlewares=sence-cb-rl
-```
+> **✅ APLICADO 2026-07-16 (staging).** La UI de Coolify 4.1.2 **NO expone editor de Custom Labels**
+> (solo toggles en Advanced), así que se usó el mecanismo estándar de Traefik: un **archivo de
+> configuración dinámica**. El Traefik de Coolify ya lo tiene habilitado
+> (`--providers.file.directory=/traefik/dynamic/ --providers.file.watch=true`, montado desde
+> `/data/coolify/proxy/dynamic/`). Ventaja sobre los labels: **persiste entre redeploys de la app** y
+> no la toca; Traefik lo recarga solo (watch), sin redeploy; y un YAML mal formado **se ignora** (no
+> rompe el routing). Verificado: ráfaga de 45 POST → mezcla de 303/429 (corta la inundación) y
+> `/api/health` sigue 200 (el resto de la app intacto).
+
+**Config-as-code:** [`ops/traefik/sence-cb-ratelimit.yaml`](../../ops/traefik/sence-cb-ratelimit.yaml)
+(versionado en el repo). Desplegado en el VPS en `/data/coolify/proxy/dynamic/sence-cb-ratelimit.yaml`.
+
+- **Re-desplegar / actualizar** (tras editar el YAML del repo): `scp` al VPS →
+  `cp` a `/data/coolify/proxy/dynamic/` (Traefik lo recarga solo, sin redeploy de la app).
+- **Rollback:** `rm /data/coolify/proxy/dynamic/sence-cb-ratelimit.yaml` en el VPS → vuelve al estado
+  sin límite en segundos.
+- **Ajustar el umbral** (`average`/`burst`) con datos del piloto editando el YAML y re-copiándolo.
 
 > ⚠ **No** poner el rate-limit sobre toda la app (tumbaría cohortes tras NAT — la misma lección que
-> el rate-limit por-usuario de las rutas start/close, 3.6). Limitar **solo** `PathPrefix(/api/sence/cb)`.
-> El `depth=1` toma la IP real detrás del proxy; si Cloudflare está delante, ajustar la estrategia.
-> Alternativa si Traefik no expone el middleware fácil en Coolify: Cloudflare Rate Limiting Rules
-> sobre `*/api/sence/cb*`.
+> el rate-limit por-usuario de las rutas start/close, 3.6). El router `sence-cb` matchea **solo**
+> `PathPrefix(/api/sence/cb)` y Traefik le da prioridad automática sobre el catch-all `/`.
 
 ## Alerta de crecimiento anómalo de `unmatched`
 
@@ -57,6 +62,9 @@ eventos `unmatched`. Dos vías:
 
 ## Estado
 
-- **Config del edge:** 🔒 handoff a Edu (Coolify/Traefik o Cloudflare). No es código; no entra por CI.
+- **Config del edge:** ✅ **APLICADA y VERIFICADA en staging (2026-07-16)** vía archivo dinámico de
+  Traefik (`ops/traefik/sence-cb-ratelimit.yaml` → `/data/coolify/proxy/dynamic/` en el VPS). Persiste
+  entre redeploys. Ajustar `average`/`burst` con datos reales del piloto.
+- **Follow-up (opcional):** la alerta de spike de `unmatched` en el worker (arriba) queda como mejora.
 - **Gate del checklist pre-producción:** `docs/sence/CHECKLIST-PREPRODUCCION.md` §1 lo referencia como
-  requisito antes de 4.2.
+  requisito antes de 4.2 — **cumplido**.
