@@ -78,7 +78,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 3.9 Automatizaciones n8n por reglas: recordatorios de asistencia SENCE, correos a alumnos inactivos e informes automáticos de asistencia al coordinador — HU-5.9
 - 3.10 ✅ Iniciar verificación Meta Business para WhatsApp (trámite lento; el canal opera en Hito 5) — M9 — **hecho 2026-07-16** (#58): checklist producido (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); el trámite lo ejecuta Edu (handoff)
 - 3.11 Portal Supervisor completo: invitaciones OTIC/externos, alcance por acción, vigencia y auditoría de consultas — HU-12.1, 12.2
-- 3.12 Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10
+- 3.12 ✅ Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10 — **hecho 2026-07-16** (#60): `action_documents` + definitivos inmutables + bucket + checklist + ZIP con manifiesto; staff-only admin/coordinador; jszip; 4-ojos (MED corregido)
 
 ## Hito 4 — PILOTO REAL (semanas 6–8) 🎯
 
