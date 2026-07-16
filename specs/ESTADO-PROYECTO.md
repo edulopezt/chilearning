@@ -25,12 +25,11 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-16
-- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 9/12
-  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62), cada una con revisión adversarial
-  4-ojos en worktree aislado que cazó y corrigió **7 hallazgos HIGH + 1 MED reales** antes del merge
-  (ver bloque Hito 3 abajo). CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging vivo
-  (200). **Quedan 3 tareas:** 3.11 (supervisor completo — la migración más riesgosa, endurece 6
-  policies), 3.9 (n8n), 3.8 (E2E Playwright). Diseño detallado de las 3 en el plan
+- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 10/12
+  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62, #64), cada una con revisión adversarial
+  4-ojos antes del merge (la de 3.11 fue **multi-agente**: 4 lentes + verificación) que cazó y corrigió
+  **7 HIGH + 2 MED reales**. CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging vivo
+  (200). **Quedan 2 tareas:** 3.9 (n8n), 3.8 (E2E Playwright). Diseño detallado de ambas en el plan
   aprobado. **Handoff a Edu** (nada bloquea el desarrollo, pero se necesita para producción-real):
   `RESEND_API_KEY`+dominio · cuenta R2+clave `age` (backup off-site) · Sentry DSN (+ conectar el
   scrubber ya hecho + `includeLocalVariables:false`) · Uptime Kuma · **Supabase Pro** (2FA enforcement)
@@ -76,8 +75,15 @@
   `dj_set_state`** (estado+audit en 1 transacción, TOCTOU cerrado con `p_from` bajo lock), nómina xlsx/csv;
   staff-only (sin supervisor — DJ es cumplimiento SENCE interno). 4-ojos SHIP: F1 MED (audit no atómico)
   → RPC, F2/F4 (gate muerto, actionId sin validar) corregidos. Recordatorios n8n = follow-up en 3.9.
-- **Pendientes del Hito 3:** 3.11 (supervisor), 3.9 (n8n), 3.8 (E2E).
-- **PRs mergeados a `main`:** 54 · **Tests:** ~935 verdes (474 unit + ~305 RLS + 153 integración)
+  ✅ **3.11 portal supervisor COMPLETO** (#64, HU-12.1/12.2) — `supervisor_grants`+`grant_actions`, helpers
+  `SECURITY DEFINER` de vigencia/alcance, **endurece 6 policies vivas** (el fiscalizador solo ve con grant
+  activo Y en alcance; tablas SENCE mantienen su contrato, solo se acota el SELECT), backfill de existentes;
+  portal GATED que **audita cada consulta** (`cumplimiento-service` pasó a staff-only + builders `*Unchecked`);
+  invitación con link copiable (degrada sin RESEND). **Revisión 4-ojos MULTI-AGENTE** (4 lentes + verificación
+  adversarial): 1 MED confirmado (`alerts` sin escopar por acción → escopado con `supervisor_has_tenant_grant`),
+  el resto refutado. Migración aplicada al cloud (backfill de 2 supervisores).
+- **Pendientes del Hito 3:** 3.9 (n8n), 3.8 (E2E).
+- **PRs mergeados a `main`:** 56 · **Tests:** ~960 verdes (478 unit + 318 RLS + 155 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -267,7 +273,7 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   R2+clave age, Uptime Kuma self-host.
   ✅ **3.10 Meta/WhatsApp** (#58, M9) — checklist de verificación Meta Business producido
   (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); es trámite externo (handoff a Edu), el canal opera
-  en Hito 5. **Pendientes por hacer del Hito 3:** 3.11 (supervisor), 3.9 (n8n), 3.8 (E2E).
+  en Hito 5. **Pendientes por hacer del Hito 3:** 3.9 (n8n), 3.8 (E2E).
 - 🔶 **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10 —
   **#57**: `/api/health` + HEALTHCHECK, scrubber de PII/token de Sentry (puro+testeado; 4-ojos F1–F4),
   `ops/backup/` (pg_dump→age→R2) + ensayo restauración #3 real, docs Uptime Kuma/Sentry. 🔒 **Handoff:**
@@ -277,7 +283,7 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 - ✅ **3.10** Iniciar verificación Meta Business para WhatsApp (trámite lento) — M9 — **#58**:
   checklist `docs/whatsapp/META-BUSINESS-VERIFICATION.md` producido. El trámite (no-código) lo ejecuta
   Edu; el canal opera en Hito 5 (5.11). No bloquea nada.
-- ⬜ **3.11** Portal Supervisor completo (invitaciones, alcance por acción, vigencia, auditoría) — HU-12.1/12.2.
+- ✅ **3.11** Portal Supervisor completo (invitaciones, alcance por acción, vigencia, auditoría) — HU-12.1/12.2 (#64). Endurece 6 policies; portal GATED que audita cada consulta; 4-ojos multi-agente (1 MED de alcance de alerts corregido).
 - ✅ **3.12** Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10 —
   **#60**: `action_documents` + definitivos inmutables (trigger, incluso service_role) + bucket
   privado + checklist de completitud + descarga ZIP con manifiesto; staff-only **admin/coordinador**
