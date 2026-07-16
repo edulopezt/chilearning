@@ -48,7 +48,12 @@
   ✅ **3.4 comunicación nativa** (#47, M9) — anuncios/foro/mensajería(exigible SENCE)/calendario, 6
   tablas + RLS (alumno solo sus mensajes, supervisor sin mensajería), SLA visible, notificaciones
   in-app + correo best-effort; 4-ojos sin HIGH/MED (L1 doble-notificación + L3 gate corregidos).
-- **PRs mergeados a `main`:** 47 · **Tests:** ~878 verdes (445 unit + 290 RLS + 148 integración)
+  🔶 **3.6 hardening** (#48, Plan §9) — cabeceras (CSP report-only + HSTS/nosniff/frame/referrer/
+  permissions enforcing), rate-limit por-usuario en `/api/sence/{start,close}` (fail-open) + CSRF,
+  Dependabot + OWASP doc, 2FA config+policy; 4-ojos cazó HIGH (rate-limit por IP tumbaba cohortes tras
+  NAT + violaba I-1 en el callback → corregido a por-usuario, cb sin límite). **2FA enforcement/UI y
+  CSP-enforcing PARQUEADOS** (Supabase Pro + verificación en navegador).
+- **PRs mergeados a `main`:** 48 · **Tests:** ~891 verdes (458 unit + 290 RLS + 148 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -222,7 +227,11 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   + correo best-effort (no-op sin RESEND). Revisión 4-ojos (sin HIGH/MED). Follow-up: fan-out por
   BullMQ a volumen.
 - ⬜ **3.5** Derechos Ley 21.719 en UI (export/supresión con retenciones) + consentimiento — HU-2.4, RNF-3.
-- ⬜ **3.6** Hardening: rate limits, headers, **2FA obligatorio admins**, revisión OWASP — Plan §9.
+- 🔶 **3.6** Hardening: rate limits, headers, 2FA obligatorio admins, revisión OWASP — Plan §9 —
+  **#48**: cabeceras enforcing + CSP report-only, rate-limit por-usuario en rutas SENCE (fail-open) +
+  CSRF, Dependabot + `docs/security/OWASP-REVIEW.md`, 2FA config habilitada + `mfa-policy` (P7). 4-ojos
+  (HIGH de rate-limit por IP corregido). 🔒 **Falta (handoff Edu):** Supabase Pro para 2FA enforcement
+  + UI de enrolamiento; endurecer CSP a enforcing tras verificar navegador.
 - ⬜ **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10.
 - ⬜ **3.8** E2E Playwright de los 3 flujos críticos — Plan §11.
 - ⬜ **3.9** Automatizaciones n8n (recordatorios asistencia, correos a inactivos, informes al coordinador) — HU-5.9.

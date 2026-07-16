@@ -18,9 +18,11 @@
 | A10 | SSRF | ✔ (bajo) | Sin fetch de URLs arbitrarias del usuario; callback SENCE valida `x-forwarded-host` contra el dominio raíz (fix #20). |
 
 ## Rate-limiting (3.6)
-- Endpoints propios (route handlers Node): `/api/sence/{start,close,cb}` con
-  ventana fija en Redis, **fail-open** sin Redis. Límites: start 10/min·usuario +
-  30/min·IP; close 10/min·usuario; cb 60/min·IP (generoso: IPs variadas de alumnos).
+- Endpoints propios (route handlers Node): `/api/sence/{start,close}` con ventana
+  fija en Redis, **fail-open** sin Redis, límite **por USUARIO** (10/min). NO por
+  IP (una cohorte tras NAT compartido colapsaría en una IP — 4-ojos H1). El
+  callback `/cb` NO se limita en la app (I-1 exige persistir siempre; anti-DoS en
+  el edge/proxy).
 - Auth (login): es client-side directo a Supabase → se cubre con los knobs
   nativos `[auth.rate_limit]` de Supabase (endurecer en prod, D-011).
 - CSRF: Server Actions con `allowedOrigins`; route handlers propios con

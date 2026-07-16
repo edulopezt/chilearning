@@ -72,7 +72,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 3.3 Checklist DJ/GCA con recordatorios (n8n) + nómina exportable — HU-5.6
 - 3.4 ✅ Anuncios + foro de consultas + mensajería + calendario (mínimos SENCE) — M9 — **hecho 2026-07-16** (#47): canal nativo; mensajería asincrónica exigible SENCE (HU-9.3); RLS de privacidad; SLA visible; 4-ojos sin HIGH/MED
 - 3.5 Derechos Ley 21.719 en UI (export/supresión con retenciones) + consentimiento — HU-2.4, RNF-3
-- 3.6 Hardening: rate limits, headers, 2FA obligatorio admins, revisión OWASP — Plan §9
+- 3.6 🔶 Hardening: rate limits, headers, 2FA obligatorio admins, revisión OWASP — Plan §9 — **hecho parcial 2026-07-16** (#48): cabeceras + CSP report-only, rate-limit por-usuario en rutas SENCE, CSRF, Dependabot, OWASP doc, 2FA config+policy; 4-ojos (HIGH corregido). Handoff: Supabase Pro (2FA enforcement/UI), CSP enforcing
 - 3.7 Backups off-site completos + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8, §10
 - 3.8 E2E Playwright de los 3 flujos críticos — Plan §11
 - 3.9 Automatizaciones n8n por reglas: recordatorios de asistencia SENCE, correos a alumnos inactivos e informes automáticos de asistencia al coordinador — HU-5.9

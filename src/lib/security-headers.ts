@@ -27,7 +27,7 @@ export function buildCsp(isProd: boolean): string {
     // Bunny player, YouTube-nocookie (lecciones), Supabase.
     `frame-src 'self' https://iframe.mediadelivery.net https://www.youtube-nocookie.com https://*.supabase.co`,
     `frame-ancestors 'self'`,
-    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io${local}`,
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io${local}`,
     `form-action 'self' https://sistemas.sence.cl${senceMock}`,
     `base-uri 'self'`,
     `object-src 'none'`,

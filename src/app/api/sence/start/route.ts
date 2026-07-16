@@ -12,10 +12,6 @@ import { buildEngineDeps } from "@/modules/sence/server-deps";
 
 const bodySchema = z.object({ enrollmentId: z.string().uuid() });
 
-function clientIp(request: NextRequest): string {
-  return (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
-}
-
 /**
  * POST /api/sence/start — inicia el registro de asistencia (T1). Solo el alumno
  * inscrito. Devuelve una página que auto-envía el form POST hacia SENCE. Acepta
@@ -31,10 +27,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Rate-limit (fail-open sin Redis): 10/min por usuario, 30/min por IP. 3.6.
+  // Rate-limit por USUARIO (fail-open sin Redis): 10/min. NO por IP — cohortes
+  // tras NAT compartido (empresa/laboratorio) colapsarían en una IP y bloquearían
+  // a alumnos reales (4-ojos H1). Un usuario no puede afectar a otro. 3.6.
   const limited = await enforce([
     { surface: "sence_start", dim: "user", id: `${principal.tenantId}:${principal.userId}`, limit: 10, windowSec: 60 },
-    { surface: "sence_start", dim: "ip", id: clientIp(request), limit: 30, windowSec: 60 },
   ]);
   if (limited) return limited;
 

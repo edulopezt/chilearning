@@ -52,9 +52,11 @@ export async function enforce(
   backend?: RlBackend | null,
   nowMs: number = Date.now(),
 ): Promise<Response | null> {
-  const b = backend === undefined ? await defaultBackend() : backend;
-  if (!b) return null; // fail-open: sin Redis no se limita.
   try {
+    // Resolver el backend DENTRO del try: si el import dinámico o getRedis()
+    // llegaran a lanzar, se hace fail-open en vez de 500 (4-ojos M2).
+    const b = backend === undefined ? await defaultBackend() : backend;
+    if (!b) return null; // fail-open: sin Redis no se limita.
     const now = Math.floor(nowMs / 1000);
     for (const rule of rules) {
       const windowStart = Math.floor(now / rule.windowSec) * rule.windowSec;

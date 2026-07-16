@@ -13,12 +13,14 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 no toca el protocolo, campos, endpoints ni la máquina de estados del motor.
 
 - **`/api/sence/start` y `/api/sence/close`**: `assertSameOrigin` (rechaza un POST
-  cross-site; el botón del curso es mismo-origen) + rate-limit de ventana fija en
-  Redis (start 10/min·usuario + 30/min·IP; close 10/min·usuario). **Fail-open**
-  sin Redis → comportamiento idéntico al previo cuando no hay `REDIS_URL`.
-- **`/api/sence/cb/[nonce]`**: rate-limit 60/min·IP (generoso: IPs variadas de
-  alumnos). **EXENTO** de `assertSameOrigin` a propósito (es un POST cross-origin
-  legítimo desde SENCE, ya protegido por el nonce de sesión, H-2).
+  cross-site; el botón del curso es mismo-origen) + rate-limit **por USUARIO**
+  (10/min). **Fail-open** sin Redis → idéntico al previo sin `REDIS_URL`. NO se
+  limita por IP: una cohorte tras NAT compartido (empresa/laboratorio) colapsaría
+  en una IP y bloquearía alumnos reales (4-ojos H1).
+- **`/api/sence/cb/[nonce]`**: SIN rate-limit y EXENTO de `assertSameOrigin` (POST
+  cross-origin legítimo de SENCE, protegido por el nonce, H-2). I-1 exige
+  PERSISTIR SIEMPRE → no se limita antes de `handleCallback` para no perder la
+  marca de asistencia. El anti-DoS del callback va en el edge/proxy.
 - CSP (`form-action`) incluye `sistemas.sence.cl` para no bloquear el auto-submit
   de asistencia. No requiere re-certificación rcetest (no cambia la petición a SENCE).
 
