@@ -99,10 +99,25 @@ returns boolean language sql stable security definer set search_path = '' as $$
   )
 $$;
 
+-- ¿Tiene un grant VIGENTE de alcance TENANT? Para señales tenant-wide (alertas sin
+-- acción): un fiscalizador de alcance 'actions' no debe ver las señales globales del OTEC.
+create or replace function public.supervisor_has_tenant_grant()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.supervisor_grants g
+    where g.user_id = (select auth.uid())
+      and g.tenant_id = public.jwt_tenant_id()
+      and g.scope = 'tenant'
+      and g.revoked_at is null
+      and (g.expires_at is null or g.expires_at > now())
+  )
+$$;
+
 grant execute on function public.supervisor_has_active_grant() to authenticated;
 grant execute on function public.supervisor_action_in_scope(uuid) to authenticated;
 grant execute on function public.supervisor_enrollment_in_scope(uuid) to authenticated;
 grant execute on function public.supervisor_session_in_scope(uuid) to authenticated;
+grant execute on function public.supervisor_has_tenant_grant() to authenticated;
 
 -- ---------- RLS de las nuevas tablas ----------
 alter table public.supervisor_grants enable row level security;
@@ -231,7 +246,10 @@ create policy lesson_progress_select on public.lesson_progress
     )
   );
 
--- 6) alerts (señales tenant-wide del OTEC; no cuelgan de una acción → solo vigencia).
+-- 6) alerts: OJO — algunas alertas SÍ cuelgan de una acción (`sence_day1_low_attendance`
+-- lleva `action_id` + código + cifras); otras son tenant-wide (`sence_error_rate`,
+-- `action_id` NULL). Se escopa igual que el resto (4-ojos MED): la alerta con acción
+-- exige la acción en alcance; la tenant-wide exige grant de alcance TENANT.
 drop policy alerts_select_admin on public.alerts;
 create policy alerts_select_admin on public.alerts
   for select to authenticated
@@ -239,7 +257,15 @@ create policy alerts_select_admin on public.alerts
     public.is_superadmin()
     or (
       tenant_id = public.jwt_tenant_id()
-      and (public.has_role('otec_admin') or (public.has_role('supervisor') and public.supervisor_has_active_grant()))
+      and (
+        public.has_role('otec_admin')
+        or (public.has_role('supervisor') and (
+          case
+            when action_id is not null then public.supervisor_action_in_scope(action_id)
+            else public.supervisor_has_tenant_grant()
+          end
+        ))
+      )
     )
   );
 

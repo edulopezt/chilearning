@@ -72,6 +72,13 @@ beforeAll(async () => {
   if (scoped.error) throw new Error(`seed scoped grant: ${scoped.error.message}`);
   const ga = await db.from("supervisor_grant_actions").insert({ grant_id: scoped.data!.id, action_id: ACTION_X, tenant_id: TENANT_A });
   if (ga.error) throw new Error(`seed grant_actions: ${ga.error.message}`);
+
+  // Alertas: una colgada de ACTION_Y (fuera de alcance de SUP_SCOPED) y una tenant-wide.
+  const al = await db.from("alerts").insert([
+    { tenant_id: TENANT_A, kind: "sence_day1_low_attendance", message: "y-scope-alert", action_id: ACTION_Y },
+    { tenant_id: TENANT_A, kind: "sence_error_rate", message: "tenant-wide-alert", action_id: null },
+  ]);
+  if (al.error) throw new Error(`seed alerts: ${al.error.message}`);
 });
 
 async function countEnrollments(sub: string, actionId: string): Promise<number> {
@@ -91,6 +98,15 @@ describe("supervisor_grants — vigencia gobierna la lectura", () => {
   it("grant scope=actions ve la acción concedida, NO otra del tenant", async () => {
     expect(await countEnrollments(SUP_SCOPED, ACTION_X)).toBe(1);
     expect(await countEnrollments(SUP_SCOPED, ACTION_Y)).toBe(0);
+  });
+
+  it("alertas: scope=actions NO ve la alerta de otra acción ni la tenant-wide; grant de tenant SÍ (4-ojos MED)", async () => {
+    const scoped = await supClient(SUP_SCOPED);
+    expect((await scoped.from("alerts").select("id").eq("action_id", ACTION_Y)).data ?? []).toHaveLength(0);
+    expect((await scoped.from("alerts").select("id").is("action_id", null).eq("tenant_id", TENANT_A)).data ?? []).toHaveLength(0);
+    const active = await supClient(SUP_ACTIVE);
+    expect((await active.from("alerts").select("id").eq("action_id", ACTION_Y)).data?.length ?? 0).toBeGreaterThanOrEqual(1);
+    expect((await active.from("alerts").select("id").is("action_id", null).eq("tenant_id", TENANT_A)).data?.length ?? 0).toBeGreaterThanOrEqual(1);
   });
 });
 
