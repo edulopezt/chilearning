@@ -207,6 +207,7 @@ export const esCL = {
     templateHint:
       'Columnas: nombre, apellidos (opcional pero recomendado para los reportes SENCE), email, run y grupo ("Sence-<código del curso>" para alumnos SENCE o "Becario" para exentos). Si tu planilla no usa grupos, sirve la columna exento (Sí/No).',
     groupsLabel: "Grupos:",
+    noGroup: "sin grupo",
     noActions: "Primero crea una acción de capacitación para poder inscribir alumnos.",
     forbidden: "No tienes permiso para importar alumnos.",
     resultTitle: "Resultado del import",

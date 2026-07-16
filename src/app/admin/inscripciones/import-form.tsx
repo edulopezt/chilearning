@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
 import { BECARIO_LABEL } from "@/modules/academico/domain/enrollment-group";
@@ -16,29 +16,57 @@ const ERROR_TEXT: Record<string, string> = {
   no_action: t.errorNoAction,
 };
 
-// El "Sence-6721201" es un ejemplo: el número debe ser el código SENCE del
-// curso de la acción destino (el import lo valida fila a fila, HU-2.2).
-const TEMPLATE_CSV =
-  "nombre,apellidos,email,run,grupo\n" +
-  "Ana,Díaz Rojas,ana@ejemplo.cl,16032460-0,Sence-6721201\n" +
-  "Juan,Soto Pinto,juan@ejemplo.cl,9876543-3,Becario\n";
-
-function templateHref(): string {
-  return `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE_CSV)}`;
+interface ActionOption {
+  id: string;
+  label: string;
+  codSence: string | null;
 }
 
-export function ImportForm({ actions }: { actions: { id: string; label: string }[] }) {
+/**
+ * Plantilla generada POR ACCIÓN (H4 4-ojos): con curso SENCE lleva el grupo
+ * con el código REAL del curso destino (importa limpia tal cual); sin código
+ * SENCE, la variante clásica con `exento` (el grupo Sence-… no aplica ahí).
+ */
+function templateCsv(codSence: string | null): string {
+  if (codSence) {
+    return (
+      "nombre,apellidos,email,run,grupo\n" +
+      `Ana,Díaz Rojas,ana@ejemplo.cl,16032460-0,Sence-${codSence}\n` +
+      `Juan,Soto Pinto,juan@ejemplo.cl,9876543-3,${BECARIO_LABEL}\n`
+    );
+  }
+  return (
+    "nombre,apellidos,email,run,exento\n" +
+    "Ana,Díaz Rojas,ana@ejemplo.cl,16032460-0,No\n" +
+    "Juan,Soto Pinto,juan@ejemplo.cl,9876543-3,Sí\n"
+  );
+}
+
+function templateHref(codSence: string | null): string {
+  return `data:text/csv;charset=utf-8,${encodeURIComponent(templateCsv(codSence))}`;
+}
+
+export function ImportForm({ actions }: { actions: ActionOption[] }) {
   const [state, formAction, pending] = useActionState<ImportActionState, FormData>(
     importEnrollmentsAction,
     { status: "idle" },
   );
+  // Acción seleccionada: la plantilla descargable se genera con SU código SENCE.
+  const [selectedId, setSelectedId] = useState(actions[0]?.id ?? "");
+  const selected = actions.find((a) => a.id === selectedId) ?? actions[0];
 
   return (
     <div className="flex flex-col gap-6">
       <form action={formAction} className="flex flex-col gap-5">
         <label className="flex flex-col gap-1 text-sm">
           {t.actionLabel}
-          <select name="actionId" required className="min-h-11 rounded-md border px-3 text-base">
+          <select
+            name="actionId"
+            required
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="min-h-11 rounded-md border px-3 text-base"
+          >
             {actions.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
@@ -67,7 +95,11 @@ export function ImportForm({ actions }: { actions: { id: string; label: string }
           >
             {t.submit}
           </button>
-          <a href={templateHref()} download="plantilla-alumnos.csv" className="text-sm underline">
+          <a
+            href={templateHref(selected?.codSence ?? null)}
+            download="plantilla-alumnos.csv"
+            className="text-sm underline"
+          >
             {t.downloadTemplate}
           </a>
         </div>
@@ -92,9 +124,12 @@ function ImportResult({ outcome }: { outcome: Extract<ImportActionState, { statu
   ].sort((a, b) => a.row - b.row);
 
   // Desglose por grupo operativo (HU-2.2): "Sence-<código>" y "Becario" son
-  // códigos del OTEC (datos, no textos traducibles).
+  // códigos del OTEC (datos, no textos traducibles). Curso sin código SENCE:
+  // los no exentos se cuentan como "sin grupo" (no se omiten del desglose).
   const groupParts = [
-    ...(groups.senceLabel && groups.sence > 0 ? [`${groups.sence} × ${groups.senceLabel}`] : []),
+    ...(groups.sence > 0
+      ? [`${groups.sence} × ${groups.senceLabel ?? t.noGroup}`]
+      : []),
     ...(groups.becario > 0 ? [`${groups.becario} × ${BECARIO_LABEL}`] : []),
   ];
 

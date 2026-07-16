@@ -68,9 +68,11 @@ export default async function MiCursoPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{view.courseName}</h1>
-        {/* Grupo operativo del OTEC (HU-2.2): Becario o Sence-<código del curso>. */}
+        {/* Grupo operativo del OTEC (HU-2.2). Solo para el alumno SENCE: al
+            becario ya se lo dice el mensaje verde de exento (4-ojos H4: evitar
+            "Tu grupo: Becario" + "(becario/a)" duplicados). */}
         {(() => {
-          const group = enrollmentGroupLabel(view.exento, view.codSence);
+          const group = view.exento ? null : enrollmentGroupLabel(false, view.codSence);
           return group ? (
             <p className="text-muted-foreground text-sm">
               {esCL.course.groupLabel} <strong>{group}</strong>

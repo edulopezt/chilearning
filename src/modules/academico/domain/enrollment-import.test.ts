@@ -136,11 +136,11 @@ describe("validateEnrollmentCsv", () => {
 });
 
 describe("validateEnrollmentCsv — columna grupo (HU-2.2, planillas reales del OTEC)", () => {
-  const OPTS = { actionCodSence: "6721201" };
+  const OPTS = { actionCodSence: "1234567890" }; // 10 dígitos: regla real de cursos (course.ts)
 
   it("grupo Sence-<código> correcto → alumno SENCE (exento=false)", () => {
     const r = validateEnrollmentCsv(
-      "nombre,email,run,grupo\nAna,ana@x.cl,5126663-3,Sence-6721201\n",
+      "nombre,email,run,grupo\nAna,ana@x.cl,5126663-3,Sence-1234567890\n",
       OPTS,
     );
     expect(r.errors).toEqual([]);
@@ -158,19 +158,19 @@ describe("validateEnrollmentCsv — columna grupo (HU-2.2, planillas reales del 
 
   it("grupo con código de OTRO curso → fila rechazada (¿planilla equivocada?)", () => {
     const r = validateEnrollmentCsv(
-      "nombre,email,run,grupo\nAna,ana@x.cl,5126663-3,Sence-9999999\n",
+      "nombre,email,run,grupo\nAna,ana@x.cl,5126663-3,Sence-9999999999\n",
       OPTS,
     );
     expect(r.valid).toEqual([]);
     expect(r.errors).toEqual([
       expect.objectContaining({ rowNumber: 1, field: "grupo" }),
     ]);
-    expect(r.errors[0]?.message).toContain("Sence-6721201");
+    expect(r.errors[0]?.message).toContain("Sence-1234567890");
   });
 
   it("grupo Sence-… pero el curso destino NO tiene código SENCE → fila rechazada", () => {
     const r = validateEnrollmentCsv(
-      "nombre,email,run,grupo\nAna,ana@x.cl,5126663-3,Sence-6721201\n",
+      "nombre,email,run,grupo\nAna,ana@x.cl,5126663-3,Sence-1234567890\n",
       { actionCodSence: null },
     );
     expect(r.valid).toEqual([]);
@@ -186,18 +186,20 @@ describe("validateEnrollmentCsv — columna grupo (HU-2.2, planillas reales del 
     expect(r.valid[0]?.exento).toBe(false);
   });
 
-  it("valor de grupo no reconocido → fila rechazada", () => {
+  it("valor de grupo no reconocido → fila rechazada, y el mensaje dice el valor exacto esperado", () => {
     const r = validateEnrollmentCsv(
       "nombre,email,run,grupo\nAna,ana@x.cl,5126663-3,Grupo A\n",
       OPTS,
     );
     expect(r.valid).toEqual([]);
     expect(r.errors[0]?.field).toBe("grupo");
+    // Con el código del curso a mano, el admin ve QUÉ escribir (4-ojos H4).
+    expect(r.errors[0]?.message).toContain('"Sence-1234567890"');
   });
 
   it("contradicción exento=Sí + grupo Sence-… → fila rechazada (no se adivina)", () => {
     const r = validateEnrollmentCsv(
-      "nombre,email,run,exento,grupo\nAna,ana@x.cl,5126663-3,Sí,Sence-6721201\n",
+      "nombre,email,run,exento,grupo\nAna,ana@x.cl,5126663-3,Sí,Sence-1234567890\n",
       OPTS,
     );
     expect(r.valid).toEqual([]);
@@ -235,7 +237,7 @@ describe("validateEnrollmentCsv — columna grupo (HU-2.2, planillas reales del 
   it("planilla mixta real: SENCE + becarios + una fila de otro curso", () => {
     const csv =
       "nombre,apellidos,email,run,grupo\n" +
-      "Ana,Díaz,ana@x.cl,5126663-3,Sence-6721201\n" +
+      "Ana,Díaz,ana@x.cl,5126663-3,Sence-1234567890\n" +
       "Juan,Soto,juan@x.cl,16032460-0,Becario\n" +
       "Mal,Curso,mal@x.cl,11111111-1,Sence-1234567\n";
     const r = validateEnrollmentCsv(csv, OPTS);

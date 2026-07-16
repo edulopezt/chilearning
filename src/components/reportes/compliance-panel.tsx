@@ -27,8 +27,10 @@ export function CompliancePanelView({
   exportBasePath: string;
 }) {
   const dayLabels = panel.days.map((d) => d.slice(5)); // MM-DD
-  // Grupo operativo del OTEC (HU-2.2): "Becario" o "Sence-<código del curso>".
-  const groupOf = (exento: boolean): string => (exento ? BECARIO_LABEL : (panel.senceGroupLabel ?? "—"));
+  // Grupo operativo del OTEC (HU-2.2): "Becario" o "Sence-<código del curso>";
+  // null si el curso no tiene código (la celda muestra "—"; en móvil se omite).
+  const groupOf = (exento: boolean): string | null =>
+    exento ? BECARIO_LABEL : panel.senceGroupLabel;
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-2">
@@ -76,7 +78,7 @@ export function CompliancePanelView({
                         {row.apellidos ? `${row.apellidos}, ${row.nombres}` : row.nombres || "—"}
                       </td>
                       <td className="py-2 pr-3 font-mono text-xs">{row.run}</td>
-                      <td className="py-2 pr-3 text-xs whitespace-nowrap">{groupOf(row.exento)}</td>
+                      <td className="py-2 pr-3 text-xs whitespace-nowrap">{groupOf(row.exento) ?? "—"}</td>
                       {row.cells.map((cell) => {
                         const style = CELL_STYLE[cell.status];
                         return (
@@ -106,7 +108,8 @@ export function CompliancePanelView({
                     {row.apellidos ? `${row.apellidos}, ${row.nombres}` : row.nombres || "—"}
                   </p>
                   <p className="text-muted-foreground font-mono text-xs">
-                    {row.run} · {groupOf(row.exento)}
+                    {row.run}
+                    {groupOf(row.exento) ? ` · ${groupOf(row.exento)}` : ""}
                   </p>
                   <p className="mt-1 text-sm">
                     {row.exento ? (

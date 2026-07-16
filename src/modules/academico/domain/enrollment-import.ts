@@ -227,10 +227,12 @@ export function validateEnrollmentCsv(text: string, opts: ValidateOptions = {}):
     // valida contra el curso de la acción (planilla equivocada = filas rechazadas).
     const grupo = parseGrupo(grupoRaw);
     if (grupo.kind === "invalid") {
+      // Con el código del curso a mano, el mensaje dice el valor EXACTO esperado.
+      const expected = opts.actionCodSence ? `"Sence-${opts.actionCodSence}"` : `"Sence-<código del curso>"`;
       rowErrors.push({
         rowNumber,
         field: "grupo",
-        message: `Valor de "grupo" no reconocido: "${grupoRaw}" (usa "Sence-<código del curso>" o "Becario").`,
+        message: `Valor de "grupo" no reconocido: "${grupoRaw}" (usa ${expected} o "Becario").`,
       });
     } else if (grupo.kind === "sence") {
       if (opts.actionCodSence === null) {

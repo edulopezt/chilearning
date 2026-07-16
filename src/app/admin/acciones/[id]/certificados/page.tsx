@@ -111,8 +111,12 @@ export default async function CertificadosPage({
                   <StatusCell row={r} />
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {r.run} · {r.exento ? BECARIO_LABEL : (view.senceGroupLabel ?? "—")} ·{" "}
-                  {r.exento ? t.exento : `${r.attendancePct}%`} · {r.finalGrade !== null ? r.finalGrade.toFixed(1) : "—"}
+                  {r.run}
+                  {/* Grupo (HU-2.2): sin código SENCE no hay grupo — se omite, no "· —". */}
+                  {r.exento || view.senceGroupLabel
+                    ? ` · ${r.exento ? BECARIO_LABEL : view.senceGroupLabel}`
+                    : ""}{" "}
+                  · {r.exento ? t.exento : `${r.attendancePct}%`} · {r.finalGrade !== null ? r.finalGrade.toFixed(1) : "—"}
                 </span>
                 <RowActions actionId={actionId} row={r} />
               </li>
