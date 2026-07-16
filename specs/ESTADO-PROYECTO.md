@@ -29,10 +29,11 @@
   `seminarea.chilearning.cl`). Mismo UUID; solo slug/nombre/correos semilla (`admin@seminarea.test`, …).
   Los datos del seed siguen siendo FICTICIOS (regla: nunca datos reales en fixtures); el RUT del tenant
   es placeholder hasta que Edu cargue el real por la app. `otec-pacifico` queda como tenant B de pruebas.
-  **Corte de infra PENDIENTE (tras el merge del rename):** (1) SQL cloud: `tenants.slug/name` +
-  correos `auth.users`/`identities` `@otec-andes.test`→`@seminarea.test`; (2) Coolify: fqdn de la app
-  (ambos dominios en transición) + `APP_BASE_URL` del worker; (3) Supabase Auth `site_url`;
-  (4) re-apuntar los monitores de Uptime Kuma; (5) refrescar `STAGING-CREDENTIALS.txt`.
+  **Corte de infra ✅ EJECUTADO (2026-07-16):** SQL cloud (slug/name + 7 correos auth) ✅ ·
+  Coolify fqdn con AMBOS dominios (transición) + `APP_BASE_URL` ✅ · Auth `site_url` ✅ ·
+  `STAGING-CREDENTIALS.txt` refrescado ✅ · verificado: seminarea.chilearning.cl 200 + login real
+  `admin@seminarea.test` con claims correctos. **Pendiente Edu:** re-apuntar los monitores de Kuma
+  y decidir cuándo retirar el dominio viejo.
 - **HANDOFF INFRA ✅ (2026-07-16):** Resend + Sentry deployados en app/worker; backup off-site cifrado
   FUNCIONANDO (primer dump real en R2, cron diario); Uptime Kuma monitoreando con alertas. Fixes reales
   del despliegue: #70, #72, #73, #74, #75. Detalle en `STAGING-CREDENTIALS.txt` (local).
@@ -104,8 +105,8 @@
   scroll horizontal a 360px. Nuevo job `e2e` en CI. **Cierra el gate del Hito 3.**
 - **Hito 3: 12/12 mergeadas. Pendientes: NINGUNO** (los items B/C tienen handoff documentado).
 - **PRs mergeados a `main`:** 61 · **Tests:** ~987 verdes (484 unit + 326 RLS + 155 integración + E2E 3 flujos)
-- **Staging:** VIVO en https://otec-andes.chilearning.cl — pasa a https://seminarea.chilearning.cl
-  en el CORTE DE INFRA pendiente de D-046 (login demo en `STAGING-CREDENTIALS.txt`)
+- **Staging:** VIVO en https://seminarea.chilearning.cl (D-046 ejecutado; el dominio viejo
+  otec-andes.chilearning.cl sigue respondiendo en transición) (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
 
