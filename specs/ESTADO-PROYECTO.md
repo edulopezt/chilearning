@@ -25,6 +25,17 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-16
+- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 8/12
+  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60), cada una con revisión adversarial
+  4-ojos en worktree aislado que cazó y corrigió **7 hallazgos HIGH reales** antes del merge (ver
+  bloque Hito 3 abajo). CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging vivo
+  (200). **Quedan 4 tareas:** 3.11 (supervisor completo — la migración más riesgosa, endurece 5
+  policies), 3.3 (DJ/GCA), 3.9 (n8n), 3.8 (E2E Playwright). Diseño detallado de las 4 en el plan
+  aprobado. **Handoff a Edu** (nada bloquea el desarrollo, pero se necesita para producción-real):
+  `RESEND_API_KEY`+dominio · cuenta R2+clave `age` (backup off-site) · Sentry DSN (+ conectar el
+  scrubber ya hecho + `includeLocalVariables:false`) · Uptime Kuma · **Supabase Pro** (2FA enforcement)
+  · confirmar **§7-R7** del certificado + firma real del representante · endurecer CSP a enforcing tras
+  verificar en navegador · iniciar trámite Meta (checklist en `docs/whatsapp/`).
 - **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · **Hito 2 ✅ (9/9)**
 - **Hito 2 CERRADO** — las 9 tareas mergeadas (#31–#41), cada una con revisión adversarial
   4-ojos aplicada; migraciones M1–M4 + bucket `submissions` en el cloud; worker VIVO en staging.
