@@ -17,6 +17,11 @@ despliegue no supervisado). Se activa cuando Edu cree el proyecto Sentry.
    `beforeSend: (event) => scrubSentryEvent(event as SentryEventLike)` (server,
    edge, client) y en el worker (`src/worker/index.ts`) el mismo `beforeSend`.
    Sin el scrubber NO se activa (regla dura SENCE: el token jamás sale del proceso).
+   **ADEMÁS OBLIGATORIO** en el server/worker: `includeLocalVariables: false`. El
+   token del OTEC **descifrado** vive en una variable de stack (`token`) con forma
+   de UUID → ningún regex de valor puede reconocerlo; la única garantía robusta es
+   NO enviar las variables de frame (4-ojos F1). El scrubber redacta además por
+   nombre de clave (`token`/`key`/`secret`/…) como segunda capa.
 4. `SENTRY_RELEASE = git SHA` como build arg (Coolify) + CI para correlacionar.
 
 ## Verificación
