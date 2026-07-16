@@ -25,12 +25,12 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-16
-- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 8/12
-  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60), cada una con revisión adversarial
-  4-ojos en worktree aislado que cazó y corrigió **7 hallazgos HIGH reales** antes del merge (ver
-  bloque Hito 3 abajo). CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging vivo
-  (200). **Quedan 4 tareas:** 3.11 (supervisor completo — la migración más riesgosa, endurece 5
-  policies), 3.3 (DJ/GCA), 3.9 (n8n), 3.8 (E2E Playwright). Diseño detallado de las 4 en el plan
+- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 9/12
+  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62), cada una con revisión adversarial
+  4-ojos en worktree aislado que cazó y corrigió **7 hallazgos HIGH + 1 MED reales** antes del merge
+  (ver bloque Hito 3 abajo). CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging vivo
+  (200). **Quedan 3 tareas:** 3.11 (supervisor completo — la migración más riesgosa, endurece 6
+  policies), 3.9 (n8n), 3.8 (E2E Playwright). Diseño detallado de las 3 en el plan
   aprobado. **Handoff a Edu** (nada bloquea el desarrollo, pero se necesita para producción-real):
   `RESEND_API_KEY`+dominio · cuenta R2+clave `age` (backup off-site) · Sentry DSN (+ conectar el
   scrubber ya hecho + `includeLocalVariables:false`) · Uptime Kuma · **Supabase Pro** (2FA enforcement)
@@ -71,8 +71,13 @@
   ✅ **3.12 expediente de fiscalización** (#60, HU-5.10) — documentos por acción con checklist,
   definitivos INMUTABLES (trigger), ZIP en un clic; staff-only admin/coordinador (montos comerciales);
   jszip. 4-ojos (MED de actionId sin validar corregido + restringido a admin/coord).
-- **Pendientes del Hito 3:** 3.11 (supervisor), 3.3 (DJ/GCA), 3.9 (n8n), 3.8 (E2E).
-- **PRs mergeados a `main`:** 53 · **Tests:** ~920 verdes (470 unit + 297 RLS + 152 integración)
+  ✅ **3.3 checklist DJ/GCA** (#62, HU-5.6) — `dj_checklist` + enum `dj_state` con transiciones legales
+  puras, liquidación `ends_on+60d`, `ensureChecklist` idempotente (excluye exentos), **RPC atómico
+  `dj_set_state`** (estado+audit en 1 transacción, TOCTOU cerrado con `p_from` bajo lock), nómina xlsx/csv;
+  staff-only (sin supervisor — DJ es cumplimiento SENCE interno). 4-ojos SHIP: F1 MED (audit no atómico)
+  → RPC, F2/F4 (gate muerto, actionId sin validar) corregidos. Recordatorios n8n = follow-up en 3.9.
+- **Pendientes del Hito 3:** 3.11 (supervisor), 3.9 (n8n), 3.8 (E2E).
+- **PRs mergeados a `main`:** 54 · **Tests:** ~935 verdes (474 unit + ~305 RLS + 153 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -239,7 +244,7 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   `issue`/`revoke`/`verify_certificate` (público anon, RUN enmascarado); pdf-lib+qrcode (ADR-009);
   elegibilidad reusa gradebook+cumplimiento+encuesta. Revisión 4-ojos (HIGH descarga sin dueño +
   MED revocado/supervisor). **Handoff Edu:** confirmar §7-R7 + firma real + umbral por defecto.
-- ⬜ **3.3** Checklist DJ/GCA con recordatorios (n8n) + nómina exportable — HU-5.6.
+- ✅ **3.3** Checklist DJ/GCA: máquina de estados + liquidación 60d + nómina exportable — HU-5.6 (#62). RPC atómico estado+audit; staff-only. Recordatorios n8n = 3.9.
 - ✅ **3.4** Anuncios + foro + mensajería + calendario (mínimos SENCE) — M9 — **#47**: canal oficial
   100% nativo; mensajería asincrónica alumno↔staff (exigible SENCE, HU-9.3); 6 tablas + RLS
   (privacidad del alumno, supervisor sin mensajería), SLA de respuesta visible, notificaciones in-app
@@ -262,7 +267,7 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   R2+clave age, Uptime Kuma self-host.
   ✅ **3.10 Meta/WhatsApp** (#58, M9) — checklist de verificación Meta Business producido
   (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); es trámite externo (handoff a Edu), el canal opera
-  en Hito 5. **Pendientes por hacer del Hito 3:** 3.5, 3.11, 3.12, 3.3, 3.9, 3.8.
+  en Hito 5. **Pendientes por hacer del Hito 3:** 3.11 (supervisor), 3.9 (n8n), 3.8 (E2E).
 - 🔶 **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10 —
   **#57**: `/api/health` + HEALTHCHECK, scrubber de PII/token de Sentry (puro+testeado; 4-ojos F1–F4),
   `ops/backup/` (pg_dump→age→R2) + ensayo restauración #3 real, docs Uptime Kuma/Sentry. 🔒 **Handoff:**
