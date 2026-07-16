@@ -82,11 +82,11 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 
 ## Hito 4 — PILOTO REAL (semanas 6–8) 🎯
 
-- 4.1 Checklist pre-producción SENCE: certificación `rcetest` completa firmada + revisión adversarial del módulo `sence/`
-- 4.2 Acción real de franquicia con grupo pequeño (curso de la OTEC de Edu) en ambiente producción SENCE
-- 4.3 Monitoreo intensivo diario del piloto + canal de soporte a alumnos + plan B documentado (si el motor falla: procedimiento de contingencia y contacto SENCE)
-- 4.4 **Ensayo de restauración 2** (criterio spec §8.3)
-- 4.5 Retro del piloto → ajustes al spec (P1) → segunda acción real
+- 4.1 🔶 Checklist pre-producción SENCE: certificación `rcetest` completa firmada + revisión adversarial del módulo `sence/` — **revisión adversarial ✅ hecha 2026-07-16** (#80, D-047: panel multi-agente, 19 hallazgos, 1 HIGH `callback_nonce` corregido en #81 con 4-ojos + migración al cloud) + **checklist pre-producción ✅** (#82). Certificación `rcetest` 🔒 PARQUEADA (bloqueo del lado de SENCE; validación diferida al primer curso real)
+- 4.2 🔒 Acción real de franquicia con grupo pequeño (curso de la OTEC de Edu) en ambiente producción SENCE — la ejecuta Edu; depende de los rulings H4-Q-01..Q-04 y del checklist 4.1a firmado
+- 4.3 ✅ Monitoreo intensivo diario del piloto + canal de soporte a alumnos + plan B documentado — **hecho 2026-07-16** (#78): `docs/ops/` con Plan B de contingencia (6 escenarios: VPS/Supabase/SENCE/worker/bug/periféricos), runbook de monitoreo diario y runbook de rotación de secretos (cierra RNF-8). Contacto SENCE: `controlelearning@sence.cl`
+- 4.4 🔶 **Ensayo de restauración 2** (criterio spec §8.3) — **preparación completa 2026-07-16** (dump cifrado real de R2 descargado + checksum verificado, `rclone`/`age` listos, guía escrita); 🔒 falta la ventana con Edu para el descifrado (clave `age` privada offline)
+- 4.5 ⬜ Retro del piloto → ajustes al spec (P1) → segunda acción real (post-piloto)
 
 ## Hito 5 — De producto propio a SaaS vendible (semanas 9–14)
 

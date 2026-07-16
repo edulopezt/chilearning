@@ -25,6 +25,30 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-16
+- **📋 SESIÓN HITO 4 — parte ejecutable por el agente (2026-07-16):** se avanzó lo que NO depende de
+  producción SENCE ni de la ventana de Edu. **PRs mergeados #78–#82 (CI verde en los 4 jobs):**
+  - ✅ **4.1b — revisión adversarial COMPLETA de `src/modules/sence/`** (#80, D-047): panel multi-agente
+    (26 agentes: 6 lentes → consolidación → refutación). **19 hallazgos** (16 CONFIRMED, 2 PLAUSIBLE,
+    1 REFUTED) + 10 rulings para Edu. Informe: `docs/sence/REVISION-ADVERSARIAL-H4.md`.
+  - ✅ **Fixes CONFIRMED seguros** (#81, 4-ojos por agente fresco = APROBADO): cazó y corrigió **1 HIGH
+    de seguridad real** — `callback_nonce` legible por staff del tenant (grant de tabla sin revoke de
+    columna, mismo patrón que #22) → falsificación de callbacks ajenos — + 5 MED (nombres de campo con
+    espacio → callback perdido; clave rota → callback perdido; error de correlación silencioso;
+    `resolvePublicOrigin` no fail-closed; 500 crudo al alumno en doble start). **Migración del nonce
+    APLICADA y VERIFICADA en el cloud** (0 grants a `callback_nonce`, 19 columnas no sensibles OK).
+  - ✅ **4.1a — checklist pre-producción** (#82): `docs/sence/CHECKLIST-PREPRODUCCION.md` (gate go/no-go
+    que Edu firma antes de 4.2).
+  - ✅ **4.3 — runbooks del piloto** (#78): `docs/ops/{PLAN-B-CONTINGENCIA,RUNBOOK-MONITOREO-PILOTO,
+    RUNBOOK-ROTACION-SECRETOS}.md` (cierra RNF-8).
+  - ✅ **Back-fill del ledger** (#79): `specs/DECISIONES.md` D-026..D-046 formalizadas (el Hito 3 no las
+    había volcado); D-047 = la revisión H4.
+  - 🔶 **4.4 — ensayo de restauración #2:** preparación COMPLETA (dump cifrado real descargado de R2 con
+    cadena de integridad verificada de punta a punta, `rclone`/`age` listos, guía escrita). **Falta la
+    ventana de ~30 min con Edu** para el descifrado (clave `age` privada offline). Artefacto + guía en
+    el scratchpad de la sesión.
+  - **Rulings de Edu pendientes** (de la revisión H4, decidir antes del piloto): H4-Q-01 (cierre tras
+    `expires_at`), H4-Q-02 (gate M-4), H4-Q-03 (rate-limit del callback en el edge), H4-Q-04 (desbrickeo
+    de la sesión pendiente) + follow-ups de UX (H4-R-010/012: mensaje es-CL al alumno). Ver el informe.
 - **D-046 (Edu): el tenant demo pasa a ser `seminarea`** (cliente real, staging en
   `seminarea.chilearning.cl`). Mismo UUID; solo slug/nombre/correos semilla (`admin@seminarea.test`, …).
   Los datos del seed siguen siendo FICTICIOS (regla: nunca datos reales en fixtures); el RUT del tenant
@@ -104,7 +128,7 @@
   subrutas de acción = **guardia anti-#41**; verificación pública con RUN enmascarado) + smoke por rol sin
   scroll horizontal a 360px. Nuevo job `e2e` en CI. **Cierra el gate del Hito 3.**
 - **Hito 3: 12/12 mergeadas. Pendientes: NINGUNO** (los items B/C tienen handoff documentado).
-- **PRs mergeados a `main`:** 61 · **Tests:** ~987 verdes (484 unit + 326 RLS + 155 integración + E2E 3 flujos)
+- **PRs mergeados a `main`:** 68 (incl. #76–#82) · **Tests:** ~1000 verdes (489 unit + 327 RLS + 162 integración + E2E 3 flujos)
 - **Staging:** VIVO en https://seminarea.chilearning.cl (D-046 ejecutado; el dominio viejo
   otec-andes.chilearning.cl sigue respondiendo en transición) (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
@@ -313,16 +337,31 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 
 ---
 
-## HITO 4 — PILOTO REAL 🎯 ⬜ (dirigido por Edu)
+## HITO 4 — PILOTO REAL 🎯 🔶 (dirigido por Edu)
 
-- 🔒 **4.1** Checklist pre-producción: **certificación rcetest firmada** + revisión adversarial
-  del módulo `sence/` por un agente distinto del implementador.
+- 🔶 **4.1** Checklist pre-producción: **revisión adversarial del módulo `sence/` ✅ HECHA** por un
+  panel multi-agente distinto del implementador (#80, D-047; 19 hallazgos, 1 HIGH corregido en #81 con
+  4-ojos, migración del nonce aplicada al cloud) + **checklist pre-producción ✅** (#82,
+  `docs/sence/CHECKLIST-PREPRODUCCION.md`). Falta la **certificación `rcetest` firmada** — 🔒 PARQUEADA
+  por el bloqueo del lado de SENCE (Clave SENCE deprecada); validación diferida al primer curso real.
 - 🔒 **4.2** Acción real de franquicia con grupo pequeño en **producción SENCE** (curso de la OTEC de Edu).
-- ⬜ **4.3** Monitoreo diario + soporte a alumnos + **plan B** escrito (qué pasa si el motor falla).
-- ⬜ **4.4** **Ensayo de restauración 2** (spec §8.3).
-- ⬜ **4.5** Retro del piloto → ajustes al spec (P1) → segunda acción real.
+  **Depende de:** los rulings de Edu de la revisión H4 (H4-Q-01..Q-04) + el checklist 4.1a firmado.
+- ✅ **4.3** Monitoreo diario + soporte a alumnos + **plan B** escrito — **#78**: `docs/ops/` con Plan B
+  de contingencia (6 escenarios), runbook de monitoreo diario y runbook de rotación de secretos (cierra RNF-8).
+- 🔶 **4.4** **Ensayo de restauración 2** (spec §8.3) — **preparación COMPLETA** (dump cifrado real de R2
+  descargado + checksum verificado de punta a punta, `rclone`/`age` listos, guía escrita). 🔒 **Falta la
+  ventana con Edu** para el descifrado (clave `age` privada offline). Los 3 ensayos previos fueron locales;
+  este es el #2-de-2 real que exige §8.3.
+- ⬜ **4.5** Retro del piloto → ajustes al spec (P1) → segunda acción real. (Post-piloto.)
 
 > Durante el piloto el agente entra en **modo soporte**: cero features nuevas, fixes con prioridad máxima.
+>
+> **Rulings de Edu pendientes (revisión H4, decidir antes de 4.2):** H4-Q-01 (un `close_ok` tras
+> `expires_at` pre-worker ¿cierra o queda `late`? — hoy crea falsos `expirada`), H4-Q-02 (consagrar el
+> gate M-4 en I-1), H4-Q-03 (rate-limit + alerta de `unmatched` del callback en Traefik/Coolify),
+> H4-Q-04 (`/start` re-emite el form de la pendiente para desbrickear al alumno) + H4-Q-05..Q-10.
+> **Follow-ups (informe H4):** UX del mensaje es-CL al alumno (H4-R-010/012), reconciliación evento↔estado
+> en el worker (H4-R-006), scoping del rol `company` (H4-R-008), alerta de vida del tick (H4-R-013).
 
 ---
 
