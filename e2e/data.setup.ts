@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { test as setup, expect } from "@playwright/test";
 
-import { CERT, TENANT_A } from "./roles";
+import { CERT, SURVEY, TENANT_A } from "./roles";
 
 /**
  * Siembra de datos para los flujos E2E (task 3.8) vía service-role. Idempotente:
@@ -25,6 +25,21 @@ setup("seed certificate for public verification", async () => {
   await db.from("courses").upsert({ id: courseId, tenant_id: TENANT_A, name: CERT.courseName, sence: true, cod_sence: "1234567890" });
   await db.from("actions").upsert({ id: actionId, tenant_id: TENANT_A, course_id: courseId, codigo_accion: `E2E-${randomUUID().slice(0, 6)}`, training_line: 3, environment: "rcetest", starts_on: "2026-06-01", ends_on: "2026-06-30" });
   await db.from("enrollments").upsert({ id: enrollmentId, tenant_id: TENANT_A, action_id: actionId, user_id: student, run: CERT.runFull, first_names: "Ana E2E", last_names: "Pérez" });
+
+  // Encuesta publicada para el flujo del alumno (#1): una pregunta de escala.
+  const survey = await db.from("surveys").upsert(
+    {
+      id: SURVEY.id,
+      tenant_id: TENANT_A,
+      course_id: courseId,
+      title: SURVEY.title,
+      anonymous: true,
+      status: "published",
+      questions: { questions: [{ id: SURVEY.questionId, type: "scale", label: "¿Recomendarías el curso?", required: true, scaleMax: 5 }] },
+    },
+    { onConflict: "id", ignoreDuplicates: true },
+  );
+  expect(survey.error, survey.error?.message).toBeNull();
 
   const snapshot = {
     studentName: CERT.studentName,

@@ -16,6 +16,13 @@ export const USERS: { role: keyof typeof AUTH; email: string }[] = [
 
 export const TENANT_A = "11111111-1111-4111-8111-111111111111";
 
+/** Encuesta publicada sembrada para el flujo del alumno (#1). */
+export const SURVEY = {
+  id: "5a5a5a5a-0000-4000-8000-000000000001",
+  title: "Encuesta E2E de satisfacción",
+  questionId: "q1",
+} as const;
+
 /** Certificado sembrado para el flujo de verificación pública (#3). */
 export const CERT = {
   token: "e2e-verify-token-0001",
