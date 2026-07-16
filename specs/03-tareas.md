@@ -76,7 +76,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 3.7 🔶 Backups off-site completos + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8, §10 — **hecho parcial 2026-07-16** (#57): /api/health + HEALTHCHECK, scrubber de PII/token de Sentry (puro, 4-ojos F1 cazó fuga de token descifrado), pipeline ops/backup + ensayo #3 real, docs. Handoff: SDK Sentry+DSN, cuenta R2+age, Uptime Kuma
 - 3.8 E2E Playwright de los 3 flujos críticos — Plan §11
 - 3.9 Automatizaciones n8n por reglas: recordatorios de asistencia SENCE, correos a alumnos inactivos e informes automáticos de asistencia al coordinador — HU-5.9
-- 3.10 Iniciar verificación Meta Business para WhatsApp (trámite lento; el canal opera en Hito 5) — M9
+- 3.10 ✅ Iniciar verificación Meta Business para WhatsApp (trámite lento; el canal opera en Hito 5) — M9 — **hecho 2026-07-16** (#58): checklist producido (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); el trámite lo ejecuta Edu (handoff)
 - 3.11 Portal Supervisor completo: invitaciones OTIC/externos, alcance por acción, vigencia y auditoría de consultas — HU-12.1, 12.2
 - 3.12 Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10
 
