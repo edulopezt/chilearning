@@ -25,11 +25,11 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-16
-- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 10/12
-  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62, #64), cada una con revisión adversarial
-  4-ojos antes del merge (la de 3.11 fue **multi-agente**: 4 lentes + verificación) que cazó y corrigió
-  **7 HIGH + 2 MED reales**. CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging vivo
-  (200). **Quedan 2 tareas:** 3.9 (n8n), 3.8 (E2E Playwright). Diseño detallado de ambas en el plan
+- **📋 REPORTE DEL TURNO NOCTURNO AUTÓNOMO (2026-07-16):** se avanzó el **Hito 3 de 0/12 a 11/12
+  tareas mergeadas** (#45, #46, #47, #48, #57, #58, #59, #60, #62, #64, #66), cada una con revisión
+  adversarial 4-ojos antes del merge (la de 3.11 fue **multi-agente**: 4 lentes + verificación) que cazó y
+  corrigió **7 HIGH + 3 MED reales**. CI verde en cada PR; migraciones aditivas aplicadas al cloud; staging
+  vivo (200). **Queda 1 tarea:** 3.8 (E2E Playwright — greenfield, cierra el gate del hito). Diseño en el plan
   aprobado. **Handoff a Edu** (nada bloquea el desarrollo, pero se necesita para producción-real):
   `RESEND_API_KEY`+dominio · cuenta R2+clave `age` (backup off-site) · Sentry DSN (+ conectar el
   scrubber ya hecho + `includeLocalVariables:false`) · Uptime Kuma · **Supabase Pro** (2FA enforcement)
@@ -82,8 +82,12 @@
   invitación con link copiable (degrada sin RESEND). **Revisión 4-ojos MULTI-AGENTE** (4 lentes + verificación
   adversarial): 1 MED confirmado (`alerts` sin escopar por acción → escopado con `supervisor_has_tenant_grant`),
   el resto refutado. Migración aplicada al cloud (backfill de 2 supervisores).
-- **Pendientes del Hito 3:** 3.9 (n8n), 3.8 (E2E).
-- **PRs mergeados a `main`:** 56 · **Tests:** ~960 verdes (478 unit + 318 RLS + 155 integración)
+  ✅ **3.9 automatizaciones n8n** (#66, HU-5.9) — worker `reminders-tick`; **RNF-10 por construcción**
+  (a n8n solo agregado seudonimizado por HMAC; el correo PII lo manda el worker por EmailSender), opt-out
+  del alumno + config por acción, dedup diario. 4-ojos SHIP (MED de link relativo corregido). Categoría B:
+  no-op sin n8n (handoff `docs/n8n/WORKFLOWS.md`).
+- **Pendientes del Hito 3:** 3.8 (E2E Playwright).
+- **PRs mergeados a `main`:** 58 · **Tests:** ~975 verdes (484 unit + 326 RLS + 155 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -273,13 +277,13 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   R2+clave age, Uptime Kuma self-host.
   ✅ **3.10 Meta/WhatsApp** (#58, M9) — checklist de verificación Meta Business producido
   (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); es trámite externo (handoff a Edu), el canal opera
-  en Hito 5. **Pendientes por hacer del Hito 3:** 3.9 (n8n), 3.8 (E2E).
+  en Hito 5. **Pendientes por hacer del Hito 3:** 3.8 (E2E Playwright).
 - 🔶 **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10 —
   **#57**: `/api/health` + HEALTHCHECK, scrubber de PII/token de Sentry (puro+testeado; 4-ojos F1–F4),
   `ops/backup/` (pg_dump→age→R2) + ensayo restauración #3 real, docs Uptime Kuma/Sentry. 🔒 **Handoff:**
   SDK Sentry+DSN (con `includeLocalVariables:false`+scrubber), cuenta R2+clave age, Uptime Kuma.
 - ⬜ **3.8** E2E Playwright de los 3 flujos críticos — Plan §11.
-- ⬜ **3.9** Automatizaciones n8n (recordatorios asistencia, correos a inactivos, informes al coordinador) — HU-5.9.
+- ✅ **3.9** Automatizaciones n8n (recordatorios asistencia, correos a inactivos, informes al coordinador) — HU-5.9 (#66). RNF-10 por construcción; opt-out + config; degrada no-op sin n8n.
 - ✅ **3.10** Iniciar verificación Meta Business para WhatsApp (trámite lento) — M9 — **#58**:
   checklist `docs/whatsapp/META-BUSINESS-VERIFICATION.md` producido. El trámite (no-código) lo ejecuta
   Edu; el canal opera en Hito 5 (5.11). No bloquea nada.
