@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { CompliancePanelView } from "@/components/reportes/compliance-panel";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
-import { getCompliancePanel } from "@/modules/reportes/cumplimiento-service";
+import { getSupervisorPanel } from "@/modules/portal-empresa/supervisor-portal-service";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,8 @@ export default async function SupervisorActionPage({
   if (!principal) redirect("/login");
 
   const { id } = await params;
-  const panel = await getCompliancePanel(principal, id);
+  // Portal GATED (3.11): valida grant vigente + acción en alcance + audita.
+  const panel = await getSupervisorPanel(principal, id);
   if (!panel) {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 p-6">
@@ -50,7 +51,7 @@ export default async function SupervisorActionPage({
 
       <CompliancePanelView
         panel={panel}
-        exportBasePath={`/api/reportes/cumplimiento/${panel.actionId}`}
+        exportBasePath={`/api/supervisor/reportes/${panel.actionId}`}
       />
 
       <p>

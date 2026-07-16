@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
-import { listComplianceActions } from "@/modules/reportes/cumplimiento-service";
+import { listSupervisorActions } from "@/modules/portal-empresa/supervisor-portal-service";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +20,7 @@ export default async function SupervisorPortalPage() {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
 
-  if (
-    !principal.tenantId ||
-    !authorize(principal, principal.tenantId, ["supervisor", "otec_admin", "coordinator"])
-  ) {
+  if (!principal.tenantId || !authorize(principal, principal.tenantId, ["supervisor"])) {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 p-6">
         <p className="text-muted-foreground">{t.forbidden}</p>
@@ -31,7 +28,8 @@ export default async function SupervisorPortalPage() {
     );
   }
 
-  const actions = await listComplianceActions(principal);
+  // Portal GATED (3.11): sin grant vigente/en alcance → lista vacía + auditoría.
+  const actions = await listSupervisorActions(principal);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">

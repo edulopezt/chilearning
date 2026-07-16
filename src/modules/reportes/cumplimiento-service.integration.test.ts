@@ -166,11 +166,12 @@ beforeAll(async () => {
 });
 
 describe("getCompliancePanel — permisos y contenido", () => {
-  it("admin y supervisor ven el panel; student NO; cross-tenant NO", async () => {
+  it("admin ve el panel; student, cross-tenant y supervisor directo NO (3.11: el supervisor va por portal-service gated)", async () => {
     const forAdmin = await getCompliancePanel(admin, actionId);
-    const forSupervisor = await getCompliancePanel(supervisor, actionId);
     expect(forAdmin).not.toBeNull();
-    expect(forSupervisor).not.toBeNull();
+    // Desde 3.11 el servicio es STAFF-only: el fiscalizador entra por
+    // supervisor-portal-service (grant + alcance + auditoría), no por acá.
+    expect(await getCompliancePanel(supervisor, actionId)).toBeNull();
     expect(await getCompliancePanel(student, actionId)).toBeNull();
     expect(await getCompliancePanel(otherAdmin, actionId)).toBeNull();
   });
@@ -215,8 +216,9 @@ describe("getComplianceExport — réplica del reporte del plugin", () => {
     expect(result.rows[0]?.fechaHora).toMatch(/^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$/);
   });
 
-  it("supervisor puede exportar (descarga = lectura); student no", async () => {
-    expect(await getComplianceExport(supervisor, actionId)).not.toBeNull();
+  it("staff exporta; student y supervisor directo NO (3.11: supervisor por portal-service)", async () => {
+    expect(await getComplianceExport(admin, actionId)).not.toBeNull();
+    expect(await getComplianceExport(supervisor, actionId)).toBeNull();
     expect(await getComplianceExport(student, actionId)).toBeNull();
   });
 });

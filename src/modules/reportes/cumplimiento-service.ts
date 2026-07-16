@@ -20,15 +20,18 @@ import {
  * Patrón de agregación del tablero (instructor-board): lecturas acotadas al
  * tenant vía guard + agregación en memoria + fórmulas en dominio puro.
  *
- * VIEWERS incluye `supervisor` (CA de la HU: "el fiscalizador SENCE ve este
- * mismo panel en solo lectura") — el portal 2.5 reutiliza este servicio.
+ * Acceso STAFF (otec_admin/coordinator). El fiscalizador ya NO entra por acá
+ * directo (task 3.11): su acceso es GATED por `supervisor-portal-service`, que
+ * verifica grant vigente + alcance + audita, y luego invoca las variantes
+ * `*Unchecked` de este servicio. Así ninguna ruta expone datos al supervisor sin
+ * pasar por el grant.
  *
  * Lecturas de sesiones/eventos SIEMPRE paginadas con join embebido (lecciones
  * de los PR #31/#32/#33: PostgREST capa en max_rows=1000 en silencio y `.in()`
  * con listas grandes revienta el URI).
  */
 
-const VIEWERS = ["otec_admin", "coordinator", "supervisor"] as const;
+const STAFF = ["otec_admin", "coordinator"] as const;
 const PAGE = 1000;
 const MAX_PAGES = 20;
 
@@ -67,14 +70,22 @@ interface SessionRow {
 }
 
 function canView(principal: Principal): boolean {
-  return Boolean(principal.tenantId) && authorize(principal, principal.tenantId!, VIEWERS);
+  return Boolean(principal.tenantId) && authorize(principal, principal.tenantId!, STAFF);
 }
 
-/** Índice de acciones visibles (lo usan /admin y el portal del supervisor). */
+/** Índice de acciones visibles para el staff del tenant. */
 export async function listComplianceActions(
   principal: Principal,
 ): Promise<ComplianceActionSummary[]> {
   if (!canView(principal)) return [];
+  return listComplianceActionsUnchecked(principal);
+}
+
+/** Igual que `listComplianceActions` pero SIN authz: solo para llamadores que ya
+ *  autorizaron (p. ej. `supervisor-portal-service` tras verificar el grant). */
+export async function listComplianceActionsUnchecked(
+  principal: Principal,
+): Promise<ComplianceActionSummary[]> {
   const guard = tenantGuard(principal.tenantId!);
   const [{ data: actions }, { data: courses }, { data: enrollments }] = await Promise.all([
     guard
@@ -191,6 +202,14 @@ export async function getCompliancePanel(
   actionId: string,
 ): Promise<CompliancePanel | null> {
   if (!canView(principal)) return null;
+  return compliancePanelUnchecked(principal, actionId);
+}
+
+/** Panel SIN authz: solo para llamadores ya autorizados (portal-service gated). */
+export async function compliancePanelUnchecked(
+  principal: Principal,
+  actionId: string,
+): Promise<CompliancePanel | null> {
   const ctx = await fetchActionContext(principal, actionId);
   if (!ctx) return null;
 
@@ -250,6 +269,14 @@ export async function getComplianceExport(
   actionId: string,
 ): Promise<ComplianceExport | null> {
   if (!canView(principal)) return null;
+  return complianceExportUnchecked(principal, actionId);
+}
+
+/** Export SIN authz: solo para llamadores ya autorizados (portal-service gated). */
+export async function complianceExportUnchecked(
+  principal: Principal,
+  actionId: string,
+): Promise<ComplianceExport | null> {
   const ctx = await fetchActionContext(principal, actionId);
   if (!ctx) return null;
 
