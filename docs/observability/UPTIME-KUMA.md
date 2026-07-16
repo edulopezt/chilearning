@@ -5,9 +5,10 @@ pipeline SENCE. Alertas → correo + Telegram (vía n8n, periférico).
 
 ## Monitores (Kuma DESPLEGADO 2026-07-16 en Coolify; monitores 1-2 creados por Edu)
 
-> **⚠ D-046:** los monitores vivos hoy apuntan a `otec-andes.chilearning.cl`. Al ejecutar el
-> corte del rename hay que RE-APUNTARLOS a `seminarea.chilearning.cl` (editar la URL en la UI
-> de Kuma) o quedarán vigilando el dominio viejo (falsa alarma o monitoreo muerto).
+> **✅ D-046 RESUELTO (2026-07-16):** los 3 monitores apuntan a `seminarea.chilearning.cl` y están
+> en verde (verificado por latido de Kuma + ground-truth de cada endpoint). El #3 usa nonce
+> `kuma-monitor-nonce`, método POST, `Max. Redirects=0` y códigos aceptados `200-299` + `300-399`
+> (para admitir el `303` del descarte M-4). Intervalo 300 s.
 1. **App (health)** — HTTP(s) GET `https://seminarea.chilearning.cl/api/health`,
    intervalo 60 s, keyword esperado `"ok"`. (El endpoint ya existe, task 3.7.)
 2. **Landing** — HTTP(s) GET `https://seminarea.chilearning.cl/` keyword del título.
@@ -22,6 +23,7 @@ pipeline SENCE. Alertas → correo + Telegram (vía n8n, periférico).
 - Configurar notificación (SMTP con `RESEND` o Telegram bot) y asociarla a los 3
   monitores.
 
-Estado: Kuma **desplegado** (service Coolify `qi5m1zfd…`) con monitores health+login y
-alertas por correo (Resend SMTP) **funcionando**. Pendiente: monitor sintético del callback
-SENCE (#3) y re-apuntar URLs tras el corte D-046.
+Estado: Kuma **desplegado** (service Coolify `qi5m1zfd…`) con los **3 monitores** (health, login,
+callback SENCE sintético) apuntando a `seminarea` y **en verde** (2026-07-16). Alertas por correo
+(Resend SMTP) funcionando. **Pendiente menor:** confirmar en vivo que el correo dispara al caer un
+monitor (prueba controlada).

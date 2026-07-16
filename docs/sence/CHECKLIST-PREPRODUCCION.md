@@ -23,25 +23,36 @@ formal. Registro de la decisión: memoria `rcetest-clave-sence-bloqueo` + `ESTAD
 
 ## 1. Gates técnicos (código + infra)
 
-- [ ] **CI verde en `main`** (jobs `checks`/`rls`/`integration`/`e2e`), incluido `pnpm build`.
-- [ ] **Revisión adversarial del módulo `sence/` cerrada SIN HIGH abiertos** (tarea 4.1b):
+- [x] **CI verde en `main`** (jobs `checks`/`rls`/`integration`/`e2e`), incluido `pnpm build`.
+  ✅ **2026-07-16:** última corrida sobre `main` (merge #91) = `success`.
+- [x] **Revisión adversarial del módulo `sence/` cerrada SIN HIGH abiertos** (tarea 4.1b):
   informe [`REVISION-ADVERSARIAL-H4.md`](REVISION-ADVERSARIAL-H4.md); el único HIGH de seguridad
   (`H4-R-002`, `callback_nonce` legible por staff) **corregido y mergeado** (PR de fixes H4) con
-  su revisión 4-ojos. Verificar que el test RLS `callback_nonce` ilegible está verde.
-- [ ] **Migración `20260716120000_sence_sessions_hide_callback_nonce.sql` APLICADA al cloud**
-  (Management API; la tabla `supabase_migrations` no existe en el cloud). Verificar con una
-  consulta de control que un cliente `authenticated` no puede leer `callback_nonce`.
-- [ ] **Rulings de Edu resueltos** (los que afectan el flujo del piloto — ver §4): al menos
+  su revisión 4-ojos. ✅ **2026-07-16:** test RLS `H4-R-002` (staff recibe error al leer
+  `callback_nonce`, columnas no sensibles legibles) presente y verde en el job `rls`.
+- [x] **Migración `20260716120000_sence_sessions_hide_callback_nonce.sql` APLICADA al cloud**
+  (Management API; la tabla `supabase_migrations` no existe en el cloud). ✅ **2026-07-16:** verificado
+  con consulta de control (`nonce_granted=0`, 19 columnas no sensibles con grant a `authenticated`).
+- [x] **Rulings de Edu resueltos** (los que afectan el flujo del piloto — ver §4): al menos
   `H4-Q-01` (cierre tras `expires_at`), `H4-Q-02` (gate M-4), `H4-Q-03` (rate-limit del callback
-  en el edge) y `H4-Q-04` (desbrickeo de la sesión pendiente).
-- [ ] **Uptime Kuma** re-apuntado a `seminarea.chilearning.cl` (D-046) + **monitor #3 (callback
+  en el edge) y `H4-Q-04` (desbrickeo de la sesión pendiente). ✅ **D-048**: todos implementados y
+  mergeados (#85/#86 código, #91 rate-limit); contrato enmendado en README §Enmiendas E-1..E-6.
+- [x] **Uptime Kuma** re-apuntado a `seminarea.chilearning.cl` (D-046) + **monitor #3 (callback
   SENCE sintético)** creado (ver [`../observability/UPTIME-KUMA.md`](../observability/UPTIME-KUMA.md)).
-  Los 3 monitores en verde + alerta por correo probada.
-- [ ] **Sentry** activo en app y worker con el scrubber de PII/token (`includeLocalVariables:false`).
-- [ ] **Backup off-site R2** funcionando (dump diario cifrado presente) **y ensayo de
-  restauración #2 hecho** (tarea 4.4, criterio §8.3: 2 ensayos exitosos antes del piloto).
-- [ ] **Worker vivo** en staging/prod (tick cada 5 min visible en logs) — es el único expirador
+  ✅ **2026-07-16:** los 3 monitores en verde, verificado por latido de Kuma (health 200 / login 200 /
+  callback 303) y por ground-truth de cada endpoint. **Falta confirmar** que la alerta por correo dispara.
+- [x] **Sentry** activo en app y worker con el scrubber de PII/token (`includeLocalVariables:false`).
+  ✅ **2026-07-16 — RESUELTO:** el hueco era que `SENTRY_DSN` de la app estaba marcada **build-time** en
+  Coolify → no se inyectaba en runtime → `sentry.server.config.ts`/`edge` no inicializaban. Fix: desmarcar
+  "Build Variable" en `SENTRY_DSN` (dejar `NEXT_PUBLIC_SENTRY_DSN` como build) + redeploy. Verificado:
+  `SENTRY_DSN` ahora en runtime, app 200. **Prueba final pendiente:** confirmar un evento de test en el
+  dashboard de Sentry.
+- [x] **Backup off-site R2** funcionando (dump diario cifrado presente) **y ensayo de
+  restauración #2 hecho** (tarea 4.4, criterio §8.3: 2 ensayos exitosos antes del piloto). ✅ **2026-07-16:**
+  ensayo #4 end-to-end (descarga R2 → SHA-256 → descifrado `age` de Edu → restore → integridad) en ~49 s.
+- [x] **Worker vivo** en staging/prod (tick cada 5 min visible en logs) — es el único expirador
   T4/T6/T9 y desbrickeador del índice único. Sin él, una sesión pendiente abandonada bloquea al alumno.
+  ✅ **2026-07-16:** contenedor `cl8lhoig…` arriba (Coolify lo nombra por UUID), tick cada 5 min visible.
 - [ ] **2FA** para admin/superadmin (requiere Supabase Pro; handoff de Edu). Deseable, no bloqueante
   para un piloto de un solo operador.
 
