@@ -1,0 +1,21 @@
+# Rate-limit del callback SENCE (D-048/Q-03) — Traefik file provider.
+# Aplica SOLO a /api/sence/cb (no toca el resto de la app). Gestionado fuera de
+# Coolify porque su UI (4.1.2) no expone el editor de labels; persiste entre
+# redeploys de la app. Doc: docs/ops/RATE-LIMIT-CALLBACK-SENCE.md.
+http:
+  middlewares:
+    sence-cb-rl:
+      rateLimit:
+        average: 30
+        period: 1m
+        burst: 15
+  routers:
+    sence-cb:
+      rule: "Host(`seminarea.chilearning.cl`) && PathPrefix(`/api/sence/cb`)"
+      entryPoints:
+        - https
+      service: https-0-jrhorroii4zlcjdkafdv0l75@docker
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - sence-cb-rl
