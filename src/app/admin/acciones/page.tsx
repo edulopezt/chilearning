@@ -97,6 +97,9 @@ export default async function ActionsPage() {
                         <Link href={`/admin/acciones/${a.id}/certificados`} className="underline">
                           {esCL.certificates.title}
                         </Link>
+                        <Link href={`/admin/acciones/${a.id}/expediente`} className="underline">
+                          {esCL.expediente.title}
+                        </Link>
                       </span>
                     </td>
                   </tr>
