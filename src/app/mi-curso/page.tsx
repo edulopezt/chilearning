@@ -10,6 +10,7 @@ import { summarizeProgress } from "@/modules/academico/domain/progress";
 import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
 import { listStudentAssignments } from "@/modules/evaluacion/assignment-service";
 import { listStudentSurveys } from "@/modules/evaluacion/survey-service";
+import { hasCurrentConsent } from "@/modules/core/privacy-service";
 import { LessonComplete } from "./lesson-complete";
 import { SessionCountdown } from "./session-countdown";
 
@@ -24,6 +25,12 @@ export const dynamic = "force-dynamic";
 export default async function MiCursoPage() {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
+
+  // Consentimiento al primer ingreso (task 3.5, RNF-3): el alumno debe aceptar
+  // antes de usar la plataforma.
+  if (principal.roles.includes("student") && !(await hasCurrentConsent(principal))) {
+    redirect("/consentimiento");
+  }
 
   const view = await getStudentCourseView();
   if (!view) {
@@ -67,6 +74,9 @@ export default async function MiCursoPage() {
           </Link>
           <Link href="/mi-curso/comunicacion" className="text-sm underline">
             {esCL.communication.title} →
+          </Link>
+          <Link href="/mis-datos" className="text-sm underline">
+            {esCL.dataRights.title} →
           </Link>
         </div>
       </header>

@@ -53,7 +53,12 @@
   Dependabot + OWASP doc, 2FA config+policy; 4-ojos cazó HIGH (rate-limit por IP tumbaba cohortes tras
   NAT + violaba I-1 en el callback → corregido a por-usuario, cb sin límite). **2FA enforcement/UI y
   CSP-enforcing PARQUEADOS** (Supabase Pro + verificación en navegador).
-- **PRs mergeados a `main`:** 49 · **Tests:** ~900 verdes (462 unit + 290 RLS + 148 integración)
+  🔶 **3.7 observabilidad** (#57) — /api/health + scrubber PII/token de Sentry (4-ojos F1) + backup
+  pipeline + ensayo #3; SDK Sentry/R2 parqueados. ✅ **3.10 Meta checklist** (#58, docs). ✅ **3.5
+  Ley 21.719** (#59) — consentimiento + export + supresión que conserva SENCE y redacta perfil/foro/
+  mensajes (4-ojos cazó HIGH de supresión falsa → corregido). (Detalle por tarea en la tabla del Hito 3.)
+- **Pendientes del Hito 3:** 3.11, 3.12, 3.3, 3.9, 3.8.
+- **PRs mergeados a `main`:** 52 · **Tests:** ~910 verdes (465 unit + 294 RLS + 151 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -226,7 +231,11 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   (privacidad del alumno, supervisor sin mensajería), SLA de respuesta visible, notificaciones in-app
   + correo best-effort (no-op sin RESEND). Revisión 4-ojos (sin HIGH/MED). Follow-up: fan-out por
   BullMQ a volumen.
-- ⬜ **3.5** Derechos Ley 21.719 en UI (export/supresión con retenciones) + consentimiento — HU-2.4, RNF-3.
+- ✅ **3.5** Derechos Ley 21.719 en UI (export/supresión con retenciones) + consentimiento — HU-2.4,
+  RNF-3 — **#59**: `consents` (INSERT-only) + `dsr_requests`; consentimiento al primer ingreso (gate),
+  export JSON del titular, supresión que CONSERVA SENCE/cert/audit y REDACTA perfil/correo/foro/
+  mensajes; catálogo de retención/tratamientos (flag legal). 4-ojos (HIGH de supresión falsa corregido).
+  🔒 **Handoff:** revisión legal de períodos/textos + contrato de encargo (abogado, Hito 5).
 - 🔶 **3.6** Hardening: rate limits, headers, 2FA obligatorio admins, revisión OWASP — Plan §9 —
   **#48**: cabeceras enforcing + CSP report-only, rate-limit por-usuario en rutas SENCE (fail-open) +
   CSRF, Dependabot + `docs/security/OWASP-REVIEW.md`, 2FA config habilitada + `mfa-policy` (P7). 4-ojos
