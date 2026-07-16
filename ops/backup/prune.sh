@@ -5,6 +5,8 @@
 # la política real la afina Edu; este script cubre el caso diario > semana).
 set -eu
 : "${R2_BUCKET:?falta R2_BUCKET}"
+# Remoto rclone `r2` (compartido con backup.sh).
+. "$(dirname "$0")/r2-env.sh"
 # Borra objetos db/ con más de 8 días (los semanales/mensuales se mueven a
 # prefijos db-weekly/ db-monthly/ por otra tarea; ver README).
 rclone delete --min-age 8d "r2:$R2_BUCKET/db/" || true
