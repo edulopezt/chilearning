@@ -84,4 +84,48 @@ jobs:
         if: always()
         run: supabase stop --no-backup
 
-  # Job futuro: e2e (Playwright), en su tarea.
+  # E2E de los 3 flujos críticos (task 3.8, Plan §11): app real + Supabase local +
+  # mock SENCE, login real por UI, desktop + móvil. Blinda los merges (anti-#41).
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright (chromium + deps)
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Start local Supabase (migrations + seeds)
+        run: supabase start -x realtime,imgproxy,studio,edge-runtime,logflare,vector,supavisor
+      - name: Export env (app → Supabase local)
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export SB_/')"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$SB_API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$SB_ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SB_SERVICE_ROLE_KEY"
+            echo "TENANT_ROOT_DOMAIN=localtest.me"
+            echo "SENCE_ENV=mock"
+            echo "SENCE_MOCK_URL=http://127.0.0.1:4010"
+            echo "SENCE_TOKEN_ENCRYPTION_KEY=Zm9vYmFyMDEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3A="
+          } >> "$GITHUB_ENV"
+      - name: Build app
+        run: pnpm build
+      - name: Run E2E (desktop + mobile)
+        run: pnpm test:e2e
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
