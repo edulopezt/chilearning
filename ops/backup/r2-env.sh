@@ -8,3 +8,6 @@ export RCLONE_CONFIG_R2_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID:?falta R2_ACCESS_KEY_I
 export RCLONE_CONFIG_R2_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY:?falta R2_SECRET_ACCESS_KEY}"
 export RCLONE_CONFIG_R2_ENDPOINT="https://${R2_ACCOUNT_ID:?falta R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 export RCLONE_CONFIG_R2_ACL=private
+# Tokens R2 scoped a un bucket no pueden HeadBucket/CreateBucket: sin esto rclone
+# intenta CREAR el bucket y muere con 403 (visto en el primer despliegue real).
+export RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true

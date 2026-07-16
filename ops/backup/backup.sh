@@ -34,7 +34,12 @@ DUMP="$WORKDIR/db-$STAMP.sql.gz"
 ENC="$DUMP.age"
 
 echo "[backup] pg_dump -> $DUMP"
-pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges | gzip -9 > "$DUMP"
+# SIN pipe: en sh el exit del pipeline es el de gzip, y un fallo de pg_dump
+# seguía de largo cifrando un dump VACÍO (visto en el primer despliegue real).
+RAW="$WORKDIR/db-$STAMP.sql"
+pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges > "$RAW"
+[ -s "$RAW" ] || { echo "[backup] ERROR: dump vacío"; exit 1; }
+gzip -9 "$RAW" # produce $DUMP (db-$STAMP.sql.gz)
 
 echo "[backup] cifrando con age"
 age -r "$AGE_PUBLIC_KEY" -o "$ENC" "$DUMP"
