@@ -46,9 +46,11 @@
     cadena de integridad verificada de punta a punta, `rclone`/`age` listos, guía escrita). **Falta la
     ventana de ~30 min con Edu** para el descifrado (clave `age` privada offline). Artefacto + guía en
     el scratchpad de la sesión.
-  - **Rulings de Edu pendientes** (de la revisión H4, decidir antes del piloto): H4-Q-01 (cierre tras
-    `expires_at`), H4-Q-02 (gate M-4), H4-Q-03 (rate-limit del callback en el edge), H4-Q-04 (desbrickeo
-    de la sesión pendiente) + follow-ups de UX (H4-R-010/012: mensaje es-CL al alumno). Ver el informe.
+  - **Rulings de Edu ✅ RESUELTOS (2026-07-16, D-048):** los 10 rulings de la revisión H4 decididos.
+    Pendiente de IMPLEMENTAR (bump contrato v1.1.6→v1.1.7 + código + 4-ojos): Q-01 cerrar tardío,
+    Q-02 formalizar M-4, Q-04 re-emitir la pendiente + timeout ~15 min, Q-05 arreglar T8, Q-07 mensaje
+    accionable al alumno. Q-03 = config de infra (Traefik/Coolify). Q-06/08/09/10 = doc/sin cambio.
+    Follow-ups de UX aparte (H4-R-010/012: mensaje es-CL al alumno).
 - **D-046 (Edu): el tenant demo pasa a ser `seminarea`** (cliente real, staging en
   `seminarea.chilearning.cl`). Mismo UUID; solo slug/nombre/correos semilla (`admin@seminarea.test`, …).
   Los datos del seed siguen siendo FICTICIOS (regla: nunca datos reales en fixtures); el RUT del tenant
@@ -356,10 +358,11 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 
 > Durante el piloto el agente entra en **modo soporte**: cero features nuevas, fixes con prioridad máxima.
 >
-> **Rulings de Edu pendientes (revisión H4, decidir antes de 4.2):** H4-Q-01 (un `close_ok` tras
-> `expires_at` pre-worker ¿cierra o queda `late`? — hoy crea falsos `expirada`), H4-Q-02 (consagrar el
-> gate M-4 en I-1), H4-Q-03 (rate-limit + alerta de `unmatched` del callback en Traefik/Coolify),
-> H4-Q-04 (`/start` re-emite el form de la pendiente para desbrickear al alumno) + H4-Q-05..Q-10.
+> **Rulings de Edu ✅ RESUELTOS (2026-07-16, D-048):** los 10 decididos. **Pendiente de IMPLEMENTAR**
+> (bump contrato v1.1.6→v1.1.7 + código + 4-ojos): Q-01 (cerrar el `close_ok` tardío — hoy crea falsos
+> `expirada`), Q-02 (formalizar M-4 en I-1 + contador de descartes), Q-04 (`/start` re-emite la
+> pendiente + timeout ~15 min), Q-05 (arreglar T8 = reintento de cierre), Q-07 (mensaje al alumno =
+> código accionable 311/312). Q-03 = config de Traefik/Coolify (infra). Q-06/08/09/10 = doc/sin cambio.
 > **Follow-ups (informe H4):** UX del mensaje es-CL al alumno (H4-R-010/012), reconciliación evento↔estado
 > en el worker (H4-R-006), scoping del rol `company` (H4-R-008), alerta de vida del tick (H4-R-013).
 

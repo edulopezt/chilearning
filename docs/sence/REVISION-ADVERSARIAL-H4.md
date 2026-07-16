@@ -156,6 +156,14 @@ que justifiquen re-validar; sin escenario de fallo concreto.
 
 ## Rulings — requieren decisión de Edu
 
+> **✅ RESUELTOS por Edu (2026-07-16, [D-048](../../specs/DECISIONES.md)).** Resumen: Q-01 **cerrar**
+> (literal) · Q-02 **formalizar M-4** en I-1 · Q-03 **rate-limit en el edge** (Traefik/Coolify) ·
+> Q-04 **re-emitir la pendiente** + timeout ~15 min · Q-05 **aceptar reinicio + arreglar T8** ·
+> Q-06 **aceptar** como límite del protocolo (reforzado por el flag `exento`/becario) · Q-07 **mensaje
+> al alumno = código accionable** (311/312) · Q-08 **no** agregar marcador · Q-09 **ratificar `>=`** ·
+> Q-10 **ratificar**. Los que tocan código/contrato (Q-01/02/04/05/07) van a un bump v1.1.6 → v1.1.7 +
+> código + 4-ojos; Q-03 es config de infra.
+
 Estas NO son defectos de implementación: son interpretaciones deliberadas del contrato (varias ya
 anotadas como preguntas abiertas Q1–Q3 en `session.ts`) o posturas de infraestructura. Cada una tiene
 comportamiento actual, alternativa literal del contrato, recomendación y una pregunta cerrada.
