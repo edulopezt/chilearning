@@ -7,6 +7,22 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-16 — Revisión adversarial pre-piloto del módulo (tarea 4.1b)
+
+**Sin cambio de contrato SENCE.** Auditoría multi-agente (26 agentes: 6 lentes →
+consolidación → refutación) de todo `src/modules/sence/` contra el contrato
+congelado v1.1.6, como gate del Hito 4 antes del piloto real. Informe completo:
+`docs/sence/REVISION-ADVERSARIAL-H4.md`; decisión de registro: `D-047`.
+
+- **19 hallazgos** (16 CONFIRMED, 2 PLAUSIBLE, 1 REFUTED) + **10 rulings** para Edu.
+- **1 HIGH de seguridad:** el `callback_nonce` era legible por staff del tenant
+  (grant de tabla sin revoke de columna, el mismo patrón del bug de `token_encrypted`
+  #22) → un insider podía falsificar callbacks y alterar la asistencia de otro alumno.
+- Se corrige en el PR de fixes H4 (ver la próxima entrada). Los hallazgos que tocan
+  el flujo SENCE (T8 inalcanzable, restart de la pendiente, atomicidad) quedan como
+  **rulings** que Edu decide antes de tocar código. Follow-ups y candidatos verificados
+  (INSERT-only, aislamiento de tenant/service-role, endurecimiento 3.11) en el informe.
+
 ## 2026-07-16 — Rate-limit + chequeo de origen en las rutas RCE (tarea 3.6, hardening)
 
 **Sin cambio de contrato SENCE.** Endurecimiento de los route handlers propios;

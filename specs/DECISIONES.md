@@ -796,3 +796,37 @@ entrada original.
 - **Por qué:** Seminarea es el cliente real con el que se ejecutará el piloto (Hito 4); renombrar el tenant demo in-place (mismo UUID) evita una migración/duplicación de datos y conserva el historial. Los datos del seed siguen siendo FICTICIOS (regla dura: nunca datos reales en fixtures); el RUT del tenant es placeholder hasta que Edu cargue el real por la app.
 - **Alternativas descartadas:** crear un tenant nuevo para Seminarea (descartada: obligaría a migrar/duplicar el demo; el rename in-place conserva UUID e historial); cambiar los datos del seed a reales (descartada: viola la regla de no usar datos reales en fixtures).
 - **Origen:** 2026-07-16 · PR #76 (rename) + #77 (corte de infra, staging verificado) / ESTADO-PROYECTO §Snapshot (L28-36)
+
+---
+
+## D-047 — Revisión adversarial del módulo SENCE antes del piloto (tarea 4.1b)
+
+- **ID:** D-047
+- **Fecha:** 2026-07-16
+- **Decisión:** antes de habilitar el piloto real (4.2) se ejecuta una revisión adversarial
+  completa de `src/modules/sence/` por un panel multi-agente distinto del implementador (26
+  agentes: 6 lentes independientes → consolidación → refutación adversarial), contra el contrato
+  congelado v1.1.6. Los hallazgos `CONFIRMED` seguros se corrigen en un PR de fixes; los que tocan
+  el flujo SENCE o el contrato quedan como **rulings para Edu**; el resto como follow-ups anotados.
+  El informe completo (19 hallazgos, 10 rulings, candidatos verificados) vive en
+  `docs/sence/REVISION-ADVERSARIAL-H4.md`. **Veredicto: SHIP CON FIXES + rulings de Edu.**
+- **Por qué:** el registro de asistencia SENCE tiene valor legal/tributario; la Definición de Hecho
+  §9 exige revisión por otro agente para todo cambio en `sence/`, y el gate 4.1 del Hito 4 exige
+  esta revisión antes de exponer alumnos reales. La revisión cazó **1 HIGH de seguridad real**
+  (`H4-R-002`: el `callback_nonce` era legible por staff del tenant vía grant de tabla sin revoke
+  de columna → falsificación de callbacks y alteración de asistencia ajena — el mismo patrón del
+  bug de `token_encrypted` #22) + defectos de robustez (pérdida silenciosa de callbacks, 500 crudo
+  al alumno), y confirmó que los controles ya endurecidos (INSERT-only, aislamiento de tenant y de
+  service-role, endurecimiento supervisor 3.11) siguen sanos.
+- **Fixes de este lote (PR de fixes H4):** `H4-R-002` (migración: revoke del grant de columna del
+  nonce + test RLS), `H4-R-001` (lector tolerante a nombres de campo con espacios + tests contra el
+  mock), `H4-R-005` (el callback nunca parsea la clave de cifrado → no se pierde por clave rota),
+  `H4-R-007` (loguear el error del SELECT de correlación), `H4-R-015` (`resolvePublicOrigin`
+  fail-closed), `H4-R-016` (doble start → resultado tipado, no 500). Ninguno toca una transición
+  T1–T9 ni el README congelado.
+- **Alternativas descartadas:** auto-corregir los hallazgos que cambian el flujo SENCE (T8, restart
+  de la pendiente, atomicidad con nota en README) — descartada: `sence/` es sagrado (P3), esos van
+  como rulings que Edu aprueba antes de tocar código; corregir todos los CONFIRMED en un solo PR
+  gigante — descartada: los de UX y los feature-sized (scoping de `company`, acciones §5) se
+  separan para no arriesgar regresiones en la ruta crítica justo antes del piloto.
+- **Origen:** 2026-07-16 · revisión 4.1b · informe `docs/sence/REVISION-ADVERSARIAL-H4.md`
