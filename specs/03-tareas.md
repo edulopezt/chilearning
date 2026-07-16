@@ -77,7 +77,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 3.8 E2E Playwright de los 3 flujos críticos — Plan §11
 - 3.9 Automatizaciones n8n por reglas: recordatorios de asistencia SENCE, correos a alumnos inactivos e informes automáticos de asistencia al coordinador — HU-5.9
 - 3.10 ✅ Iniciar verificación Meta Business para WhatsApp (trámite lento; el canal opera en Hito 5) — M9 — **hecho 2026-07-16** (#58): checklist producido (`docs/whatsapp/META-BUSINESS-VERIFICATION.md`); el trámite lo ejecuta Edu (handoff)
-- 3.11 Portal Supervisor completo: invitaciones OTIC/externos, alcance por acción, vigencia y auditoría de consultas — HU-12.1, 12.2
+- 3.11 ✅ Portal Supervisor completo: invitaciones OTIC/externos, alcance por acción, vigencia y auditoría de consultas — HU-12.1, 12.2 — **hecho 2026-07-16** (#64): `supervisor_grants` + `grant_actions`, helpers `SECURITY DEFINER` de vigencia/alcance, **endurece 6 policies vivas** (enrollments/sence_sessions/sence_events/grades/lesson_progress/alerts: `has_role('supervisor')` → `+ grant activo y en alcance`), backfill de supervisores existentes; portal GATED que audita cada consulta (`cumplimiento-service` staff-only + builders `*Unchecked`); invitación con link copiable (degrada sin RESEND). Revisión **4-ojos multi-agente** (4 lentes + verificación): 1 MED confirmado (alerts sin escopar → escopado con `supervisor_has_tenant_grant`), resto refutado. Migración aplicada al cloud (backfill 2)
 - 3.12 ✅ Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10 — **hecho 2026-07-16** (#60): `action_documents` + definitivos inmutables + bucket + checklist + ZIP con manifiesto; staff-only admin/coordinador; jszip; 4-ojos (MED corregido)
 
 ## Hito 4 — PILOTO REAL (semanas 6–8) 🎯
