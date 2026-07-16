@@ -16,6 +16,7 @@
     "test:unit": "vitest run --project unit",
     "test:rls": "vitest run --project rls",
     "test:integration": "vitest run --project integration",
+    "test:e2e": "playwright test",
     "sence:mock": "node tools/sence-mock/server.ts",
     "build:worker": "esbuild src/worker/index.ts --bundle --platform=node --target=node24 --outfile=dist/worker/index.js --sourcemap --log-level=warning",
     "worker": "pnpm build:worker && node --env-file-if-exists=.env.local dist/worker/index.js"
@@ -41,6 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/qrcode": "^1.5.6",
