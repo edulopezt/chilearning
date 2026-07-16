@@ -830,3 +830,60 @@ entrada original.
   gigante — descartada: los de UX y los feature-sized (scoping de `company`, acciones §5) se
   separan para no arriesgar regresiones en la ruta crítica justo antes del piloto.
 - **Origen:** 2026-07-16 · revisión 4.1b · informe `docs/sence/REVISION-ADVERSARIAL-H4.md`
+
+---
+
+## D-048 — Resolución de los 10 rulings de la revisión adversarial H4 (Edu)
+
+- **ID:** D-048
+- **Fecha:** 2026-07-16
+- **Decisión:** Edu resolvió los 10 rulings abiertos de `REVISION-ADVERSARIAL-H4.md`. Los que
+  cambian el contrato congelado o la máquina de estados van a un **bump del contrato v1.1.6 → v1.1.7**
+  + implementación en código con 4-ojos (P1/P3). Decisiones:
+  - **H4-Q-01 (cierre tardío) → CERRAR (lectura literal).** Un `close_ok` recibido tras `expires_at`
+    pero ANTES de que el worker ejecute T6 cierra la sesión (T5 no tiene puerta temporal; solo T8 la
+    tiene). Hoy quedaba `late` → falsos `expirada` (no-asistencia falsa). *Cambia código + contrato.*
+  - **H4-Q-02 (gate M-4) → FORMALIZAR en I-1.** Se enmienda I-1 para consagrar que un POST sin
+    `IdSesionAlumno` usable (vacío o >149) NO es un callback y se descarta, condicionado a: (a) el
+    borde ya tolera nombres con espacios (H4-R-001, hecho) y (b) un **contador/log de descartes** para
+    detectar patrones anómalos. *Cambia contrato + agrega contador.*
+  - **H4-Q-03 (anti-DoS del callback) → RATE-LIMIT EN EL EDGE.** Se configura rate-limit +
+    alerta de crecimiento anómalo de `unmatched` en **Traefik/Coolify** (no en la app: I-1 exige
+    persistir). *Config de infra + priorizar la alerta de `unmatched` (follow-up de `alerts.ts`).*
+  - **H4-Q-04 (desbrickeo de la pendiente) → RE-EMITIR + timeout ~15 min.** `/api/sence/start`
+    re-emite el form de la sesión `iniciada_pendiente` vigente (misma sesión y nonce, no toca §3) en
+    vez de fallar con 500; y se baja `SENCE_PENDING_TIMEOUT_MINUTES` a ~15 min. *Cambia código.*
+  - **H4-Q-05 (cierre con error) → ACEPTAR REINICIO + ARREGLAR T8.** Se mantiene la exclusión del
+    índice `one_open_per_enrollment` (el alumno puede reiniciar tras un `close_error`) Y se hace
+    ALCANZABLE el reintento de cierre T8 (`buildCloseForm`/`/close` para una sesión en `error` de
+    origen `close`), para que la sesión no quede colgada ante SENCE. Verificar contra el manual si
+    SENCE tolera la doble sesión simultánea de la misma acción/alumno. *Cambia código + contrato.*
+  - **H4-Q-06 (auto-falsificación de la sesión propia) → ACEPTAR como límite del protocolo.** El
+    RCE es 100% browser-mediado y sin firma; el nonce solo impide falsificar la sesión de OTRO
+    (H-2, ya cerrado). La asistencia con valor legal vive en SENCE, no en el LMS, y se reconcilia en
+    la DJ/liquidación. **Refuerzo:** ya existe una vía legítima de acceso sin SENCE — el flag
+    `exento` (= **becario**, I-14): salta SENCE y el candado I-12 nunca lo bloquea. *Solo doc.*
+  - **H4-Q-07 (error multi-código) → MENSAJE AL ALUMNO = CÓDIGO ACCIONABLE.** Cuando `GlosaError`
+    trae varios códigos, el mensaje que ve el alumno prioriza un código accionable por él (311/312,
+    Clave Única) si aparece; el alerting/severidad interno sigue con el más severo. *Cambia código
+    (errors.ts + i18n) + congela la regla en §5 del contrato.*
+  - **H4-Q-08 (GlosaError vacía en UrlError) → NO agregar marcador.** Sin evidencia de terreno; el
+    discriminador cambiaría I-4/I-8 y exigiría re-certificar. *Sin cambio.*
+  - **H4-Q-09 (frontera `>=` vs `>`) → RATIFICAR `>=`.** `now >= expires_at` (expira en el instante
+    exacto); diferencia de 1 ms, ya testeado. Solo se ajusta la letra del contrato a "al alcanzar o
+    superar". *Solo redacción del contrato.*
+  - **H4-Q-10 (start_ok tardío vs T4) → RATIFICAR.** La llegada del callback prueba que no hubo
+    abandono; el CAS resuelve la carrera. Guardrail: no bajar el pending-timeout de ~15 min (coincide
+    con Q-04). *Sin cambio de código.*
+- **Por qué:** los rulings eran interpretaciones deliberadas del contrato (varias ya anotadas como
+  Q1–Q3 en `session.ts`) o posturas de infra que solo Edu podía decidir (P1: el spec manda; P3: SENCE
+  es sagrado). Resolverlos desbloquea el gate 4.1a del piloto y elimina un riesgo real (Q-01 podía
+  estar reportando no-asistencias falsas en cierres cerca del límite de 3 h).
+- **Implementación:** las decisiones que tocan código/contrato (Q-01, Q-02, Q-04, Q-05, Q-07) van en
+  un PR con **bump del contrato a v1.1.7** (spec primero, P1) + código + tests + **4-ojos** (regla dura
+  DoD §9) + anotación en `docs/sence/CHANGELOG.md`. La validación end-to-end contra SENCE queda
+  diferida al primer curso real (rcetest parqueado). Q-03 es config de Traefik/Coolify (handoff/infra).
+- **Alternativas descartadas:** implementar los cambios sin bumpear el contrato (descartada: viola P1,
+  el contrato es la vara de medir de la revisión); mantener el comportamiento actual de Q-01
+  (descartada por Edu: crea no-asistencias falsas).
+- **Origen:** 2026-07-16 · rulings de `REVISION-ADVERSARIAL-H4.md` resueltos por Edu
