@@ -7,6 +7,23 @@ exige diff contra el manual oficial + checklist en `rcetest` antes del release.
 
 ---
 
+## 2026-07-16 — Rate-limit + chequeo de origen en las rutas RCE (tarea 3.6, hardening)
+
+**Sin cambio de contrato SENCE.** Endurecimiento de los route handlers propios;
+no toca el protocolo, campos, endpoints ni la máquina de estados del motor.
+
+- **`/api/sence/start` y `/api/sence/close`**: `assertSameOrigin` (rechaza un POST
+  cross-site; el botón del curso es mismo-origen) + rate-limit **por USUARIO**
+  (10/min). **Fail-open** sin Redis → idéntico al previo sin `REDIS_URL`. NO se
+  limita por IP: una cohorte tras NAT compartido (empresa/laboratorio) colapsaría
+  en una IP y bloquearía alumnos reales (4-ojos H1).
+- **`/api/sence/cb/[nonce]`**: SIN rate-limit y EXENTO de `assertSameOrigin` (POST
+  cross-origin legítimo de SENCE, protegido por el nonce, H-2). I-1 exige
+  PERSISTIR SIEMPRE → no se limita antes de `handleCallback` para no perder la
+  marca de asistencia. El anti-DoS del callback va en el edge/proxy.
+- CSP (`form-action`) incluye `sistemas.sence.cl` para no bloquear el auto-submit
+  de asistencia. No requiere re-certificación rcetest (no cambia la petición a SENCE).
+
 ## 2026-07-15 — Pre-flight masivo de acción + alerta día-1 (tarea 2.7, HU-5.8)
 
 Sin cambio de contrato: compone los validadores YA congelados. Ataca en origen

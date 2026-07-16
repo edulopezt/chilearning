@@ -13,6 +13,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ nonce: string }> },
 ) {
+  // SIN rate-limit y EXENTO de chequeo de origen (POST cross-origin legítimo de
+  // SENCE, protegido por el nonce). I-1 exige PERSISTIR SIEMPRE: limitar aquí
+  // antes de handleCallback perdería la marca de asistencia (4-ojos H1). El
+  // anti-DoS del callback va en el edge/proxy, no en la app. 3.6.
   const { nonce } = await params;
   const params_ = await readForm(request);
 

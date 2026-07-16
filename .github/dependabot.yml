@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Dependencias npm (task 3.6, RNF-2: deps auditadas). Agrupadas y semanales
+  # para no saturar de PRs; los majors se revisan a mano.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
