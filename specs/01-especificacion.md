@@ -95,7 +95,7 @@ son las estructurales; cada módulo se detallará en su propio spec antes de imp
   pueden ingresar además con **enlace mágico** (magic link) enviado a su correo, sin contraseña.
   CA: sesión expira por inactividad (60 min, exigencia SENCE); bloqueo tras N intentos fallidos; recuperación de contraseña por correo; el magic link expira y es de un solo uso.
 - **HU-2.2** Como admin OTEC, creo usuarios con rol e importo alumnos **masivamente** por planilla (CSV/Excel), con plantilla estándar descargable, pudiendo inscribirlos directo a una acción en el mismo paso.
-  CA: RUN validado (formato y dígito verificador) al importar; duplicados detectados; resultado del import con errores por fila; la inscripción directa a acción respeta las validaciones de HU-3.2.
+  CA: RUN validado (formato y dígito verificador) al importar; duplicados detectados; resultado del import con errores por fila; la inscripción directa a acción respeta las validaciones de HU-3.2; la planilla acepta la columna `grupo` con los grupos operativos del OTEC — `Sence-<código del curso>` (alumno SENCE) o `Becario` (exento, I-14) — validando que el código coincida con el curso de la acción destino (planilla equivocada = filas rechazadas); la etiqueta de grupo se muestra en el resultado del import, el panel de cumplimiento, la emisión de certificados y el portal del alumno.
 - **HU-2.3** Como sistema, aplico denegación por defecto según la matriz §3.
   CA: tests automatizados cubren la matriz completa; acceso denegado queda en auditoría.
 - **HU-2.4** Como alumno, veo y ejerzo mis derechos de datos (Ley 21.719): acceso, rectificación, supresión, portabilidad.

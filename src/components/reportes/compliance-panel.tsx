@@ -1,4 +1,5 @@
 import { esCL } from "@/i18n/es-CL";
+import { BECARIO_LABEL } from "@/modules/academico/domain/enrollment-group";
 import type { CompliancePanel } from "@/modules/reportes/cumplimiento-service";
 import type { DayCellStatus } from "@/modules/reportes/domain/cumplimiento";
 
@@ -26,6 +27,8 @@ export function CompliancePanelView({
   exportBasePath: string;
 }) {
   const dayLabels = panel.days.map((d) => d.slice(5)); // MM-DD
+  // Grupo operativo del OTEC (HU-2.2): "Becario" o "Sence-<código del curso>".
+  const groupOf = (exento: boolean): string => (exento ? BECARIO_LABEL : (panel.senceGroupLabel ?? "—"));
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-2">
@@ -57,6 +60,7 @@ export function CompliancePanelView({
                   <tr className="border-b text-left">
                     <th className="bg-background sticky left-0 py-2 pr-3">{t.colStudent}</th>
                     <th className="py-2 pr-3">{t.colRun}</th>
+                    <th className="py-2 pr-3">{t.colGroup}</th>
                     {dayLabels.map((d) => (
                       <th key={d} className="px-1 py-2 text-center font-mono text-xs">
                         {d}
@@ -72,6 +76,7 @@ export function CompliancePanelView({
                         {row.apellidos ? `${row.apellidos}, ${row.nombres}` : row.nombres || "—"}
                       </td>
                       <td className="py-2 pr-3 font-mono text-xs">{row.run}</td>
+                      <td className="py-2 pr-3 text-xs whitespace-nowrap">{groupOf(row.exento)}</td>
                       {row.cells.map((cell) => {
                         const style = CELL_STYLE[cell.status];
                         return (
@@ -100,7 +105,9 @@ export function CompliancePanelView({
                   <p className="font-medium">
                     {row.apellidos ? `${row.apellidos}, ${row.nombres}` : row.nombres || "—"}
                   </p>
-                  <p className="text-muted-foreground font-mono text-xs">{row.run}</p>
+                  <p className="text-muted-foreground font-mono text-xs">
+                    {row.run} · {groupOf(row.exento)}
+                  </p>
                   <p className="mt-1 text-sm">
                     {row.exento ? (
                       t.exempt

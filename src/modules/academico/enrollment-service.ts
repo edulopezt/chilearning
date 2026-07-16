@@ -9,6 +9,7 @@ import {
   type ImportReport,
   type ValidEnrollmentRow,
 } from "@/modules/academico/domain/enrollment-import";
+import { enrollmentGroupLabel } from "@/modules/academico/domain/enrollment-group";
 import { emailSenderFromEnv, type EmailSender } from "@/modules/comunicacion/email-sender";
 import { renderWelcomeEmail } from "@/modules/comunicacion/domain/email-templates";
 
@@ -43,6 +44,15 @@ export interface ImportOutcome {
   report: ImportReport;
   /** Resumen del envío de bienvenidas (HU-3.3). */
   emails: ImportEmailSummary;
+  /** Desglose por grupo operativo del OTEC (HU-2.2): alumnos SENCE vs becarios. */
+  groups: {
+    /** Inscritos que marcan SENCE (no exentos). */
+    sence: number;
+    /** Inscritos exentos (grupo Becario, I-14). */
+    becario: number;
+    /** Etiqueta del grupo SENCE (`Sence-<código del curso>`) o null si el curso no tiene código. */
+    senceLabel: string | null;
+  };
 }
 
 export interface ImportDeps {
@@ -81,7 +91,7 @@ export async function importEnrollmentsFromCsv(
   // La acción debe existir y pertenecer al tenant del actor (aislamiento).
   const { data: action } = await guard
     .from("actions")
-    .select("id, course_id, status")
+    .select("id, course_id, status, course:courses(cod_sence)")
     .eq("id", actionId)
     .maybeSingle();
   if (!action) return { error: "action_not_found" };
@@ -89,9 +99,20 @@ export async function importEnrollmentsFromCsv(
   // no tiene código/fechas confirmados ante SENCE.
   if (action.status !== "active") return { error: "action_not_active" };
 
-  const report = validateEnrollmentCsv(csvText);
+  // Código SENCE del curso destino: valida el grupo `Sence-<código>` de la
+  // planilla (HU-2.2) — una planilla de otro curso se rechaza fila a fila.
+  const courseRel = action.course as { cod_sence?: string | null } | { cod_sence?: string | null }[] | null;
+  const actionCodSence =
+    (Array.isArray(courseRel) ? courseRel[0]?.cod_sence : courseRel?.cod_sence) ?? null;
+
+  const report = validateEnrollmentCsv(csvText, { actionCodSence });
   const failed: ImportOutcome["failed"] = [];
   const emails: ImportEmailSummary = { sent: 0, failed: 0, skipped: 0 };
+  const groups: ImportOutcome["groups"] = {
+    sence: 0,
+    becario: 0,
+    senceLabel: enrollmentGroupLabel(false, actionCodSence),
+  };
   let imported = 0;
 
   const emailToUserId = await buildEmailIndex(guard.db);
@@ -104,6 +125,8 @@ export async function importEnrollmentsFromCsv(
       await ensureMembership(guard, userId);
       const isNew = await upsertEnrollment(guard, actionId, userId, row);
       imported++;
+      if (row.exento) groups.becario++;
+      else groups.sence++;
       if (isNew) {
         await sendWelcome(sender, welcome, row, emails);
       }
@@ -131,7 +154,7 @@ export async function importEnrollmentsFromCsv(
     }
   }
 
-  return { imported, failed, report, emails };
+  return { imported, failed, report, emails, groups };
 }
 
 interface WelcomeContext {

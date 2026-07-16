@@ -1,6 +1,7 @@
 import "server-only";
 
 import { tenantGuard } from "@/lib/tenant-guard";
+import { enrollmentGroupLabel } from "@/modules/academico/domain/enrollment-group";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
 import {
   buildAttendanceMatrix,
@@ -46,6 +47,8 @@ export interface CompliancePanel {
   readonly frequentErrors: readonly FrequentError[];
   /** true si el barrido tocó el tope de páginas (datos posiblemente parciales). */
   readonly truncated: boolean;
+  /** Etiqueta del grupo SENCE del curso (`Sence-<código>`) o null (HU-2.2). */
+  readonly senceGroupLabel: string | null;
 }
 
 export interface ComplianceActionSummary {
@@ -133,7 +136,7 @@ async function fetchActionContext(principal: Principal, actionId: string) {
   const [{ data: course }, { data: enrollments }] = await Promise.all([
     guard.db
       .from("courses")
-      .select("name")
+      .select("name, cod_sence")
       .eq("id", action.course_id as string)
       .eq("tenant_id", principal.tenantId!)
       .maybeSingle(),
@@ -254,6 +257,7 @@ export async function compliancePanelUnchecked(
     rows: buildAttendanceMatrix(days, students, sessions),
     frequentErrors: topErrors(events),
     truncated: ctx.truncated,
+    senceGroupLabel: enrollmentGroupLabel(false, (ctx.course?.cod_sence as string | null) ?? null),
   };
 }
 

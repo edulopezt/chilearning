@@ -205,7 +205,8 @@ export const esCL = {
     submit: "Revisar e importar",
     downloadTemplate: "Descargar plantilla CSV",
     templateHint:
-      "Columnas: nombre, apellidos (opcional pero recomendado para los reportes SENCE), email, run, exento (Sí/No).",
+      'Columnas: nombre, apellidos (opcional pero recomendado para los reportes SENCE), email, run y grupo ("Sence-<código del curso>" para alumnos SENCE o "Becario" para exentos). Si tu planilla no usa grupos, sirve la columna exento (Sí/No).',
+    groupsLabel: "Grupos:",
     noActions: "Primero crea una acción de capacitación para poder inscribir alumnos.",
     forbidden: "No tienes permiso para importar alumnos.",
     resultTitle: "Resultado del import",
@@ -381,6 +382,7 @@ export const esCL = {
     forbidden: "No tienes permiso para emitir certificados.",
     colStudent: "Alumno",
     colRun: "RUN",
+    colGroup: "Grupo",
     colAttendance: "Asistencia",
     colGrade: "Nota",
     colStatus: "Estado",
@@ -799,6 +801,7 @@ export const esCL = {
     noDates: "Define las fechas de inicio y término de la acción para calcular días y huecos.",
     colStudent: "Alumno",
     colRun: "RUN",
+    colGroup: "Grupo",
     colGaps: "Huecos",
     daysClosed: "días con cierre",
     exempt: "Exento",
@@ -939,6 +942,7 @@ export const esCL = {
   },
   course: {
     noCourse: "Aún no tienes cursos asignados.",
+    groupLabel: "Tu grupo:",
     openFile: "Abrir archivo",
     progressLabel: "Tu avance",
     progressOf: "de",

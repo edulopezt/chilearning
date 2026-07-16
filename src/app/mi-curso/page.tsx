@@ -6,6 +6,7 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getStudentCourseView } from "@/modules/academico/course-view";
 import { computeLock } from "@/modules/academico/domain/attendance-lock";
+import { enrollmentGroupLabel } from "@/modules/academico/domain/enrollment-group";
 import { studentMessageForCodes } from "@/modules/sence/errors";
 import { summarizeProgress } from "@/modules/academico/domain/progress";
 import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
@@ -67,6 +68,15 @@ export default async function MiCursoPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{view.courseName}</h1>
+        {/* Grupo operativo del OTEC (HU-2.2): Becario o Sence-<código del curso>. */}
+        {(() => {
+          const group = enrollmentGroupLabel(view.exento, view.codSence);
+          return group ? (
+            <p className="text-muted-foreground text-sm">
+              {esCL.course.groupLabel} <strong>{group}</strong>
+            </p>
+          ) : null;
+        })()}
         {view.exento ? (
           <p className="text-sm text-green-700 dark:text-green-400">{esCL.course.exento}</p>
         ) : null}

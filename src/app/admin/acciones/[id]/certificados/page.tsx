@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { BECARIO_LABEL } from "@/modules/academico/domain/enrollment-group";
 import { getActionEligibility, type EligibilityRow } from "@/modules/certificados/certificates-service";
 import type { EligibilityReason } from "@/modules/certificados/domain/eligibility";
 import { RevokeForm } from "./revoke-form";
@@ -71,6 +72,7 @@ export default async function CertificadosPage({
               <thead>
                 <tr className="border-b text-left">
                   <th className="py-2 pr-3">{t.colStudent}</th>
+                  <th className="py-2 pr-3">{t.colGroup}</th>
                   <th className="py-2 pr-3">{t.colAttendance}</th>
                   <th className="py-2 pr-3">{t.colGrade}</th>
                   <th className="py-2 pr-3">{t.colStatus}</th>
@@ -83,6 +85,9 @@ export default async function CertificadosPage({
                     <td className="py-2 pr-3">
                       {r.name}
                       <span className="block text-xs text-muted-foreground">{r.run}</span>
+                    </td>
+                    <td className="py-2 pr-3 text-xs whitespace-nowrap">
+                      {r.exento ? BECARIO_LABEL : (view.senceGroupLabel ?? "—")}
                     </td>
                     <td className="py-2 pr-3">{r.exento ? t.exento : `${r.attendancePct}%`}</td>
                     <td className="py-2 pr-3">{r.finalGrade !== null ? r.finalGrade.toFixed(1) : "—"}</td>
@@ -106,7 +111,8 @@ export default async function CertificadosPage({
                   <StatusCell row={r} />
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {r.run} · {r.exento ? t.exento : `${r.attendancePct}%`} · {r.finalGrade !== null ? r.finalGrade.toFixed(1) : "—"}
+                  {r.run} · {r.exento ? BECARIO_LABEL : (view.senceGroupLabel ?? "—")} ·{" "}
+                  {r.exento ? t.exento : `${r.attendancePct}%`} · {r.finalGrade !== null ? r.finalGrade.toFixed(1) : "—"}
                 </span>
                 <RowActions actionId={actionId} row={r} />
               </li>

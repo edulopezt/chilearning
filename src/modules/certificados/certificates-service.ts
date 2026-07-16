@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 
 import { getPublicEnv } from "@/lib/env";
 import { tenantGuard, type TenantGuard } from "@/lib/tenant-guard";
+import { enrollmentGroupLabel } from "@/modules/academico/domain/enrollment-group";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
 import {
   attendancePctFromCells,
@@ -86,6 +87,8 @@ export interface ActionEligibility {
   readonly isSence: boolean;
   readonly minAttendancePct: number;
   readonly rows: readonly EligibilityRow[];
+  /** Etiqueta del grupo SENCE del curso (`Sence-<código>`) o null (HU-2.2). */
+  readonly senceGroupLabel: string | null;
 }
 
 interface ActionContext {
@@ -266,7 +269,15 @@ export async function getActionEligibility(
     };
   });
 
-  return { actionId, courseName: ctx.courseName, code: ctx.code, isSence: ctx.isSence, minAttendancePct: ctx.effectiveThreshold, rows };
+  return {
+    actionId,
+    courseName: ctx.courseName,
+    code: ctx.code,
+    isSence: ctx.isSence,
+    minAttendancePct: ctx.effectiveThreshold,
+    rows,
+    senceGroupLabel: enrollmentGroupLabel(false, ctx.codSence),
+  };
 }
 
 // ---------- emisión ----------

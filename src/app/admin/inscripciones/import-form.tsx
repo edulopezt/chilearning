@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { BECARIO_LABEL } from "@/modules/academico/domain/enrollment-group";
 import { importEnrollmentsAction, type ImportActionState } from "./actions";
 
 const t = esCL.enrollmentImport;
@@ -15,10 +16,12 @@ const ERROR_TEXT: Record<string, string> = {
   no_action: t.errorNoAction,
 };
 
+// El "Sence-6721201" es un ejemplo: el número debe ser el código SENCE del
+// curso de la acción destino (el import lo valida fila a fila, HU-2.2).
 const TEMPLATE_CSV =
-  "nombre,apellidos,email,run,exento\n" +
-  "Ana,Díaz Rojas,ana@ejemplo.cl,16032460-0,No\n" +
-  "Juan,Soto Pinto,juan@ejemplo.cl,9876543-3,Sí\n";
+  "nombre,apellidos,email,run,grupo\n" +
+  "Ana,Díaz Rojas,ana@ejemplo.cl,16032460-0,Sence-6721201\n" +
+  "Juan,Soto Pinto,juan@ejemplo.cl,9876543-3,Becario\n";
 
 function templateHref(): string {
   return `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE_CSV)}`;
@@ -82,11 +85,18 @@ export function ImportForm({ actions }: { actions: { id: string; label: string }
 }
 
 function ImportResult({ outcome }: { outcome: Extract<ImportActionState, { status: "done" }>["outcome"] }) {
-  const { imported, failed, report, emails } = outcome;
+  const { imported, failed, report, emails, groups } = outcome;
   const rows = [
     ...report.errors.map((e) => ({ row: e.rowNumber, field: e.field, message: e.message })),
     ...failed.map((f) => ({ row: f.rowNumber, field: "—", message: f.reason })),
   ].sort((a, b) => a.row - b.row);
+
+  // Desglose por grupo operativo (HU-2.2): "Sence-<código>" y "Becario" son
+  // códigos del OTEC (datos, no textos traducibles).
+  const groupParts = [
+    ...(groups.senceLabel && groups.sence > 0 ? [`${groups.sence} × ${groups.senceLabel}`] : []),
+    ...(groups.becario > 0 ? [`${groups.becario} × ${BECARIO_LABEL}`] : []),
+  ];
 
   return (
     <section aria-live="polite" className="flex flex-col gap-3 rounded-md border p-4">
@@ -102,6 +112,11 @@ function ImportResult({ outcome }: { outcome: Extract<ImportActionState, { statu
           </>
         ) : null}
       </p>
+      {groupParts.length > 0 ? (
+        <p className="text-muted-foreground text-sm">
+          {t.groupsLabel} {groupParts.join(" · ")}
+        </p>
+      ) : null}
       {emails.sent + emails.failed + emails.skipped > 0 ? (
         <p className="text-sm">
           <strong className="text-green-700 dark:text-green-400">{emails.sent}</strong>{" "}
