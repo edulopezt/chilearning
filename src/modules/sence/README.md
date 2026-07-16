@@ -5,8 +5,40 @@
 > diff contra el manual oficial vigente + checklist en `rcetest` + aprobación de Edu (P1)
 > + anotación en `docs/sence/CHANGELOG.md`. Ningún código de este módulo puede contradecirlo.
 
-- **Estado:** CONGELADO el **2026-07-14**.
+- **Estado:** CONGELADO el **2026-07-14**; **enmendado el 2026-07-16** (ver §Enmiendas).
 - **Alcance:** protocolo RCE (Registro de Asistencia E-Learning) con Clave Única, líneas 1, 3 y 6.
+- **Manual normativo:** sigue siendo **v1.1.6** (las enmiendas afinan la INTERPRETACIÓN del motor
+  sobre casos que el manual deja sub-especificados; no cambian lo que el motor envía a SENCE).
+
+---
+
+## Enmiendas (posteriores al congelamiento)
+
+> Donde una enmienda contradiga el texto original de una cláusula, **manda la enmienda**. Cada una
+> nace de una decisión registrada en `specs/DECISIONES.md` con aprobación de Edu (P1).
+>
+> **Versionado:** esta sección constituye la **revisión interna del CONTRATO** que D-048 denomina
+> «v1.1.7». El **manual normativo de SENCE sigue siendo v1.1.6** (no se re-publica): las enmiendas
+> afinan la INTERPRETACIÓN del motor en casos que el manual deja sub-especificados, no cambian los
+> campos/formatos/endpoints que el motor ENVÍA a SENCE (por eso no exigen re-certificación de envío,
+> aunque sí verificación de comportamiento en el primer curso real).
+
+### 2026-07-16 — Rulings de la revisión adversarial H4 ([D-048](../../../specs/DECISIONES.md))
+
+- **E-1 (Q-01, transiciones T5/T7):** el cierre sobre una sesión `iniciada` **NO tiene puerta
+  temporal**. Un callback de cierre (`close_ok` → T5, `close_error` → T7) que llega tras `expires_at`
+  pero **antes** de que el worker ejecute T6 **aplica su transición** (no queda `late`). La puerta
+  temporal ("mientras no se supere `expires_at`") aplica **solo a T8** (reintento de cierre sobre
+  `error(close)`). Motivo: un cierre confirmado por SENCE es la evidencia más fuerte; descartarlo
+  creaba falsos `expirada` (no-asistencia falsa). La carrera callback-vs-worker la resuelve el CAS.
+- **E-2 (Q-05, transición T8):** el reintento de cierre T8 es **alcanzable**: `buildCloseForm`
+  (y `/api/sence/close`) aceptan una sesión en `error(close)` con `IdSesionSence` (antes solo
+  aceptaban `iniciada`, dejando T8 muerto y la sesión colgada ante SENCE hasta T9). El alumno puede
+  además reiniciar una sesión nueva (el índice `one_open_per_enrollment` no cuenta `error(close)`);
+  ambas vías coexisten. ⚠ Verificar contra el manual/SENCE si tolera la doble sesión simultánea de la
+  misma acción/alumno.
+- **E-3 (Q-09, frontera de expiración):** el vencimiento es `now >= expires_at` ("al **alcanzar o**
+  superar" `expires_at`); la diferencia con la lectura estrictamente-mayor es de 1 ms.
 
 ---
 

@@ -18,6 +18,9 @@ export interface LockInput {
   attendanceLock: boolean;
   /** Estado de la última sesión SENCE del alumno, o null si nunca registró. */
   sessionStatus: SenceSessionStatus | null;
+  /** Origen del `error` (T3 `"start"` vs T7 `"close"`); relevante para ofrecer el
+   *  reintento de cierre (T8, D-048/Q-05). `null`/ausente si no está en `error`. */
+  errorOrigin?: "start" | "close" | null;
   /** `expires_at` de la sesión (epoch ms), si está iniciada. */
   expiresAtMs: number | null;
   /** Ahora (epoch ms). */
@@ -54,9 +57,21 @@ export function computeLock(input: LockInput): LockState {
     case "iniciada_pendiente":
       // Registrando: esperando el retorno desde Clave Única.
       return { unlocked: false, action: "waiting", remainingMs: null };
+    case "error":
+      // Un cierre CON ERROR (T7, `error(close)`) puede REINTENTARSE (T8,
+      // D-048/Q-05) con el mismo IdSesionSence, así la sesión no queda colgada ante
+      // SENCE — PERO solo mientras no se supere `expires_at` (T8 está gateado). Si ya
+      // venció (el worker la expirará por T9), el reintento sería fútil → re-registrar.
+      // Un error de INICIO (T3, `error(start)`) es terminal → (re)registrar desde cero.
+      if (input.errorOrigin === "close") {
+        const expired = input.expiresAtMs !== null && input.nowMs >= input.expiresAtMs;
+        if (!expired) {
+          return { unlocked: false, action: "close", remainingMs: null };
+        }
+      }
+      return { unlocked: false, action: "register", remainingMs: null };
     case "cerrada":
     case "expirada":
-    case "error":
     case null:
       // Debe (re)registrar su asistencia para desbloquear.
       return { unlocked: false, action: "register", remainingMs: null };

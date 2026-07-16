@@ -24,31 +24,27 @@
  * change the state (I-15). `error`-from-T7 is NOT terminal: it leaves only via
  * T8 (retry in time) or T9 (expiry).
  *
- * TIME MODEL (documented decision): a session is "expired" the instant
- * `now >= deadline`. For `iniciada`/`error(T7)` the deadline is `expiresAt`
- * (`opened_at + SENCE_SESSION_MAX_HOURS`, I-13). A CLOSE callback (success or
- * error) that arrives once the deadline has passed is treated as late (I-15) and
- * does not transition — this keeps the pure model consistent with T6/T9 and the
- * contract clause "error nunca queda congelado post-expires_at; un callback
- * posterior cae en I-15". START callbacks are NOT time-gated: their arrival
- * proves the student did not abandon (T4 is the "no callback" path), so they
- * apply while the session is still `iniciada_pendiente`. This reading of the
- * un-gated T5/T7 is noted as a deliberate interpretation (see summary).
+ * TIME MODEL: a session is "expired" the instant `now >= deadline`
+ * (D-048/Q-09 ratifica: "al alcanzar o superar" expires_at). Solo **T8** (el
+ * REINTENTO de cierre sobre `error(close)`) está gateado por `expiresAt`
+ * (`opened_at + SENCE_SESSION_MAX_HOURS`, I-13): un T8 que llega pasado el deadline
+ * es `late` (I-15) y no transiciona. **T5/T7 (cierre sobre `iniciada`) NO están
+ * gateados** (D-048/Q-01, README §Enmiendas E-1): un callback de cierre que llega
+ * tras `expires_at` pero antes de que el worker corra T6 igual aplica su transición
+ * — un cierre confirmado por SENCE es la evidencia más fuerte, y gatearlo creaba
+ * falsos `expirada`. La carrera callback-vs-worker(T6) la resuelve el CAS de
+ * `persistState`. Los callbacks de INICIO tampoco están gateados: su llegada prueba
+ * que el alumno no abandonó (T4 es el camino "sin callback"), así que aplican
+ * mientras la sesión siga `iniciada_pendiente`.
  *
- * OPEN QUESTIONS pending Edu's ruling (contract §3 is literal but under-specified
- * at the boundary — surfaced, deliberately NOT improvised here):
- *   (Q1) `>=` vs `>` at the exact instant `now === expiresAt`. The contract says
- *        "al superar"/"mientras no se supere expires_at" (superar = strictly
- *        exceed), which argues for strict `>`; this code uses `>=`, expiring
- *        ~1 ms early and resolving the T8-vs-T9 tie toward expiry.
- *   (Q2) CLOSE-on-`iniciada` gating. T5 (iniciada→cerrada) has NO time gate in
- *        the contract (only T8 carries "mientras no se supere expires_at"). This
- *        code gates close callbacks on `iniciada` too, so a real close arriving
- *        after expires_at but before the worker runs T6 becomes an expiry, never
- *        `cerrada`. Literal T5 + I-15 (late keys off TERMINAL status) would let
- *        the close win until the worker actually expires the row.
- *   (Q3) START-callback vs pending timeout: not gated (see above), so a late
- *        pre-worker start callback and T4 race — whichever runs first wins.
+ * Fronteras — RESUELTAS por Edu (D-048); el código de abajo las implementa:
+ *   (Q-09/ex-Q1) `>=` vs `>` en `now === expiresAt`: RATIFICADO `>=` (expira en el
+ *        instante exacto; ~1 ms de diferencia). El contrato dice "al alcanzar o superar".
+ *   (Q-01/ex-Q2) puerta temporal del cierre sobre `iniciada`: ELIMINADA (T5/T7 sin
+ *        puerta; solo T8 gateado) — creaba falsos `expirada` en cierres cerca del límite.
+ *   (Q-10/ex-Q3) start-callback tardío vs T4: RATIFICADO como está — el CAS resuelve
+ *        la carrera; la llegada del callback prueba que no hubo abandono. Guardrail:
+ *        mantener el pending-timeout ≥ ~15 min para que ningún login real pierda contra T4.
  */
 
 /** Lifecycle status of a `sence_sessions` row (§3). */
@@ -204,12 +200,20 @@ function isTerminalStatus(state: SessionState): boolean {
   return false;
 }
 
-/** Whether a non-terminal session has passed its close deadline (expires_at). */
+/**
+ * Whether a callback of CLOSE arrives past the (only) time-gated deadline.
+ *
+ * D-048/Q-01: SOLO T8 (reintento de cierre sobre `error(close)`) tiene puerta
+ * temporal en el contrato ("mientras no se supere expires_at"). T5/T7 (cierre
+ * sobre `iniciada`) NO la tienen: un callback de cierre confirmado por SENCE gana
+ * hasta que el worker expire la fila (T6). Antes, un cierre a las 2h59m que
+ * aterrizaba tras `expires_at` quedaba `late` → la sesión terminaba `expirada`
+ * aunque SENCE la había cerrado (no-asistencia falsa). El worker (`expireSession`,
+ * T6) sigue expirando `iniciada`; la carrera callback-vs-worker la resuelve el CAS.
+ */
 function isPastCloseDeadline(state: SessionState, now: number | undefined): boolean {
   if (now === undefined) return false;
-  const closeGated =
-    state.status === "iniciada" ||
-    (state.status === "error" && state.errorOrigin === "close");
+  const closeGated = state.status === "error" && state.errorOrigin === "close";
   if (!closeGated) return false;
   return state.expiresAt !== null && now >= state.expiresAt;
 }

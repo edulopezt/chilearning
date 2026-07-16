@@ -468,7 +468,15 @@ export async function buildCloseForm(
     throw new EngineError("La sesión no pertenece al usuario que la solicita.");
   }
 
-  if (!session.id_sesion_sence || session.status !== "iniciada") {
+  // T5 (cierre sobre `iniciada`) o T8 (reintento tras un cierre con error,
+  // D-048/Q-05): ambos exigen IdSesionSence. Antes T8 era inalcanzable (solo se
+  // aceptaba `iniciada`), así que una sesión en `error(close)` no podía cerrarse
+  // desde la app y quedaba colgada ante SENCE hasta expirar (T9). El dominio ya
+  // resuelve el close_ok resultante como T8 (`applyCallback`).
+  const closable =
+    session.status === "iniciada" ||
+    (session.status === "error" && session.error_origin === "close");
+  if (!session.id_sesion_sence || !closable) {
     return { error: "not_closable" };
   }
   const config = await readOne<OtecConfigRow>(

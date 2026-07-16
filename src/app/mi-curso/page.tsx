@@ -50,6 +50,7 @@ export default async function MiCursoPage() {
     exento: view.exento,
     attendanceLock: view.attendanceLock,
     sessionStatus: view.session?.status ?? null,
+    errorOrigin: view.session?.errorOrigin ?? null,
     expiresAtMs: view.session?.expiresAtMs ?? null,
     nowMs: serverNowMs,
   });

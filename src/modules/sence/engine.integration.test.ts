@@ -422,4 +422,16 @@ describe("robustez del motor (revisión adversarial H4)", () => {
     const second = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
     expect(second.kind).toBe("already_open");
   });
+
+  it("D-048/Q-05: buildCloseForm acepta una sesión en error(close) — T8 alcanzable", async () => {
+    await scenario({ match: { endpoint: "start" }, respond: { kind: "start_ok", idSesionSence: "S-T8", fechaHora: nowFechaHora() } });
+    const { sessionId, idSesionAlumno } = await start();
+    // Un cierre CON ERROR deja la sesión en error(close).
+    const err = await handleCallback(svc, { IdSesionAlumno: idSesionAlumno, GlosaError: "300" }, deps, await nonceOf(sessionId));
+    expect(err.eventKind).toBe("close_error");
+    expect((await sessionRow(sessionId)).status).toBe("error");
+    // Antes daba not_closable (T8 inalcanzable); ahora reconstruye el form de cierre.
+    const close = await buildCloseForm(guardFor(TENANT_A), sessionId, STUDENT_A, deps);
+    expect("error" in close).toBe(false);
+  });
 });
