@@ -45,7 +45,10 @@
   enmascarado, RPC anon), snapshot congelado inmutable, revocación; 4-ojos corrigió HIGH (descarga
   del PDF sin chequeo de dueño → fuga de RUN) + MED (revocado descargable, supervisor con RUN vía
   RLS). **pdf-lib/qrcode = ADR-009.**
-- **PRs mergeados a `main`:** 46 · **Tests:** ~865 verdes (436 unit + 285 RLS + 144 integración)
+  ✅ **3.4 comunicación nativa** (#47, M9) — anuncios/foro/mensajería(exigible SENCE)/calendario, 6
+  tablas + RLS (alumno solo sus mensajes, supervisor sin mensajería), SLA visible, notificaciones
+  in-app + correo best-effort; 4-ojos sin HIGH/MED (L1 doble-notificación + L3 gate corregidos).
+- **PRs mergeados a `main`:** 47 · **Tests:** ~878 verdes (445 unit + 290 RLS + 148 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -213,7 +216,11 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   elegibilidad reusa gradebook+cumplimiento+encuesta. Revisión 4-ojos (HIGH descarga sin dueño +
   MED revocado/supervisor). **Handoff Edu:** confirmar §7-R7 + firma real + umbral por defecto.
 - ⬜ **3.3** Checklist DJ/GCA con recordatorios (n8n) + nómina exportable — HU-5.6.
-- ⬜ **3.4** Anuncios + foro + mensajería + calendario (mínimos SENCE) — M9.
+- ✅ **3.4** Anuncios + foro + mensajería + calendario (mínimos SENCE) — M9 — **#47**: canal oficial
+  100% nativo; mensajería asincrónica alumno↔staff (exigible SENCE, HU-9.3); 6 tablas + RLS
+  (privacidad del alumno, supervisor sin mensajería), SLA de respuesta visible, notificaciones in-app
+  + correo best-effort (no-op sin RESEND). Revisión 4-ojos (sin HIGH/MED). Follow-up: fan-out por
+  BullMQ a volumen.
 - ⬜ **3.5** Derechos Ley 21.719 en UI (export/supresión con retenciones) + consentimiento — HU-2.4, RNF-3.
 - ⬜ **3.6** Hardening: rate limits, headers, **2FA obligatorio admins**, revisión OWASP — Plan §9.
 - ⬜ **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10.

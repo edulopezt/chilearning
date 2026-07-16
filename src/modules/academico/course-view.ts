@@ -19,6 +19,7 @@ export interface Lesson {
 
 export interface CourseView {
   enrollmentId: string;
+  courseId: string;
   courseName: string;
   exento: boolean;
   attendanceLock: boolean;
@@ -82,6 +83,7 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
 
   return {
     enrollmentId: enrollment.id,
+    courseId: course.id,
     courseName: course.name,
     exento: enrollment.exento,
     attendanceLock: action.attendance_lock,

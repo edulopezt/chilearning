@@ -97,3 +97,44 @@ ${button(params.brand.primaryColor, params.courseUrl, "Ir a mi curso")}
   const text = `Hola ${params.recipientName},\n\nBienvenido/a al curso ${params.courseName} de ${params.brand.orgName}.\n\nIr a mi curso: ${params.courseUrl}\n\nCómo registrar tu asistencia SENCE con Clave Única:\n1. Entra al curso y pulsa "Registrar asistencia SENCE".\n2. Ingresa tu RUN y tu Clave Única en el sitio del Estado.\n3. Al volver, tu asistencia queda registrada.\n4. Repite cada vez que retomes el curso.\n\n¿No tienes Clave Única? Actívala en https://claveunica.gob.cl\n`;
   return { subject, html: shell(params.brand, body), text };
 }
+
+/** Anuncio publicado en un curso/acción (task 3.4, HU-9.1). */
+export function renderAnnouncementEmail(params: {
+  brand: EmailBrand;
+  title: string;
+  body: string;
+  courseUrl: string;
+}): RenderedEmail {
+  const subject = `📢 ${params.title}`;
+  const body = `<p><strong>${escapeHtml(params.title)}</strong></p>
+<p style="white-space:pre-wrap;">${escapeHtml(params.body)}</p>
+${button(params.brand.primaryColor, params.courseUrl, "Ver en el curso")}`;
+  const text = `${params.title}\n\n${params.body}\n\nVer en el curso: ${params.courseUrl}\n`;
+  return { subject, html: shell(params.brand, body), text };
+}
+
+/** Respuesta del relator/tutor a un hilo del foro (task 3.4, HU-9.2). */
+export function renderForumReplyEmail(params: {
+  brand: EmailBrand;
+  threadTitle: string;
+  courseUrl: string;
+}): RenderedEmail {
+  const subject = `Nueva respuesta en: ${params.threadTitle}`;
+  const body = `<p>Respondieron tu consulta <strong>"${escapeHtml(params.threadTitle)}"</strong> en el foro del curso.</p>
+${button(params.brand.primaryColor, params.courseUrl, "Ver la respuesta")}`;
+  const text = `Respondieron tu consulta "${params.threadTitle}" en el foro.\n\nVer: ${params.courseUrl}\n`;
+  return { subject, html: shell(params.brand, body), text };
+}
+
+/** Nuevo mensaje en el canal asincrónico (task 3.4, HU-9.3). */
+export function renderMessageEmail(params: {
+  brand: EmailBrand;
+  subjectLine: string;
+  courseUrl: string;
+}): RenderedEmail {
+  const subject = `Nuevo mensaje: ${params.subjectLine}`;
+  const body = `<p>Tienes un nuevo mensaje sobre <strong>"${escapeHtml(params.subjectLine)}"</strong>.</p>
+${button(params.brand.primaryColor, params.courseUrl, "Leer el mensaje")}`;
+  const text = `Tienes un nuevo mensaje sobre "${params.subjectLine}".\n\nLeer: ${params.courseUrl}\n`;
+  return { subject, html: shell(params.brand, body), text };
+}

@@ -70,7 +70,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 3.1 ✅ Encuesta de satisfacción (plantilla, requisito de completitud, agregados) — HU-6.3 — **hecho 2026-07-16** (#45): anonimato estructural (2 tablas + RPC atómico), agregados por acción, `hasCompletedSurvey` para el gate de certificados; revisión 4-ojos (HIGH de re-identificación corregido)
 - 3.2 ✅ Certificados PDF con plantilla SENCE (folio, QR, verificación pública, revocación, umbral de asistencia SENCE) — HU-7.1, 7.2 — **hecho 2026-07-16** (#46): snapshot §7-R7 congelado, RPCs issue/revoke/verify (público, RUN enmascarado), pdf-lib/qrcode (ADR-009); revisión 4-ojos (HIGH de descarga corregido). Handoff: confirmar campos §7-R7 + firma real
 - 3.3 Checklist DJ/GCA con recordatorios (n8n) + nómina exportable — HU-5.6
-- 3.4 Anuncios + foro de consultas + mensajería + calendario (mínimos SENCE) — M9
+- 3.4 ✅ Anuncios + foro de consultas + mensajería + calendario (mínimos SENCE) — M9 — **hecho 2026-07-16** (#47): canal nativo; mensajería asincrónica exigible SENCE (HU-9.3); RLS de privacidad; SLA visible; 4-ojos sin HIGH/MED
 - 3.5 Derechos Ley 21.719 en UI (export/supresión con retenciones) + consentimiento — HU-2.4, RNF-3
 - 3.6 Hardening: rate limits, headers, 2FA obligatorio admins, revisión OWASP — Plan §9
 - 3.7 Backups off-site completos + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8, §10

@@ -72,6 +72,9 @@ export default async function CoursesPage() {
                         <Link href={`/admin/cursos/${c.id}/lecciones`} className="text-sm underline">
                           {esCL.lessons.title}
                         </Link>
+                        <Link href={`/admin/cursos/${c.id}/comunicacion`} className="text-sm underline">
+                          {esCL.communication.title}
+                        </Link>
                         <CloneButton courseId={c.id} />
                       </span>
                     </td>
