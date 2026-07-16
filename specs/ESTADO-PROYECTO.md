@@ -53,7 +53,7 @@
   Dependabot + OWASP doc, 2FA config+policy; 4-ojos cazó HIGH (rate-limit por IP tumbaba cohortes tras
   NAT + violaba I-1 en el callback → corregido a por-usuario, cb sin límite). **2FA enforcement/UI y
   CSP-enforcing PARQUEADOS** (Supabase Pro + verificación en navegador).
-- **PRs mergeados a `main`:** 48 · **Tests:** ~891 verdes (458 unit + 290 RLS + 148 integración)
+- **PRs mergeados a `main`:** 49 · **Tests:** ~900 verdes (462 unit + 290 RLS + 148 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -232,7 +232,15 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   CSRF, Dependabot + `docs/security/OWASP-REVIEW.md`, 2FA config habilitada + `mfa-policy` (P7). 4-ojos
   (HIGH de rate-limit por IP corregido). 🔒 **Falta (handoff Edu):** Supabase Pro para 2FA enforcement
   + UI de enrolamiento; endurecer CSP a enforcing tras verificar navegador.
-- ⬜ **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10.
+  🔶 **3.7 observabilidad** (#57, Plan §8/10) — `/api/health` + HEALTHCHECK; scrubber de PII/token de
+  Sentry (puro, testeado; 4-ojos F1: cazó fuga del token descifrado en var de stack → predicado por
+  clave + `includeLocalVariables:false` mandado en doc); pipeline `ops/backup/` (pg_dump→age→R2) +
+  ensayo restauración #3 real; docs Uptime Kuma/Sentry. 🔒 **Falta (handoff):** SDK Sentry+DSN, cuenta
+  R2+clave age, Uptime Kuma self-host.
+- 🔶 **3.7** Backups off-site + **ensayo de restauración 1** + Uptime Kuma + Sentry — Plan §8/§10 —
+  **#57**: `/api/health` + HEALTHCHECK, scrubber de PII/token de Sentry (puro+testeado; 4-ojos F1–F4),
+  `ops/backup/` (pg_dump→age→R2) + ensayo restauración #3 real, docs Uptime Kuma/Sentry. 🔒 **Handoff:**
+  SDK Sentry+DSN (con `includeLocalVariables:false`+scrubber), cuenta R2+clave age, Uptime Kuma.
 - ⬜ **3.8** E2E Playwright de los 3 flujos críticos — Plan §11.
 - ⬜ **3.9** Automatizaciones n8n (recordatorios asistencia, correos a inactivos, informes al coordinador) — HU-5.9.
 - ⬜ **3.10** Iniciar verificación Meta Business para WhatsApp (trámite lento) — M9.

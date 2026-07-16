@@ -5,7 +5,7 @@ import { getPublicEnv } from "@/lib/env";
 import { resolveTenantFromHost } from "@/modules/core/domain/tenant";
 
 /** Rutas accesibles sin sesión. El resto de la app exige login. */
-const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar"];
+const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar", "/api/health"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
