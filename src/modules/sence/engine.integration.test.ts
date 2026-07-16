@@ -416,18 +416,52 @@ describe("robustez del motor (revisión adversarial H4)", () => {
     expect((await sessionRow(sessionId)).status).toBe("iniciada");
   });
 
-  it("H4-R-016: un segundo start sobre la misma inscripción devuelve already_open (no lanza)", async () => {
+  it("H4-R-016/Q-04: un segundo start sobre una pendiente NO lanza 500 (re-emite, ready)", async () => {
     const first = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
     expect(first.kind).toBe("ready");
+    // El 23505 del índice único ya no es un 500 crudo (H4-R-016); con Q-04, sobre una
+    // pendiente RE-EMITE el form (ready). El caso already_open (sesión ACTIVA) lo cubre
+    // el describe de rulings D-048 más abajo.
     const second = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
-    expect(second.kind).toBe("already_open");
+    expect(second.kind).toBe("ready");
+  });
+});
+
+describe("rulings D-048 — robustez/UX del motor", () => {
+  it("D-048/Q-04: un start sobre una pendiente abandonada RE-EMITE su form (misma sesión, mismo nonce)", async () => {
+    // 1. Inicia y abandona Clave Única: queda iniciada_pendiente, sin callback.
+    const first = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
+    if (first.kind !== "ready") throw new Error(`first no ready: ${first.kind}`);
+    const firstIdAlumno = first.fields.IdSesionAlumno;
+    const firstNonce = first.fields.UrlRetoma!.split("/").pop();
+    // 2. Reintenta: en vez de already_open/500, re-emite la MISMA pendiente.
+    const retry = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
+    if (retry.kind !== "ready") throw new Error(`retry no ready: ${retry.kind}`);
+    expect(retry.sessionId).toBe(first.sessionId); // misma sesión, no una nueva
+    expect(retry.fields.IdSesionAlumno).toBe(firstIdAlumno); // mismo correlador
+    expect(retry.fields.UrlRetoma!.split("/").pop()).toBe(firstNonce); // mismo nonce
+    // 3. No se creó una segunda fila para la inscripción.
+    const { count } = await svc
+      .from("sence_sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("enrollment_id", currentEnrollment);
+    expect(count).toBe(1);
+  });
+
+  it("D-048/Q-04: un start sobre una sesión ACTIVA (iniciada) devuelve already_open (no re-emite)", async () => {
+    await scenario({ match: { endpoint: "start" }, respond: { kind: "start_ok", idSesionSence: "S-ACT", fechaHora: nowFechaHora() } });
+    const { sessionId } = await start(); // queda iniciada
+    expect((await sessionRow(sessionId)).status).toBe("iniciada");
+    const retry = await startSession(guardFor(TENANT_A), currentEnrollment, STUDENT_A, deps);
+    expect(retry.kind).toBe("already_open");
   });
 
   it("D-048/Q-05: buildCloseForm acepta una sesión en error(close) — T8 alcanzable", async () => {
     await scenario({ match: { endpoint: "start" }, respond: { kind: "start_ok", idSesionSence: "S-T8", fechaHora: nowFechaHora() } });
     const { sessionId, idSesionAlumno } = await start();
     // Un cierre CON ERROR deja la sesión en error(close).
-    const err = await handleCallback(svc, { IdSesionAlumno: idSesionAlumno, GlosaError: "300" }, deps, await nonceOf(sessionId));
+    const nonce = (await sessionRow(sessionId)).callback_nonce as string;
+    const err = await handleCallback(svc, { IdSesionAlumno: idSesionAlumno, GlosaError: "300" }, deps, nonce);
     expect(err.eventKind).toBe("close_error");
     expect((await sessionRow(sessionId)).status).toBe("error");
     // Antes daba not_closable (T8 inalcanzable); ahora reconstruye el form de cierre.

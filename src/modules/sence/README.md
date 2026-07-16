@@ -39,6 +39,22 @@
   misma acción/alumno.
 - **E-3 (Q-09, frontera de expiración):** el vencimiento es `now >= expires_at` ("al **alcanzar o**
   superar" `expires_at`); la diferencia con la lectura estrictamente-mayor es de 1 ms.
+- **E-4 (Q-02, gate M-4 sobre I-1):** I-1 se enmienda para consagrar el gate M-4: un POST a
+  `/api/sence/cb` **sin `IdSesionAlumno` usable** (vacío o >149 chars) **NO es un callback** de SENCE
+  (un callback real siempre lo trae) y **no se persiste** — evita inflar la tabla INSERT-only que no
+  se puede podar. Condicionado a que el borde tolere nombres de campo con espacios ANTES del filtro
+  (ya implementado, H4-R-001) y a **registrar cada descarte** (sin PII: razón + largo) para detectar
+  patrones anómalos. Todo callback CON `IdSesionAlumno` usable se sigue persistiendo siempre (I-1).
+- **E-5 (Q-07, §5 código dominante para el alumno):** cuando `GlosaError` trae varios códigos, el
+  **mensaje que ve el alumno** prioriza un código **accionable por él** (`StudentRecoverable`, ej.
+  311/312 de Clave Única) si aparece en la lista; el `dominantCode`/`severity` que gobiernan el
+  **alerting interno** siguen siendo los del código más severo. Antes, `300;311` mostraba "problema
+  temporal de SENCE" y ocultaba el accionable "ingresa con TU Clave Única".
+- **E-6 (Q-04, re-emisión de la sesión pendiente):** `/api/sence/start`, ante una sesión
+  `iniciada_pendiente` viva de la misma inscripción (el alumno abandonó Clave Única), **re-emite el
+  MISMO form** (mismo `IdSesionAlumno` y nonce) en vez de bloquear — SENCE reprocesa el mismo
+  `IniciarSesion` e I-3 absorbe el callback duplicado; no crea sesión ni transición nuevas. El
+  `SENCE_PENDING_TIMEOUT_MINUTES` por defecto baja a **15 min** (antes 60; parámetro operativo I-13).
 
 ---
 

@@ -621,6 +621,15 @@ export function resolveGlosaError(raw: string): SenceGlosaResolution {
     }
   }
 
+  // D-048/Q-07: el MENSAJE al alumno prefiere un código ACCIONABLE por él
+  // (`StudentRecoverable`, ej. 311/312 de Clave Única) si aparece en la lista —
+  // es el único que puede resolver por su cuenta —, aunque el `dominantCode` y la
+  // `severity` (que gobiernan el ALERTING interno) sigan mandados por el más severo.
+  // Antes, un `GlosaError` como `300;311` mostraba "SENCE presentó un problema
+  // temporal" (300) y ocultaba el accionable "ingresa con TU Clave Única" (311).
+  const studentSource =
+    perCode.find((t) => t.severity === SenceErrorSeverity.StudentRecoverable) ?? dominant;
+
   const logLevel = perCode.some((t) => t.logLevel === SenceLogLevel.Error)
     ? SenceLogLevel.Error
     : SenceLogLevel.Warn;
@@ -630,7 +639,7 @@ export function resolveGlosaError(raw: string): SenceGlosaResolution {
     codes,
     invalidTokens,
     perCode,
-    studentMessage: dominant.studentMessage,
+    studentMessage: studentSource.studentMessage,
     dominantCode: dominant.code,
     severity: dominant.severity,
     logLevel,

@@ -195,10 +195,49 @@ export async function startSession(
     // 23505 = violación del índice único parcial `one_open_per_enrollment`: ya hay
     // una sesión viva para esta inscripción (doble-click en "Registrar asistencia",
     // dos pestañas, o la sesión de 3 h vencida de facto que el worker aún no barrió).
-    // No es un fallo técnico: se devuelve tipado para que la ruta lleve al alumno a
-    // su estado actual en vez de un 500 crudo (H4-R-016; espíritu de I-9). No se
-    // escribe estado nuevo: la sesión ganadora sigue su curso (I-3 lo sostiene igual).
     if (error.code === "23505") {
+      // Q-04 (D-048): si la sesión viva es una `iniciada_pendiente` (el alumno
+      // abandonó Clave Única), RE-EMITIMOS su MISMO form (mismo IdSesionAlumno +
+      // nonce) para que reintente al instante, en vez de quedar bloqueado hasta que
+      // el worker la expire (T4, hasta ~15 min). No crea sesión nueva ni transición:
+      // SENCE reprocesa el mismo IniciarSesion e I-3 absorbe el callback duplicado.
+      const { data: open, error: openError } = await guard.db
+        .from("sence_sessions")
+        .select("id, status, id_sesion_alumno, callback_nonce")
+        .eq("tenant_id", guard.tenantId)
+        .eq("enrollment_id", enrollment.id)
+        .in("status", ["iniciada_pendiente", "iniciada"])
+        .limit(1)
+        .maybeSingle();
+      if (openError) {
+        // Fallo transitorio de BD al buscar la sesión viva: no rompemos el flujo
+        // (degradamos a already_open más abajo), pero lo registramos para
+        // observabilidad (consistente con H4-R-007). Sin PII: solo el código.
+        console.warn("[sence] error al buscar la sesión viva para re-emitir", {
+          code: openError.code,
+        });
+      }
+      if (open?.status === "iniciada_pendiente" && open.callback_nonce) {
+        const pendingCallbackUrl = `${deps.callbackUrl}/${open.callback_nonce}`;
+        return {
+          kind: "ready",
+          sessionId: open.id,
+          endpoint: resolveEndpoint(action.environment, "start", baseFor(action.environment, deps)),
+          fields: {
+            RutOtec: config.rut_otec,
+            Token: token,
+            LineaCapacitacion: String(action.training_line),
+            RunAlumno: enrollment.run,
+            IdSesionAlumno: open.id_sesion_alumno,
+            UrlRetoma: pendingCallbackUrl,
+            UrlError: pendingCallbackUrl,
+            CodSence: senceCourseCode,
+            CodigoCurso: action.codigo_accion,
+          },
+        };
+      }
+      // Sesión ACTIVA (`iniciada`) o ya barrida: la ruta lleva al alumno a su curso
+      // (H4-R-016) en vez de un 500 crudo. La sesión ganadora sigue su curso (I-3).
       return { kind: "already_open", enrollmentId: enrollment.id };
     }
     throw new EngineError(`No se pudo crear la sesión: ${error.message}`);
@@ -249,10 +288,18 @@ export async function handleCallback(
   // CRUDO con sus claves originales se persiste intacto más abajo (I-1).
   const idSesionAlumno = (pickField(rawParams, "IdSesionAlumno") ?? "").trim();
 
-  // M-4: no persistir POSTs sin forma de callback (evita inflar la tabla
-  // INSERT-only, que no se puede podar). Un callback real trae un
-  // `IdSesionAlumno` no vacío y ≤149 chars.
+  // M-4 (I-1 enmendado, D-048/Q-02): no persistir POSTs sin forma de callback
+  // (evita inflar la tabla INSERT-only, que no se puede podar). Un callback real
+  // trae un `IdSesionAlumno` no vacío y ≤149 chars. Se REGISTRA cada descarte —
+  // sin PII, solo razón + largo — para detectar patrones anómalos (bot/DoS). Nota:
+  // un descarte M-4 NO persiste fila (`persisted:false`), así que su única señal es
+  // este log (monitor de logs) + el rate-limit del edge (Q-03); NO alimenta la
+  // alerta de spike de `unmatched`, que opera sobre eventos SÍ persistidos.
   if (idSesionAlumno === "" || idSesionAlumno.length > 149) {
+    console.warn("[sence] callback descartado por M-4 (sin IdSesionAlumno usable)", {
+      reason: idSesionAlumno === "" ? "empty" : "too_long",
+      len: idSesionAlumno.length,
+    });
     return { eventKind: "unmatched", matched: false, late: false, newStatus: null, persisted: false };
   }
 

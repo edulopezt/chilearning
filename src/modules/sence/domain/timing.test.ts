@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { SENCE_TIMING_DEFAULTS, senceTimingFromEnv } from "./timing";
 
 describe("senceTimingFromEnv (I-13/D-003 — knobs con default seguro)", () => {
-  it("sin env: defaults del contrato (3 h / 60 min / 20% / 5 eventos / tick 5 min)", () => {
+  it("sin env: defaults del contrato (3 h / 15 min / 20% / 5 eventos / tick 5 min)", () => {
     const t = senceTimingFromEnv({});
-    expect(t.pendingTimeoutMs).toBe(60 * 60_000);
+    expect(t.pendingTimeoutMs).toBe(15 * 60_000); // D-048/Q-04: default 15 min (antes 60)
     expect(t.sessionMaxMs).toBe(3 * 3_600_000);
     expect(t.alertWindowMs).toBe(60 * 60_000);
     expect(t.alertErrorRateThreshold).toBe(SENCE_TIMING_DEFAULTS.alertErrorRateThreshold);
@@ -46,7 +46,7 @@ describe("senceTimingFromEnv (I-13/D-003 — knobs con default seguro)", () => {
       SENCE_ALERT_WINDOW_MINUTES: "0",
       SENCE_ALERT_MIN_EVENTS: "2.5",
     });
-    expect(t.pendingTimeoutMs).toBe(60 * 60_000);
+    expect(t.pendingTimeoutMs).toBe(15 * 60_000); // D-048/Q-04: default 15 min (antes 60)
     expect(t.sessionMaxMs).toBe(3 * 3_600_000);
     expect(t.alertWindowMs).toBe(60 * 60_000);
     expect(t.alertMinEvents).toBe(5);

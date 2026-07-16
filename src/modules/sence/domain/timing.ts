@@ -31,7 +31,11 @@ export interface SenceTiming {
 }
 
 export const SENCE_TIMING_DEFAULTS = {
-  pendingTimeoutMinutes: 60,
+  // D-048/Q-04: 15 min (antes 60). Con el re-emit de la pendiente en `/start`, el
+  // alumno ya no queda bloqueado hasta el timeout; bajarlo acota la ventana en que
+  // una pendiente abandonada retiene el índice `one_open_per_enrollment`. El login
+  // de Clave Única real es de segundos; 15 min deja margen de sobra (guardrail Q-10).
+  pendingTimeoutMinutes: 15,
   sessionMaxHours: 3,
   alertWindowMinutes: 60,
   alertErrorRateThreshold: 0.2,
