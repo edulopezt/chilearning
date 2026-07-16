@@ -6,6 +6,7 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getStudentCourseView } from "@/modules/academico/course-view";
 import { computeLock } from "@/modules/academico/domain/attendance-lock";
+import { studentMessageForCodes } from "@/modules/sence/errors";
 import { summarizeProgress } from "@/modules/academico/domain/progress";
 import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
 import { listStudentAssignments } from "@/modules/evaluacion/assignment-service";
@@ -85,6 +86,21 @@ export default async function MiCursoPage() {
       {/* Barra de estado de asistencia */}
       {!view.exento && view.attendanceLock ? (
         <section className="rounded-lg border p-4">
+          {/* Mensaje es-CL cuando SENCE devolvió un error (H4-R-010, I-9): el alumno
+              ve QUÉ pasó y qué hacer, nunca el código crudo ni JSON técnico. Se muestra
+              para CUALQUIER `error` (aun sin códigos parseables): `studentMessageForCodes`
+              resuelve la lista vacía al mensaje `fallback` seguro (4-ojos LOW). */}
+          {view.session?.status === "error" ? (
+            <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                {esCL.course.attendanceProblem}
+              </p>
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                {studentMessageForCodes(view.session.errorCodes)}
+              </p>
+            </div>
+          ) : null}
+
           {lock.action === "register" ? (
             <div className="flex flex-col gap-3">
               <p className="font-medium">{esCL.course.lockedTitle}</p>

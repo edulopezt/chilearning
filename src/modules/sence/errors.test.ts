@@ -18,6 +18,7 @@ import {
   parseGlosaError,
   parseGlosaErrorDetailed,
   resolveGlosaError,
+  studentMessageForCodes,
   translateSenceError,
 } from "./errors";
 import type { SenceMessageKey } from "./errors";
@@ -840,5 +841,17 @@ describe("I-9 — no es-CL SENCE message contains a raw code or any digit", () =
         String(code),
       );
     }
+  });
+});
+
+describe("studentMessageForCodes (mensaje es-CL desde error_codes de la sesión, H4-R-010)", () => {
+  it("traduce los códigos al mensaje del alumno (prefiere el accionable, Q-07)", () => {
+    expect(studentMessageForCodes(["300", "311"])).toBe(esCL.sence.errors.claveUnicaRunMismatch);
+  });
+  it("un solo código se traduce a su mensaje", () => {
+    expect(studentMessageForCodes(["212"])).toBe(esCL.sence.errors.tokenIssue);
+  });
+  it("lista vacía → fallback (I-9, nunca el código crudo)", () => {
+    expect(studentMessageForCodes([])).toBe(esCL.sence.errors.fallback);
   });
 });

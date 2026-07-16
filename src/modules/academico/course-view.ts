@@ -31,6 +31,8 @@ export interface CourseView {
     status: SenceSessionStatus;
     /** Origen del `error` (T3/T7), para ofrecer el reintento de cierre (Q-05). */
     errorOrigin: "start" | "close" | null;
+    /** Códigos del último `GlosaError` (I-5), para traducir el mensaje al alumno (H4-R-010). */
+    errorCodes: string[];
     expiresAtMs: number | null;
   } | null;
 }
@@ -70,7 +72,7 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
 
   const { data: session } = await supabase
     .from("sence_sessions")
-    .select("id, status, expires_at, error_origin")
+    .select("id, status, expires_at, error_origin, error_codes")
     .eq("enrollment_id", enrollment.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -96,6 +98,7 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
           id: session.id,
           status: session.status as SenceSessionStatus,
           errorOrigin: (session.error_origin as "start" | "close" | null) ?? null,
+          errorCodes: (session.error_codes as string[] | null) ?? [],
           expiresAtMs: session.expires_at ? Date.parse(session.expires_at) : null,
         }
       : null,

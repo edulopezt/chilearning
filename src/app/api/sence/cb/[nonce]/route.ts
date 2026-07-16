@@ -26,7 +26,9 @@ export async function POST(
   const db = senceServiceClient();
   await handleCallback(db, params_, deps, nonce);
 
-  const target = new URL("/dashboard", request.url);
+  // Vuelve al curso del alumno (no /dashboard): ahí ve su estado de asistencia y,
+  // si el callback fue un error, el mensaje es-CL traducido (H4-R-010, I-9).
+  const target = new URL("/mi-curso", request.url);
   const res = NextResponse.redirect(target, { status: 303 });
   res.headers.set("cache-control", "no-store, max-age=0");
   return res;

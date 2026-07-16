@@ -1,14 +1,31 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { esCL } from "@/i18n/es-CL";
 import { assertSameOrigin } from "@/lib/csrf";
 import { enforce } from "@/lib/rate-limit";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { readRequestBody } from "@/modules/sence/request-body";
 import { renderAutoSubmitForm } from "@/modules/sence/auto-submit-form";
+import { renderMessagePage } from "@/modules/sence/message-page";
 import { startSession } from "@/modules/sence/engine";
 import { buildEngineDeps } from "@/modules/sence/server-deps";
+
+/** Página HTML es-CL para el alumno (I-9): el botón del curso hace submit nativo,
+ *  así que la respuesta se RENDERIZA — nunca JSON crudo (H4-R-012). */
+function studentMessage(body: string, status: number, request: NextRequest): NextResponse {
+  const html = renderMessagePage({
+    title: esCL.course.attendanceProblem,
+    body,
+    backHref: new URL("/mi-curso", request.url).toString(),
+    backLabel: esCL.course.backToCourse,
+  });
+  return new NextResponse(html, {
+    status,
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store, max-age=0" },
+  });
+}
 
 const bodySchema = z.object({ enrollmentId: z.string().uuid() });
 
@@ -37,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = bodySchema.safeParse(await readRequestBody(request));
   if (!parsed.success) {
-    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    return studentMessage(esCL.course.startError, 400, request);
   }
 
   const deps = buildEngineDeps(request);
@@ -46,7 +63,9 @@ export async function POST(request: NextRequest) {
 
   switch (result.kind) {
     case "exempt":
-      return NextResponse.json({ status: "exempt" });
+      // El alumno exento (becario) no registra SENCE: lo llevamos a su curso, que
+      // ya le muestra el contenido desbloqueado (I-14).
+      return NextResponse.redirect(new URL("/mi-curso", request.url), { status: 303 });
     case "already_open":
       // Ya hay una sesión viva para esta inscripción (doble-click, dos pestañas, o
       // la de 3 h vencida que el worker aún no barrió). El botón del curso hace un
@@ -54,11 +73,10 @@ export async function POST(request: NextRequest) {
       // su estado actual— en vez de un 500 crudo (H4-R-016, espíritu de I-9).
       return NextResponse.redirect(new URL("/mi-curso", request.url), { status: 303 });
     case "preflight_error":
-      // No se envía al alumno a SENCE si el pre-vuelo falla (I-8).
-      return NextResponse.json(
-        { status: "preflight_error", violations: result.violations },
-        { status: 422 },
-      );
+      // No se envía al alumno a SENCE si el pre-vuelo falla (I-8). El alumno no
+      // puede accionar una violación de pre-vuelo (RUN/config): mensaje es-CL
+      // genérico en vez de JSON de violaciones (H4-R-012, I-9).
+      return studentMessage(esCL.course.startError, 422, request);
     case "ready":
       // no-store: la página lleva el token del OTEC en el form hacia SENCE (I-7);
       // no debe quedar en caché de navegador ni de proxies (M-2).
