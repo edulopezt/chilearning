@@ -113,6 +113,32 @@ ${button(params.brand.primaryColor, params.courseUrl, "Ver en el curso")}`;
   return { subject, html: shell(params.brand, body), text };
 }
 
+/** Recordatorio de asistencia/actividad (task 3.9, HU-5.9). PII solo aquí — al
+ *  destinatario real; a n8n jamás. `kind` decide el mensaje. */
+export function renderReminderEmail(params: {
+  brand: EmailBrand;
+  recipientName: string;
+  kind: "no_attendance" | "inactive";
+  courseName: string;
+  courseUrl: string;
+}): RenderedEmail {
+  const name = escapeHtml(params.recipientName || "");
+  const course = escapeHtml(params.courseName);
+  const isAttendance = params.kind === "no_attendance";
+  const subject = isAttendance
+    ? `Recuerda registrar tu asistencia SENCE — ${params.courseName}`
+    : `Te echamos de menos en ${params.courseName}`;
+  const lead = isAttendance
+    ? `Aún no registras tu asistencia SENCE de hoy en <strong>${course}</strong>. Recuerda hacerlo con tu Clave Única para que tu participación quede validada.`
+    : `Hace unos días que no ingresas a <strong>${course}</strong>. Retoma cuando puedas para no atrasarte.`;
+  const body = `<p>Hola ${name},</p>
+<p>${lead}</p>
+${button(params.brand.primaryColor, params.courseUrl, isAttendance ? "Registrar asistencia" : "Retomar el curso")}
+<p style="color:#71717a;font-size:13px;">¿No quieres recibir estos recordatorios? Puedes darte de baja desde tu perfil.</p>`;
+  const text = `Hola ${params.recipientName},\n\n${isAttendance ? `Aún no registras tu asistencia SENCE de hoy en ${params.courseName}.` : `Hace días que no ingresas a ${params.courseName}.`}\n\n${params.courseUrl}\n\nPuedes darte de baja de los recordatorios desde tu perfil.\n`;
+  return { subject, html: shell(params.brand, body), text };
+}
+
 /** Respuesta del relator/tutor a un hilo del foro (task 3.4, HU-9.2). */
 export function renderForumReplyEmail(params: {
   brand: EmailBrand;

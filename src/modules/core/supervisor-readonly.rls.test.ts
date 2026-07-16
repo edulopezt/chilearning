@@ -140,6 +140,12 @@ const BUSINESS_TABLES: Record<string, Record<string, unknown>> = {
     grant_id: "00000000-0000-4000-8000-000000000000",
     action_id: "ac000000-0000-4000-8000-000000000001",
   },
+  automation_config: {
+    tenant_id: TENANT_A,
+    action_id: "ac000000-0000-4000-8000-000000000001",
+    kind: "no_attendance",
+    enabled: true,
+  },
 };
 
 let db: SupabaseClient;

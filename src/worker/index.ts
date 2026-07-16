@@ -20,9 +20,53 @@ import IORedis from "ioredis";
 
 import { senceTimingFromEnv } from "../modules/sence/domain/timing";
 import { runDay1Check, runErrorRateCheck, runExpiryTick } from "../modules/sence/expiry";
+import { emailSenderFromEnv } from "../modules/comunicacion/email-sender";
+import { n8nEmitterFromEnv } from "../modules/comunicacion/n8n-webhook";
+import { runRemindersTick } from "../modules/comunicacion/reminders";
 
 const QUEUE_NAME = "sence";
 const TICK_JOB = "sence-tick";
+const REMINDERS_JOB = "reminders-tick";
+
+function remindersEveryMs(): number {
+  const raw = Number(process.env.REMINDERS_EVERY_MS);
+  return Number.isInteger(raw) && raw >= 60_000 ? raw : 60 * 60 * 1000; // default 1 h
+}
+
+/** Índice user_id → {email, name} recorriendo el admin API (para el correo PII). */
+async function resolveRecipientsFactory(db: SupabaseClient) {
+  return async (userIds: readonly string[]): Promise<Map<string, { email: string; name: string }>> => {
+    const want = new Set(userIds);
+    const out = new Map<string, { email: string; name: string }>();
+    for (let page = 1; page <= 50 && out.size < want.size; page++) {
+      const { data, error } = await db.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) break;
+      const users = data?.users ?? [];
+      for (const u of users) {
+        if (want.has(u.id) && u.email) {
+          const name = (u.user_metadata?.full_name as string | undefined) ?? "";
+          out.set(u.id, { email: u.email, name });
+        }
+      }
+      if (users.length < 200) break;
+    }
+    return out;
+  };
+}
+
+async function remindersTick(db: SupabaseClient): Promise<void> {
+  const startedAt = Date.now();
+  const summary = await runRemindersTick(db, {
+    now: startedAt,
+    secret: process.env.N8N_WEBHOOK_SECRET ?? "unconfigured",
+    emailSender: emailSenderFromEnv(process.env),
+    n8n: n8nEmitterFromEnv(process.env),
+    resolveRecipients: await resolveRecipientsFactory(db),
+    inactiveDays: Number(process.env.REMINDERS_INACTIVE_DAYS) || undefined,
+    appBaseUrl: process.env.APP_BASE_URL,
+  });
+  console.log("[worker][reminders] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
+}
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -109,11 +153,19 @@ async function main(): Promise<void> {
       },
     },
   );
+  // Recordatorios periféricos (task 3.9): job aparte, cadencia horaria (la dedup
+  // diaria en la outbox evita reenvíos aunque corra seguido).
+  await queue.upsertJobScheduler(
+    REMINDERS_JOB,
+    { every: remindersEveryMs() },
+    { name: REMINDERS_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
-    async () => {
-      await tick(db);
+    async (job) => {
+      if (job.name === REMINDERS_JOB) await remindersTick(db);
+      else await tick(db);
     },
     { connection, concurrency: 1 },
   );
