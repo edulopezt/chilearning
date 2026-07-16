@@ -17,7 +17,7 @@ const t = esCL.expediente;
 export default async function ExpedientePage({ params }: { params: Promise<{ id: string }> }) {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
-  if (!principal.tenantId || !authorize(principal, principal.tenantId, ["otec_admin", "coordinator", "instructor"])) {
+  if (!principal.tenantId || !authorize(principal, principal.tenantId, ["otec_admin", "coordinator"])) {
     return <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 p-6"><p className="text-muted-foreground">{t.forbidden}</p></main>;
   }
   const { id: actionId } = await params;

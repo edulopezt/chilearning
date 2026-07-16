@@ -41,12 +41,12 @@ beforeAll(async () => {
 });
 
 describe("action_documents — lecturas por rol", () => {
-  it("staff académico lo lee; supervisor y alumno NO", async () => {
-    for (const role of ["otec_admin", "coordinator", "instructor"]) {
+  it("admin/coordinador lo leen; relator, supervisor y alumno NO (montos comerciales)", async () => {
+    for (const role of ["otec_admin", "coordinator"]) {
       const c = client(await jwt({ sub: "aaaaaaaa-0000-4000-8000-000000000001", tenant_id: TENANT_A, roles: [role] }));
       expect((await c.from("action_documents").select("id").eq("id", DOC_ID)).data ?? []).toHaveLength(1);
     }
-    for (const role of ["supervisor", "student"]) {
+    for (const role of ["instructor", "supervisor", "student"]) {
       const c = client(await jwt({ sub: "aaaaaaaa-0000-4000-8000-000000000007", tenant_id: TENANT_A, roles: [role] }));
       expect((await c.from("action_documents").select("id").eq("id", DOC_ID)).data ?? []).toHaveLength(0);
     }

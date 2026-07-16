@@ -50,10 +50,11 @@ create trigger action_documents_definitive_lock
 
 alter table public.action_documents enable row level security;
 alter table public.action_documents force row level security;
--- Staff académico del tenant (el expediente trae OC OTIC con montos → sin supervisor).
+-- Solo admin/coordinador (el expediente trae OC OTIC con montos comerciales →
+-- least-privilege: sin supervisor NI relator).
 create policy action_documents_select on public.action_documents for select to authenticated using (
   public.is_superadmin() or (tenant_id = public.jwt_tenant_id() and (
-    public.has_role('otec_admin') or public.has_role('coordinator') or public.has_role('instructor'))));
+    public.has_role('otec_admin') or public.has_role('coordinator'))));
 grant select on public.action_documents to authenticated;
 -- Sin grant de DELETE a service_role (seguridad de los definitivos): revocar/anular
 -- es un cambio de estado (mientras no sea definitivo), no un borrado.

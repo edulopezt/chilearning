@@ -56,6 +56,8 @@ describe("expediente — subida, definitivo, checklist, ZIP", () => {
 
     // El alumno NO puede subir.
     expect((await uploadDocument(student, actionId, { docType: "dj", title: "x" }, pdf())).ok).toBe(false);
+    // Una acción que no es del tenant → rechazada antes de tocar storage (4-ojos MED).
+    expect((await uploadDocument(admin, randomUUID(), { docType: "dj", title: "x" }, pdf())).ok).toBe(false);
     // Archivo de tipo no permitido.
     expect((await uploadDocument(admin, actionId, { docType: "otro", title: "x" }, { name: "a.txt", size: 5, type: "text/plain", bytes: new ArrayBuffer(5) })).ok).toBe(false);
 

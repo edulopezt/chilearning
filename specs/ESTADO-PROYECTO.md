@@ -57,8 +57,11 @@
   pipeline + ensayo #3; SDK Sentry/R2 parqueados. ✅ **3.10 Meta checklist** (#58, docs). ✅ **3.5
   Ley 21.719** (#59) — consentimiento + export + supresión que conserva SENCE y redacta perfil/foro/
   mensajes (4-ojos cazó HIGH de supresión falsa → corregido). (Detalle por tarea en la tabla del Hito 3.)
-- **Pendientes del Hito 3:** 3.11, 3.12, 3.3, 3.9, 3.8.
-- **PRs mergeados a `main`:** 52 · **Tests:** ~910 verdes (465 unit + 294 RLS + 151 integración)
+  ✅ **3.12 expediente de fiscalización** (#60, HU-5.10) — documentos por acción con checklist,
+  definitivos INMUTABLES (trigger), ZIP en un clic; staff-only admin/coordinador (montos comerciales);
+  jszip. 4-ojos (MED de actionId sin validar corregido + restringido a admin/coord).
+- **Pendientes del Hito 3:** 3.11 (supervisor), 3.3 (DJ/GCA), 3.9 (n8n), 3.8 (E2E).
+- **PRs mergeados a `main`:** 53 · **Tests:** ~920 verdes (470 unit + 297 RLS + 152 integración)
 - **Staging:** VIVO en https://otec-andes.chilearning.cl (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
 - **Último gran hito humano pendiente:** certificación `rcetest` (con Edu presente, P3)
@@ -259,7 +262,10 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   checklist `docs/whatsapp/META-BUSINESS-VERIFICATION.md` producido. El trámite (no-código) lo ejecuta
   Edu; el canal opera en Hito 5 (5.11). No bloquea nada.
 - ⬜ **3.11** Portal Supervisor completo (invitaciones, alcance por acción, vigencia, auditoría) — HU-12.1/12.2.
-- ⬜ **3.12** Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10.
+- ✅ **3.12** Expediente digital de fiscalización por acción (documentos, estados, ZIP) — HU-5.10 —
+  **#60**: `action_documents` + definitivos inmutables (trigger, incluso service_role) + bucket
+  privado + checklist de completitud + descarga ZIP con manifiesto; staff-only **admin/coordinador**
+  (montos comerciales); jszip aislado. Revisión 4-ojos (MED de actionId sin validar corregido).
 
 ---
 

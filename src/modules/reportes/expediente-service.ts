@@ -25,7 +25,9 @@ import { buildZip } from "@/modules/reportes/zip";
  * checklist de completitud, definitivos INMUTABLES y descarga ZIP en un clic.
  */
 
-const STAFF = ["otec_admin", "coordinator", "instructor"] as const;
+// Solo admin/coordinador: el expediente trae OC OTIC con montos comerciales →
+// least-privilege, el relator (instructor) no gestiona la fiscalización (4-ojos).
+const STAFF = ["otec_admin", "coordinator"] as const;
 const BUCKET = "action_documents";
 const PAGE = 1000;
 
@@ -101,6 +103,9 @@ export async function uploadDocument(
 
   const tenantId = principal.tenantId;
   const guard = tenantGuard(tenantId);
+  // Valida que la acción sea del tenant ANTES de usar actionId como segmento de la
+  // clave de storage (evita inyección de ruta / acciones ajenas — 4-ojos MED).
+  if ((await actionLine(guard, tenantId, actionId)) === null) return { ok: false, error: "forbidden" };
   const docId = randomUUID();
   const path = `${tenantId}/${actionId}/${docId}-${safeFileSlug(file.name)}`;
 
