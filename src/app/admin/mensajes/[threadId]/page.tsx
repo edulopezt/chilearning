@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
+import { authorize } from "@/modules/core/domain/rbac";
 import { getThread } from "@/modules/comunicacion/message-service";
 import { staffSendMessageAction } from "../actions";
 
@@ -14,6 +15,9 @@ const t = esCL.communication;
 export default async function StaffMessageThreadPage({ params }: { params: Promise<{ threadId: string }> }) {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
+  if (!principal.tenantId || !authorize(principal, principal.tenantId, ["otec_admin", "coordinator", "instructor", "tutor"])) {
+    return <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 p-6"><p className="text-muted-foreground">{t.forbidden}</p></main>;
+  }
   const { threadId } = await params;
   const view = await getThread(principal, threadId);
   if (!view) redirect("/admin/mensajes");

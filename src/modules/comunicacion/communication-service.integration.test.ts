@@ -102,6 +102,10 @@ describe("mensajería", () => {
     expect(staffThreads.some((t) => t.id === started.id)).toBe(true);
     const view = await getThread(student, started.id);
     expect(view?.messages.length).toBeGreaterThanOrEqual(2);
+
+    // PRIVACIDAD (4-ojos): otro alumno NO lee el hilo de mensajería ajeno.
+    const otherStudent: Principal = { userId: "aaaaaaaa-0000-4000-8000-000000000006", tenantId: TENANT_A, roles: ["student"] };
+    expect(await getThread(otherStudent, started.id)).toBeNull();
   });
 });
 

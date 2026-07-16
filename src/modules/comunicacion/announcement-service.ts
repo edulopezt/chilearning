@@ -45,9 +45,11 @@ export async function listAnnouncements(principal: Principal, filter: { courseId
   }));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Anuncios PUBLICADOS visibles para el alumno del curso (o el staff). */
 export async function listPublishedAnnouncements(principal: Principal, courseId: string): Promise<AnnouncementRow[]> {
-  if (!principal.tenantId) return [];
+  if (!principal.tenantId || !UUID_RE.test(courseId)) return [];
   const tenantId = principal.tenantId;
   const guard = tenantGuard(tenantId);
   if (!(await courseAccess(guard, tenantId, principal, courseId))) return [];
@@ -82,9 +84,11 @@ export async function publishAnnouncement(principal: Principal, announcementId: 
   const guard = tenantGuard(tenantId);
   const { data: ann } = await guard.db.from("announcements").select("id, course_id, action_id, title, body, status").eq("tenant_id", tenantId).eq("id", announcementId).maybeSingle();
   if (!ann) return { ok: false };
-  if (ann.status === "published") return { ok: true, sent: 0 }; // idempotente: no re-envía
 
-  await guard.db.from("announcements").update({ status: "published", published_at: new Date().toISOString() }).eq("tenant_id", tenantId).eq("id", announcementId);
+  // Transición ATÓMICA draft→published: el `.eq("status","draft")` hace que dos
+  // publicaciones concurrentes solo una gane → el fan-out no se duplica (4-ojos L1).
+  const { data: updated } = await guard.db.from("announcements").update({ status: "published", published_at: new Date().toISOString() }).eq("tenant_id", tenantId).eq("id", announcementId).eq("status", "draft").select("id");
+  if (!updated || updated.length === 0) return { ok: true, sent: 0 }; // ya publicado: no re-envía
 
   // Destinatarios: alumnos inscritos del curso o de la acción.
   let userIds: string[] = [];
