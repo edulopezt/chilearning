@@ -22,15 +22,9 @@ set -eu
 : "${AGE_PUBLIC_KEY:?falta AGE_PUBLIC_KEY}"
 : "${R2_BUCKET:?falta R2_BUCKET}"
 
-# Config del remoto rclone `r2` a partir de las credenciales del token S3 de R2
-# (S3-compatible). rclone lee estas RCLONE_CONFIG_R2_* del entorno; así el operador
-# solo setea las 3 credenciales documentadas y no una config de rclone completa.
-export RCLONE_CONFIG_R2_TYPE=s3
-export RCLONE_CONFIG_R2_PROVIDER=Cloudflare
-export RCLONE_CONFIG_R2_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID:?falta R2_ACCESS_KEY_ID}"
-export RCLONE_CONFIG_R2_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY:?falta R2_SECRET_ACCESS_KEY}"
-export RCLONE_CONFIG_R2_ENDPOINT="https://${R2_ACCOUNT_ID:?falta R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-export RCLONE_CONFIG_R2_ACL=private
+# Config del remoto rclone `r2` (compartida con prune.sh — 4-ojos: prune corría
+# sin remoto). rclone lee las RCLONE_CONFIG_R2_* del entorno.
+. "$(dirname "$0")/r2-env.sh"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 YEAR="$(date -u +%Y)"

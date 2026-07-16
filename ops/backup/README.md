@@ -8,13 +8,15 @@ Objetivo: RTO ≤ 4 h, RPO ≤ 24 h; backup **fuera** del proveedor del VPS y
 1. Crear el bucket **R2** `chilearning-backups` (Cloudflare → R2) + un API token S3.
 2. Generar el par de claves age: `age-keygen -o age-key.txt`. Guardar la PRIVADA
    OFFLINE (fuera del VPS y de git); poner la PÚBLICA (`age1...`) en `AGE_PUBLIC_KEY`.
-3. Configurar `rclone` para el remoto `r2` (S3-compatible, endpoint R2).
-4. En Coolify: nueva app "backup" desde `ops/backup/Dockerfile`; **Scheduled Task**
-   `0 6 * * *` con comando `/ops/backup.sh`; y `0 6 * * 1` → mover el dump del
-   lunes a `db-weekly/`; retención con `/ops/prune.sh`.
-5. Secrets: `SUPABASE_DB_URL`, `AGE_PUBLIC_KEY`, `R2_BUCKET`, `R2_ACCOUNT_ID`,
-   `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (el script arma el remoto rclone `r2`
-   desde estas), `STORAGE_RCLONE_SRC` (opcional, para sincronizar el Storage).
+3. En Coolify: nueva app "backup" desde este repo con `ops/backup/Dockerfile`
+   (base directory `/ops/backup`). El contenedor es **long-running**: trae su
+   propio `crond` (diario 06:00 UTC + poda semanal) y al arrancar hace un backup
+   inicial de validación — no hay que configurar Scheduled Tasks.
+4. Secrets: `SUPABASE_DB_URL`, `AGE_PUBLIC_KEY`, `R2_BUCKET`, `R2_ACCOUNT_ID`,
+   `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (`r2-env.sh` arma el remoto rclone
+   `r2` desde estas), `STORAGE_RCLONE_SRC` (opcional, para sincronizar el Storage).
+5. Verificar en el log del contenedor el `[backup] OK` inicial y el objeto
+   `db/<año>/<mes>/db-*.sql.gz.age` en el bucket.
 
 ## Restaurar (resumen; detalle en `docs/RESTORE.md`)
 ```
