@@ -131,6 +131,12 @@ export async function resolveDsr(principal: Principal, requestId: string, status
   if (!principal.tenantId || !authorize(principal, principal.tenantId, STAFF)) return { ok: false };
   const tenantId = principal.tenantId;
   const guard = tenantGuard(tenantId);
+  // Una supresión NO se cierra como "completed" por esta vía sin anonimizar: debe
+  // pasar por applyErasure (4-ojos LOW). Rechazarla aquí sí es válido.
+  if (status === "completed") {
+    const { data: r } = await guard.db.from("dsr_requests").select("kind").eq("tenant_id", tenantId).eq("id", requestId).maybeSingle();
+    if (r?.kind === "erasure") return { ok: false };
+  }
   const { data, error } = await guard.db.from("dsr_requests").update({ status, resolution_note: note, resolved_by: principal.userId, resolved_at: new Date().toISOString() }).eq("tenant_id", tenantId).eq("id", requestId).select("id, kind").maybeSingle();
   if (error || !data) return { ok: false };
   await writeAudit(guard, { actorUserId: principal.userId, action: "dsr.resolved", entity: "dsr_requests", entityId: requestId, details: { status } });
@@ -151,10 +157,18 @@ export async function applyErasure(principal: Principal, requestId: string): Pro
   if (!req) return { ok: false };
   const targetUserId = req.user_id as string;
 
-  // Anonimiza el perfil de auth (nombre en user_metadata) — dato NO retenido.
+  // Suprime de VERDAD los datos NO retenidos (4-ojos HIGH: no afirmar lo que no
+  // se hace). Los registros SENCE/certificados/notas/auditoría NO se tocan.
+  const REDACTED = "[contenido suprimido por solicitud del titular]";
+  // 1) Perfil de auth: nombre + correo (identificadores directos no retenidos).
   await guard.db.auth.admin.updateUserById(targetUserId, {
+    email: `erased+${targetUserId}@erased.invalid`,
     user_metadata: { full_name: null, erased: true, erased_at: new Date().toISOString() },
   }).catch(() => undefined);
+  // 2) Comunicación del titular (foro, mensajes) — texto atribuible.
+  await guard.db.from("forum_posts").update({ body: REDACTED }).eq("tenant_id", tenantId).eq("author_user_id", targetUserId);
+  await guard.db.from("messages").update({ body: REDACTED }).eq("tenant_id", tenantId).eq("sender_user_id", targetUserId);
+  await guard.db.from("message_threads").update({ subject: "[suprimido]" }).eq("tenant_id", tenantId).eq("student_user_id", targetUserId);
 
   const classification = classifyForErasure();
   const note = `Supresión aplicada. Conservado por obligación legal: ${classification.retained.map((r) => `${r.dataType} (${r.reason})`).join("; ")}. Suprimido: ${classification.erasable.join("; ")}.`;

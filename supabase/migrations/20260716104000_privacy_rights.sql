@@ -14,6 +14,11 @@
 create type public.dsr_kind as enum ('access', 'rectification', 'erasure', 'portability');
 create type public.dsr_status as enum ('pending', 'processing', 'completed', 'rejected');
 
+-- La supresión (applyErasure) redacta el cuerpo de los posts del foro del titular;
+-- `forum_posts` nació sin grant de UPDATE (append-only) → se habilita al servidor
+-- (service_role bajo tenantGuard) SOLO para la supresión Ley 21.719 (4-ojos HIGH).
+grant update on public.forum_posts to service_role;
+
 -- ---------- consents (INSERT-only) ----------
 create table public.consents (
   id uuid primary key default gen_random_uuid(),

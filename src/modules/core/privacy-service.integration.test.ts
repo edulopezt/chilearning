@@ -9,7 +9,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { Principal } from "@/modules/core/domain/rbac";
-import { applyErasure, exportMyData, hasCurrentConsent, listDsrRequests, recordConsent, requestDsr } from "@/modules/core/privacy-service";
+import { randomUUID } from "node:crypto";
+
+import { applyErasure, exportMyData, hasCurrentConsent, listDsrRequests, recordConsent, requestDsr, resolveDsr } from "@/modules/core/privacy-service";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
 const USER_STUDENT = "aaaaaaaa-0000-4000-8000-000000000005";
@@ -54,7 +56,12 @@ describe("export del titular", () => {
 });
 
 describe("solicitudes + supresión que conserva SENCE", () => {
-  it("crea solicitud, el staff la lista, y la supresión conserva la sesión SENCE + audita", async () => {
+  it("crea solicitud, el staff la lista, y la supresión conserva SENCE + REDACTA comunicación + audita", async () => {
+    // Mensaje del titular que SÍ debe suprimirse (no retenido).
+    const threadId = randomUUID();
+    await svc.from("message_threads").insert({ id: threadId, tenant_id: TENANT_A, course_id: "c0000000-0000-4000-8000-000000000001", student_user_id: USER_STUDENT, subject: "Mi teléfono es 9..." });
+    await svc.from("messages").insert({ tenant_id: TENANT_A, thread_id: threadId, sender_user_id: USER_STUDENT, sender_is_staff: false, body: "dato personal en el mensaje" });
+
     const req = await requestDsr(student, { kind: "erasure", detail: "Deseo suprimir mis datos" });
     expect(req.ok).toBe(true);
     if (!req.ok) return;
@@ -63,6 +70,9 @@ describe("solicitudes + supresión que conserva SENCE", () => {
     expect(list.some((r) => r.id === req.id)).toBe(true);
     expect((await listDsrRequests(student)).length).toBe(0); // el alumno no es staff
 
+    // resolveDsr NO puede cerrar una supresión como completada (fuerza applyErasure).
+    expect((await resolveDsr(admin, req.id, "completed", "x")).ok).toBe(false);
+
     const res = await applyErasure(admin, req.id);
     expect(res.ok).toBe(true);
     expect(res.retainedCount).toBeGreaterThanOrEqual(1);
@@ -70,6 +80,11 @@ describe("solicitudes + supresión que conserva SENCE", () => {
     // La sesión SENCE del seed SIGUE existiendo (retención legal).
     const { data: session } = await svc.from("sence_sessions").select("id").eq("id", SEED_SESSION).maybeSingle();
     expect(session).not.toBeNull();
+
+    // La comunicación del titular quedó REDACTADA (no solo declarada).
+    const { data: msg } = await svc.from("messages").select("body").eq("thread_id", threadId).maybeSingle();
+    expect(String(msg!.body)).toContain("suprimido");
+    expect(String(msg!.body)).not.toContain("dato personal");
 
     // La solicitud quedó completada con nota de retención.
     const { data: done } = await svc.from("dsr_requests").select("status, resolution_note").eq("id", req.id).maybeSingle();

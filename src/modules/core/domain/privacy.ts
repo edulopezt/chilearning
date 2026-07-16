@@ -24,7 +24,7 @@ export const RETENTION_POLICIES: readonly RetentionPolicy[] = [
   { dataType: "Certificados emitidos", retained: true, periodLabel: "≥ 5 años", basis: "Documento oficial de la OTEC / evidencia de fiscalización" },
   { dataType: "Calificaciones (libro de notas)", retained: true, periodLabel: "≥ 5 años", basis: "Evidencia del cumplimiento de la acción" },
   { dataType: "Bitácora de auditoría (audit_log)", retained: true, periodLabel: "≥ 5 años", basis: "Trazabilidad e integridad (P8), INSERT-only" },
-  { dataType: "Datos de perfil (nombre de usuario, preferencias)", retained: false, periodLabel: "Hasta la supresión", basis: "Consentimiento del titular" },
+  { dataType: "Datos de perfil (nombre, correo, preferencias)", retained: false, periodLabel: "Hasta la supresión", basis: "Consentimiento del titular" },
   { dataType: "Mensajería y foro", retained: false, periodLabel: "Hasta la supresión", basis: "Servicio de comunicación del curso" },
   { dataType: "Respuestas de encuesta anónimas", retained: false, periodLabel: "Agregado, no atribuible", basis: "Sin datos personales (anónimas)" },
 ];
