@@ -9,6 +9,7 @@ import {
   buildIdSesionAlumno,
   computeDedupeHash,
   parseFechaHora,
+  pickField,
   resolveEndpoint,
   stripToken,
   type SenceEnvironment,
@@ -52,8 +53,19 @@ export interface EngineDeps {
   sessionMaxMs?: number;
 }
 
+/**
+ * Deps que necesita SOLO el receptor de callbacks (`handleCallback`): jamás la
+ * clave de cifrado del token (H4-R-005). El callback no descifra nada; parsear la
+ * clave antes de persistir haría que una `SENCE_TOKEN_ENCRYPTION_KEY` ausente o
+ * rota tumbara el callback con un 500 y se perdiera la asistencia (viola I-1).
+ */
+export type CallbackDeps = Pick<EngineDeps, "now" | "sessionMaxMs">;
+
 export type StartResult =
   | { readonly kind: "exempt"; readonly enrollmentId: string }
+  // Ya hay una sesión viva para esta inscripción (índice único parcial): no es un
+  // error técnico, la UI lleva al alumno a su estado actual (H4-R-016).
+  | { readonly kind: "already_open"; readonly enrollmentId: string }
   | { readonly kind: "preflight_error"; readonly violations: readonly PreflightViolation[] }
   | {
       readonly kind: "ready";
@@ -179,7 +191,18 @@ export async function startSession(
       callback_nonce: nonce,
     }),
   );
-  if (error) throw new EngineError(`No se pudo crear la sesión: ${error.message}`);
+  if (error) {
+    // 23505 = violación del índice único parcial `one_open_per_enrollment`: ya hay
+    // una sesión viva para esta inscripción (doble-click en "Registrar asistencia",
+    // dos pestañas, o la sesión de 3 h vencida de facto que el worker aún no barrió).
+    // No es un fallo técnico: se devuelve tipado para que la ruta lleve al alumno a
+    // su estado actual en vez de un 500 crudo (H4-R-016; espíritu de I-9). No se
+    // escribe estado nuevo: la sesión ganadora sigue su curso (I-3 lo sostiene igual).
+    if (error.code === "23505") {
+      return { kind: "already_open", enrollmentId: enrollment.id };
+    }
+    throw new EngineError(`No se pudo crear la sesión: ${error.message}`);
+  }
 
   return {
     kind: "ready",
@@ -218,10 +241,13 @@ export interface CallbackResult {
 export async function handleCallback(
   serviceDb: SupabaseClient,
   rawParams: Record<string, string>,
-  deps: EngineDeps,
+  deps: CallbackDeps,
   expectedNonce?: string | null,
 ): Promise<CallbackResult> {
-  const idSesionAlumno = (rawParams.IdSesionAlumno ?? "").trim();
+  // Lectura tolerante a nombres de campo con espacios colgantes (H4-R-001, §1.2):
+  // SENCE puede enviar `"IdSesionAlumno "` (errata del manual, Anexo 3). El payload
+  // CRUDO con sus claves originales se persiste intacto más abajo (I-1).
+  const idSesionAlumno = (pickField(rawParams, "IdSesionAlumno") ?? "").trim();
 
   // M-4: no persistir POSTs sin forma de callback (evita inflar la tabla
   // INSERT-only, que no se puede podar). Un callback real trae un
@@ -232,19 +258,39 @@ export async function handleCallback(
 
   const callback: RawCallback = {
     idSesionAlumno,
-    idSesionSence: rawParams.IdSesionSence ?? null,
-    glosaError: rawParams.GlosaError ?? null,
-    timestampMs: parseFechaHora(rawParams.FechaHora),
-    zonaHoraria: rawParams.ZonaHoraria ?? null,
+    idSesionSence: pickField(rawParams, "IdSesionSence") ?? null,
+    glosaError: pickField(rawParams, "GlosaError") ?? null,
+    timestampMs: parseFechaHora(pickField(rawParams, "FechaHora")),
+    zonaHoraria: pickField(rawParams, "ZonaHoraria") ?? null,
   };
 
   // Correlación por IdSesionAlumno (service-role: sin contexto de tenant aún).
-  const { data: sessionRow } = await serviceDb
-    .from("sence_sessions")
-    .select("*")
-    .eq("id_sesion_alumno", idSesionAlumno)
-    .limit(1)
-    .maybeSingle();
+  // H4-R-007: un error del SELECT (fallo transitorio de BD) NO se descarta en
+  // silencio — se registra (sin payload ni token, I-6) y se reintenta una vez.
+  // Fail-open: si aún falla, se persiste `unmatched` (I-1: el callback jamás se
+  // pierde) y el log permite el triage manual.
+  const runCorrelation = () =>
+    serviceDb
+      .from("sence_sessions")
+      .select("*")
+      .eq("id_sesion_alumno", idSesionAlumno)
+      .limit(1)
+      .maybeSingle();
+  let correlation = await runCorrelation();
+  if (correlation.error) {
+    console.error("[sence] error al correlacionar callback; reintentando", {
+      idSesionAlumno,
+      code: correlation.error.code,
+    });
+    correlation = await runCorrelation();
+    if (correlation.error) {
+      console.error("[sence] correlación falló tras reintento; se persiste unmatched", {
+        idSesionAlumno,
+        code: correlation.error.code,
+      });
+    }
+  }
+  const sessionRow = correlation.data;
 
   // H-2: la sesión solo se transiciona si el nonce del callback coincide con el
   // de la sesión. Si existe la sesión pero el nonce no calza, el callback es

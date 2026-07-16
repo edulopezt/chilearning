@@ -128,6 +128,19 @@ describe("sence_sessions — aislamiento y no-escritura desde el cliente", () =>
     expect(data?.length).toBeGreaterThan(0);
   });
 
+  it("H4-R-002: el cliente NO puede leer callback_nonce (secreto anti-falsificación H-2)", async () => {
+    await seedSession();
+    const db = client(await jwt({ sub: "u", tenant_id: TENANT_A, roles: ["otec_admin"] }));
+    // El nonce es el ÚNICO autenticador del callback público: si un insider del
+    // tenant lo lee, puede forjar callbacks y alterar la asistencia de otro alumno.
+    // El grant de columna lo excluye → PostgREST rechaza el SELECT de esa columna.
+    const denied = await db.from("sence_sessions").select("callback_nonce");
+    expect(denied.error).not.toBeNull();
+    // pero las columnas no sensibles del staff siguen legibles.
+    const ok = await db.from("sence_sessions").select("id, status, id_sesion_alumno");
+    expect(ok.error).toBeNull();
+  });
+
   it("otec_admin@B no ve las sesiones del tenant A", async () => {
     // Aislamiento, no vacío: otros tests pueden sembrar sesiones legítimas del
     // tenant B (la suite es re-ejecutable sin `db reset`); lo que JAMÁS puede

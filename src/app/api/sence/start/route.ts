@@ -47,6 +47,12 @@ export async function POST(request: NextRequest) {
   switch (result.kind) {
     case "exempt":
       return NextResponse.json({ status: "exempt" });
+    case "already_open":
+      // Ya hay una sesión viva para esta inscripción (doble-click, dos pestañas, o
+      // la de 3 h vencida que el worker aún no barrió). El botón del curso hace un
+      // submit nativo, así que se lleva al alumno de vuelta a su curso —donde verá
+      // su estado actual— en vez de un 500 crudo (H4-R-016, espíritu de I-9).
+      return NextResponse.redirect(new URL("/mi-curso", request.url), { status: 303 });
     case "preflight_error":
       // No se envía al alumno a SENCE si el pre-vuelo falla (I-8).
       return NextResponse.json(
