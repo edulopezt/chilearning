@@ -17,16 +17,20 @@ export async function listCalendar(principal: Principal, courseId: string): Prom
   const guard = tenantGuard(tenantId);
   if (!(await courseAccess(guard, tenantId, principal, courseId))) return null;
 
-  const [{ data: items }, { data: assignments }, { data: quizzes }] = await Promise.all([
+  const [{ data: items }, { data: assignments }, { data: quizzes }, { data: sessions }] = await Promise.all([
     guard.db.from("calendar_items").select("kind, title, due_at").eq("tenant_id", tenantId).eq("course_id", courseId),
     guard.db.from("assignments").select("title, due_at").eq("tenant_id", tenantId).eq("course_id", courseId).eq("status", "published").not("due_at", "is", null),
     guard.db.from("quizzes").select("title, closes_at").eq("tenant_id", tenantId).eq("course_id", courseId).eq("status", "published").not("closes_at", "is", null),
+    // Sesiones en vivo (task 5.4, spec §7-R3): la acción es del curso vía el
+    // mismo patrón de join que `courseAccess` (actions!inner + filtro anidado).
+    guard.db.from("live_sessions").select("title, starts_at, actions!inner(course_id)").eq("tenant_id", tenantId).eq("actions.course_id", courseId),
   ]);
 
   const manual = ((items ?? []) as { kind: string; title: string; due_at: string }[]).map((i) => ({ kind: i.kind, title: i.title, dueAtMs: Date.parse(i.due_at) }));
   const instruments = [
     ...((assignments ?? []) as { title: string; due_at: string }[]).map((a) => ({ kind: "plazo", title: a.title, dueAtMs: Date.parse(a.due_at) })),
     ...((quizzes ?? []) as { title: string; closes_at: string }[]).map((q) => ({ kind: "evaluacion", title: q.title, dueAtMs: Date.parse(q.closes_at) })),
+    ...((sessions ?? []) as unknown as { title: string; starts_at: string }[]).map((s) => ({ kind: "sesion", title: s.title, dueAtMs: Date.parse(s.starts_at) })),
   ];
   return mergeCalendar(manual, instruments);
 }
