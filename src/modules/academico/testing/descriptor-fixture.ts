@@ -33,6 +33,21 @@ export async function buildDescriptorFixtureDocx(lines: readonly string[]): Prom
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
+/**
+ * Fixture "zip-bomb honesta" (4-ojos HIGH/MED, guardia anti zip-bomb del
+ * descriptor): un único entry `word/document.xml` con MUCHOS bytes REPETIDOS.
+ * Con compresión DEFLATE real, el .docx resultante pesa apenas unos KB (pasa
+ * de sobra el límite de 10 MB comprimidos), pero su directorio central declara
+ * honestamente `uncompressedBytes` — sin necesidad de "mentir" el campo (a
+ * diferencia de `forgeDeclaredUncompressedSize` en `contenido/testing/scorm-fixture.ts`)
+ * para ejercitar `exceedsDescriptorUncompressedBudget` de punta a punta.
+ */
+export async function buildDescriptorZipBombFixture(uncompressedBytes: number): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file("word/document.xml", "A".repeat(uncompressedBytes), { compression: "DEFLATE" });
+  return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+}
+
 /** Líneas de un descriptor SENCE SINTÉTICO típico (Anexo 4), para los tests de extracción. */
 export const DESCRIPTOR_FIXTURE_LINES: readonly string[] = [
   "DESCRIPTOR DEL CURSO",

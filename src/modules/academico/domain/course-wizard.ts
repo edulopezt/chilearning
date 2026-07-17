@@ -367,6 +367,47 @@ function structureBlockers(state: WizardState): string[] {
 }
 
 /**
+ * Red de seguridad (4-ojos MED, "un módulo borrado/reeditado en 'estructura'
+ * puede dejar aprendizajes/contenido/evaluaciones apuntando a un `moduleId`
+ * que ya no existe"): `parseContenidoStep`/`parseEvaluacionesStep` validan el
+ * `moduleId` SOLO contra la estructura vigente AL MOMENTO de guardar ese
+ * paso — si el usuario vuelve a "estructura" DESPUÉS y borra ese módulo (o
+ * cambia su id), las referencias quedan huérfanas SIN que nada lo detecte.
+ * Bloquea la generación en vez de dejar que `generateFromDraft` las descarte
+ * en silencio (lecciones que nunca se crean) o las mal-adjunte (si un id
+ * nuevo coincide por casualidad con el de otro módulo).
+ */
+function orphanedReferenceBlockers(state: WizardState): string[] {
+  const blockers: string[] = [];
+  const moduleIds = new Set(state.estructura.modules.map((m) => m.id));
+
+  const orphanedLessons = [...new Set(state.contenido.lessons.map((l) => l.moduleId).filter((id) => !moduleIds.has(id)))];
+  if (orphanedLessons.length > 0) {
+    blockers.push(
+      `Hay lecciones cargadas para módulos que ya no existen en la estructura (${orphanedLessons.join(", ")}); revísalas en "contenido".`,
+    );
+  }
+
+  const orphanedQuizzes = [
+    ...new Set(state.evaluaciones.quizzes.map((q) => q.moduleId).filter((id) => !moduleIds.has(id))),
+  ];
+  if (orphanedQuizzes.length > 0) {
+    blockers.push(
+      `Hay evaluaciones cargadas para módulos que ya no existen en la estructura (${orphanedQuizzes.join(", ")}); revísalas en "evaluaciones".`,
+    );
+  }
+
+  const orphanedAprendizajes = Object.keys(state.aprendizajes).filter((id) => !moduleIds.has(id));
+  if (orphanedAprendizajes.length > 0) {
+    blockers.push(
+      `Hay aprendizajes cargados para módulos que ya no existen en la estructura (${orphanedAprendizajes.join(", ")}); revísalos en "aprendizajes".`,
+    );
+  }
+
+  return blockers;
+}
+
+/**
  * Corre TODAS las validaciones de todos los pasos sobre el estado completo
  * (para el paso "revisión final" y como último gate de `generateFromDraft`).
  */
@@ -376,6 +417,7 @@ export function validateForGeneration(state: WizardState): { ok: true } | { ok: 
   blockers.push(...structureBlockers(state));
   if (!state.completitud) blockers.push("Faltan las reglas de completitud.");
   if (state.datos?.sence) blockers.push(...senceEvaluationBlockers(state.estructura, state.evaluaciones));
+  blockers.push(...orphanedReferenceBlockers(state));
 
   if (blockers.length > 0) return { ok: false, blockers };
   return { ok: true };

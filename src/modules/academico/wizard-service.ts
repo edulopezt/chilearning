@@ -2,10 +2,11 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import JSZip from "jszip";
 import mammoth from "mammoth";
 
 import { writeAudit } from "@/lib/audit";
-import { tenantGuard } from "@/lib/tenant-guard";
+import { tenantGuard, type TenantGuard } from "@/lib/tenant-guard";
 import { createCourse } from "@/modules/academico/course-service";
 import {
   EMPTY_WIZARD_STATE,
@@ -17,6 +18,7 @@ import {
   type WizardState,
   type WizardStep,
 } from "@/modules/academico/domain/course-wizard";
+import { exceedsDescriptorUncompressedBudget } from "@/modules/academico/domain/descriptor-zip";
 import { extractDescriptor } from "@/modules/academico/domain/descriptor-extract";
 import { createLesson } from "@/modules/academico/lesson-service";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
@@ -37,6 +39,32 @@ const MANAGERS = ["otec_admin", "coordinator"] as const;
 const DESCRIPTOR_BUCKET = "course_descriptors";
 const DESCRIPTOR_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_DESCRIPTOR_BYTES = 10 * 1024 * 1024;
+// Segunda barrera (además de `exceedsDescriptorUncompressedBudget`, sobre el
+// .zip crudo): acota el TEXTO ya extraído antes de pasarlo a
+// `extractDescriptor` — un descriptor real (Anexo 4) son unas pocas páginas.
+const MAX_DESCRIPTOR_TEXT_LENGTH = 2_000_000; // ~2 MB de texto plano
+
+/**
+ * Campo INTERNO de jszip (no forma parte de su `.d.ts` público): igual patrón
+ * y mismo aviso que `contenido/scorm-extract.ts::declaredUncompressedSize` —
+ * se duplica aquí (3 líneas) en vez de importarla para no acoplar el módulo
+ * `academico` a `contenido` por un detalle privado de implementación.
+ */
+function declaredUncompressedSize(entry: JSZip.JSZipObject): number {
+  const raw = (entry as unknown as { _data?: { uncompressedSize?: number } })._data;
+  return typeof raw?.uncompressedSize === "number" ? raw.uncompressedSize : 0;
+}
+
+/** Limpieza best-effort del .docx subido cuando el resto del flujo aborta; loguea si falla (huérfano detectable). */
+async function removeDescriptorBestEffort(guard: TenantGuard, descriptorPath: string): Promise<void> {
+  const { error } = await guard.db.storage.from(DESCRIPTOR_BUCKET).remove([descriptorPath]);
+  if (error) {
+    console.error("[wizard] no se pudo limpiar el .docx del descriptor tras un fallo del flujo", {
+      message: error.message,
+      descriptorPath,
+    });
+  }
+}
 
 // Placeholder mínimo: el CA pide "encuesta configurada" (no que el asistente
 // escriba las preguntas), pero a diferencia de los quizzes (que nacen vacíos y
@@ -156,15 +184,49 @@ export async function createDraft(principal: Principal, input: CreateDraftInput)
     .upload(descriptorPath, bytes, { contentType: file.type, upsert: false });
   if (uploadError) return { ok: false, error: "upload_failed" };
 
+  // Guardia anti zip-bomb (4-ojos HIGH/MED, "un .docx es un .zip"): pre-chequeo
+  // BARATO (sin descomprimir nada) contra el tamaño DECLARADO en el
+  // directorio central del .zip, ANTES de invocar `mammoth` — que corre
+  // INLINE en este proceso web compartido por todos los tenants, a
+  // diferencia de la ingesta SCORM (que hace este mismo trabajo en el
+  // worker aislado). Ver el aviso completo en `domain/descriptor-zip.ts`.
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(bytes);
+  } catch (err) {
+    console.error("[wizard] el descriptor no es un .zip/.docx válido", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+    await removeDescriptorBestEffort(guard, descriptorPath);
+    return { ok: false, error: "file_rejected" };
+  }
+  const totalUncompressed = Object.values(zip.files)
+    .filter((f) => !f.dir)
+    .reduce((sum, entry) => sum + declaredUncompressedSize(entry), 0);
+  if (exceedsDescriptorUncompressedBudget(totalUncompressed)) {
+    console.error("[wizard] descriptor rechazado: excede el presupuesto de bytes descomprimidos declarados", {
+      totalUncompressed,
+    });
+    await removeDescriptorBestEffort(guard, descriptorPath);
+    return { ok: false, error: "file_rejected" };
+  }
+
   let extract: ReturnType<typeof extractDescriptor>;
   try {
     const { value: text } = await mammoth.extractRawText({ buffer: bytes });
+    if (text.length > MAX_DESCRIPTOR_TEXT_LENGTH) {
+      console.error("[wizard] descriptor rechazado: el texto extraído excede el límite razonable", {
+        textLength: text.length,
+      });
+      await removeDescriptorBestEffort(guard, descriptorPath);
+      return { ok: false, error: "file_rejected" };
+    }
     extract = extractDescriptor(text);
   } catch (err) {
     console.error("[wizard] no se pudo leer el contenido del descriptor .docx", {
       message: err instanceof Error ? err.message : String(err),
     });
-    await guard.db.storage.from(DESCRIPTOR_BUCKET).remove([descriptorPath]);
+    await removeDescriptorBestEffort(guard, descriptorPath);
     return { ok: false, error: "file_rejected" };
   }
 
@@ -200,7 +262,7 @@ export async function createDraft(principal: Principal, input: CreateDraftInput)
     .single();
   if (error || !data) {
     // La fila no se creó: no dejar el .docx huérfano en el bucket.
-    await guard.db.storage.from(DESCRIPTOR_BUCKET).remove([descriptorPath]);
+    await removeDescriptorBestEffort(guard, descriptorPath);
     return { ok: false, error: "upload_failed" };
   }
 
@@ -384,18 +446,59 @@ export async function generateFromDraft(principal: Principal, draftId: string): 
   // Se enlaza el curso generado ANTES de tocar lecciones/evaluaciones: si algo
   // falla más abajo, el draft deja rastro de qué curso ya existe y una
   // segunda llamada se rechaza por `already_generated` en vez de duplicar.
-  const { error: linkError } = await guard.db
+  //
+  // El UPDATE es CONDICIONAL (`generated_course_id IS NULL`) y se verifica la
+  // fila devuelta, no solo `error`: el chequeo inicial de arriba (línea ~356)
+  // lee `generated_course_id` y el UPDATE lo escribe en dos round-trips
+  // SEPARADOS — sin esto, dos llamadas concurrentes (doble clic en dos
+  // pestañas) o un solo reintento tras un `linkError` transitorio verían
+  // ambas `generated_course_id = null` en su lectura inicial y cada una
+  // crearía su PROPIO curso real, duplicando contenido (4-ojos HIGH,
+  // orquestacion-idempotencia). Si el UPDATE no logra reservar la fila (0
+  // filas afectadas, con o sin `error`), el curso recién creado queda
+  // HUÉRFANO (nadie lo referencia): se elimina en el acto para que un
+  // reintento posterior NUNCA vea un curso fantasma sumado a uno nuevo, sino
+  // como mucho UN curso real por draft.
+  const { data: linkedRow, error: linkError } = await guard.db
     .from("course_drafts")
     .update({ generated_course_id: courseId })
     .eq("id", draftId)
-    .eq("tenant_id", principal.tenantId);
-  if (linkError) {
-    console.error("[wizard] no se pudo enlazar el draft con el curso generado", {
-      message: linkError.message,
-      draftId,
-      courseId,
-    });
-    return { ok: false, error: "partial_generation", courseId };
+    .eq("tenant_id", principal.tenantId)
+    .is("generated_course_id", null)
+    .select("id")
+    .maybeSingle();
+
+  if (linkError || !linkedRow) {
+    // Ambiguo si el UPDATE de arriba realmente no aplicó (perdió la carrera /
+    // draft ya generado) o si SÍ aplicó pero la respuesta se perdió (blip de
+    // red): se relee el estado real del draft antes de decidir qué hacer con
+    // el curso huérfano.
+    const { data: current } = await guard.db
+      .from("course_drafts")
+      .select("generated_course_id")
+      .eq("id", draftId)
+      .maybeSingle();
+
+    if (current?.generated_course_id === courseId) {
+      // El UPDATE sí se aplicó pese al error/fila vacía reportados: no hay
+      // curso huérfano que limpiar, se sigue de largo con el bucle normal.
+    } else {
+      console.error("[wizard] no se pudo enlazar el draft con el curso generado: se elimina el curso huérfano", {
+        message: linkError?.message ?? "0 filas afectadas (ya enlazado o draft inexistente)",
+        draftId,
+        courseId,
+      });
+      const { error: rollbackError } = await guard.db.from("courses").delete().eq("id", courseId).eq("tenant_id", principal.tenantId);
+      if (rollbackError) {
+        console.error("[wizard] no se pudo eliminar el curso huérfano tras el fallo de enlace", {
+          message: rollbackError.message,
+          draftId,
+          courseId,
+        });
+      }
+      if (current?.generated_course_id) return { ok: false, error: "already_generated" };
+      return { ok: false, error: "not_found" };
+    }
   }
 
   try {
@@ -428,7 +531,10 @@ export async function generateFromDraft(principal: Principal, draftId: string): 
       }
 
       for (const quiz of state.evaluaciones.quizzes.filter((q) => q.moduleId === mod.id)) {
-        const r = await createQuiz(principal, courseId, { title: quiz.title, status: "draft" });
+        // Sin `status`: `QuizInput`/`quizToRow` no tienen ese campo — el quiz
+        // nace en borrador por el DEFAULT de columna (`quizzes.status`), no
+        // por esta llamada (4-ojos LOW: el parámetro era un no-op silencioso).
+        const r = await createQuiz(principal, courseId, { title: quiz.title });
         if (!r.ok) throw new Error(`evaluación "${quiz.title}" del módulo "${mod.title}" no se pudo crear`);
       }
     }

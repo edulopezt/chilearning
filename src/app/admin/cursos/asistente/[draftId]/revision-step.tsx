@@ -71,17 +71,17 @@ export function RevisionStep({
         <div>
           <dt className="font-semibold">{t.revisionSummaryEvaluaciones}</dt>
           <dd>
-            {state.evaluaciones.quizzes.length} evaluaciones · encuesta{" "}
-            {state.evaluaciones.survey.enabled ? `«${state.evaluaciones.survey.title}»` : "deshabilitada"}
+            {state.evaluaciones.quizzes.length} {t.evaluationsCountLabel} · {t.surveyLabel}{" "}
+            {state.evaluaciones.survey.enabled ? `«${state.evaluaciones.survey.title}»` : t.surveyDisabled}
           </dd>
         </div>
         <div>
           <dt className="font-semibold">{t.revisionSummaryCompletitud}</dt>
           <dd>
             {state.completitud
-              ? `min. asistencia ${state.completitud.minAttendancePct}% · ${
-                  state.completitud.requireAllLessons ? "todas las lecciones" : "lecciones parciales"
-                }${state.completitud.requireSurvey ? " · encuesta obligatoria" : ""}`
+              ? `${t.minAttendanceLabel} ${state.completitud.minAttendancePct}% · ${
+                  state.completitud.requireAllLessons ? t.allLessonsLabel : t.partialLessonsLabel
+                }${state.completitud.requireSurvey ? ` · ${t.surveyRequiredLabel}` : ""}`
               : "—"}
           </dd>
         </div>

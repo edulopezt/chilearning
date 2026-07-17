@@ -35,10 +35,29 @@ function textareaLines(raw: FormDataEntryValue | null): string[] {
     .filter((l) => l.length > 0);
 }
 
-/** "título | horas" por línea. */
-function parseModulesTextarea(raw: FormDataEntryValue | null): { modules: { title: string; hours: string }[] } {
+/**
+ * Módulo NUEVO: "título | horas". Módulo YA EXISTENTE (preserva su id):
+ * "id | título | horas" — así lo precarga `EstructuraStepForm`.
+ *
+ * SIN el id explícito, `parseModules` (domain/course-wizard.ts) le asigna uno
+ * NUEVO puramente por POSICIÓN en cada guardado, reasignando/huerfanizando en
+ * silencio las lecciones/evaluaciones/aprendizajes ya cargados para ese
+ * módulo apenas el admin reordena o inserta una línea (4-ojos MED,
+ * "spec-convenciones"/"orquestacion-idempotencia" — reproducible con un solo
+ * reordenamiento tras completar "contenido"/"evaluaciones"). Preservar el id
+ * que ya trae la línea hace que reordenar/insertar NO mueva la identidad de
+ * los módulos existentes.
+ */
+function parseModulesTextarea(
+  raw: FormDataEntryValue | null,
+): { modules: { id?: string; title: string; hours: string }[] } {
   const modules = textareaLines(raw).map((line) => {
-    const [title, hours] = line.split("|").map((s) => s.trim());
+    const parts = line.split("|").map((s) => s.trim());
+    if (parts.length >= 3) {
+      const [id, title, hours] = parts;
+      return { id: id || undefined, title: title ?? "", hours: hours ?? "" };
+    }
+    const [title, hours] = parts;
     return { title: title ?? "", hours: hours ?? "" };
   });
   return { modules };

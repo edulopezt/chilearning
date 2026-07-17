@@ -120,7 +120,10 @@ export function DatosStepForm({ draftId, state }: { draftId: string; state: Wiza
 export function EstructuraStepForm({ draftId, state }: { draftId: string; state: WizardState }) {
   const action = saveEstructuraStepAction.bind(null, draftId);
   const [formState, formAction, pending] = useActionState<StepFormState, FormData>(action, { status: "idle" });
-  const defaultValue = state.estructura.modules.map((m) => `${m.title} | ${m.hours}`).join("\n");
+  // Los módulos YA EXISTENTES viajan con su id ("id | título | horas") para
+  // que reordenar/editar esta lista NO les reasigne un id nuevo por posición
+  // (4-ojos MED — ver el comentario de `parseModulesTextarea` en actions.ts).
+  const defaultValue = state.estructura.modules.map((m) => `${m.id} | ${m.title} | ${m.hours}`).join("\n");
 
   return (
     <form action={formAction} className="flex flex-col gap-3">

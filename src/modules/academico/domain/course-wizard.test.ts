@@ -281,6 +281,51 @@ describe("validateForGeneration — casos borde", () => {
   });
 });
 
+describe("validateForGeneration — referencias moduleId huérfanas tras reeditar 'estructura' (4-ojos MED)", () => {
+  it("bloquea si aprendizajes/contenido/evaluaciones apuntan a un módulo que ya no existe en la estructura", () => {
+    let state = withDatos(EMPTY_WIZARD_STATE, { ...datosRaw, hours: "4" });
+    state = { ...state, estructura: { modules: [{ id: "m1", title: "M1", hours: 4 }] } };
+    state = { ...state, aprendizajes: { m1: ["a"], m2: ["huérfano"] } };
+    state = { ...state, contenido: { lessons: [{ moduleId: "m2", title: "L", kind: "text", content: "c" }] } };
+    state = {
+      ...state,
+      evaluaciones: {
+        quizzes: [
+          { moduleId: "m1", title: "Eval 1" },
+          { moduleId: "m2", title: "Eval huérfana" },
+        ],
+        survey: { enabled: true, title: "Encuesta" },
+      },
+    };
+    state = { ...state, completitud: { requireAllLessons: true, requireSurvey: true, minAttendancePct: 0 } };
+
+    const r = validateForGeneration(state);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.blockers.some((b) => b.includes("m2") && b.includes("lecciones"))).toBe(true);
+      expect(r.blockers.some((b) => b.includes("m2") && b.includes("evaluaciones"))).toBe(true);
+      expect(r.blockers.some((b) => b.includes("m2") && b.includes("aprendizajes"))).toBe(true);
+    }
+  });
+
+  it("no bloquea por esto si todas las referencias moduleId siguen vigentes en la estructura actual", () => {
+    let state = withDatos(EMPTY_WIZARD_STATE);
+    state = { ...state, estructura: threeModules };
+    state = { ...state, completitud: { requireAllLessons: true, requireSurvey: true, minAttendancePct: 75 } };
+    state = {
+      ...state,
+      aprendizajes: { m1: ["a"], m2: ["b"], m3: ["c"] },
+      contenido: { lessons: [{ moduleId: "m1", title: "L1", kind: "text", content: "x" }] },
+      evaluaciones: {
+        quizzes: threeModules.modules.map((m) => ({ moduleId: m.id, title: `Eval ${m.id}` })),
+        survey: { enabled: true, title: "Encuesta" },
+      },
+    };
+    const r = validateForGeneration(state);
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe("WIZARD_TEMPLATES", () => {
   it("expone al menos las 2 plantillas requeridas", () => {
     expect(WIZARD_TEMPLATES.elearning_sence_estandar).toBeDefined();

@@ -6,14 +6,20 @@
  * Requiere `supabase start` + `supabase db reset`.
  */
 import { execSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { listCourses } from "@/modules/academico/course-service";
 import { listLessons } from "@/modules/academico/lesson-service";
 import type { Principal } from "@/modules/core/domain/rbac";
 import { listQuizzesByCourse } from "@/modules/evaluacion/quiz-service";
 import { listSurveysByCourse } from "@/modules/evaluacion/survey-service";
-import { buildDescriptorFixtureDocx, DESCRIPTOR_FIXTURE_LINES } from "./testing/descriptor-fixture";
+import {
+  buildDescriptorFixtureDocx,
+  buildDescriptorZipBombFixture,
+  DESCRIPTOR_FIXTURE_LINES,
+} from "./testing/descriptor-fixture";
 import {
   createDraft,
   descriptorDownloadUrl,
@@ -169,6 +175,172 @@ describe("wizard-service — flujo 'desde cero' de punta a punta", () => {
   });
 });
 
+describe("generateFromDraft — idempotencia real ante condiciones de carrera (4-ojos HIGH)", () => {
+  it("dos llamadas CONCURRENTES al mismo draft generan UN solo curso real — la perdedora hace rollback de su huérfano", async () => {
+    // El bug original: el chequeo inicial (`generated_course_id` null) y el
+    // enlace posterior son dos round-trips SEPARADOS; sin el UPDATE
+    // condicional + rollback, dos llamadas que leen null ANTES de que
+    // cualquiera escriba crean cada una su PROPIO curso real (duplicado). Se
+    // fuerza la carrera con `Promise.all` real (dos requests HTTP
+    // concurrentes contra el Supabase local), no con mocks.
+    const uniqueName = `Curso concurrencia ${randomUUID()}`;
+    const created = await createDraft(adminA, { source: "scratch" });
+    if (!created.ok) throw new Error("no se creó el draft");
+    const draftId = created.draftId;
+
+    const datos = await saveStep(adminA, draftId, "datos", {
+      name: uniqueName,
+      modality: "elearning",
+      hours: "2",
+      sence: "true",
+      codSence: "1234567890",
+    });
+    if (!datos.ok) throw new Error(`paso datos inválido: ${JSON.stringify(datos)}`);
+    const estructura = await saveStep(adminA, draftId, "estructura", { modules: [{ title: "Módulo 1", hours: "2" }] });
+    if (!estructura.ok) throw new Error(`paso estructura inválido: ${JSON.stringify(estructura)}`);
+    const evaluaciones = await saveStep(adminA, draftId, "evaluaciones", {
+      quizzes: [{ moduleId: "m1", title: "Evaluación única" }],
+      survey: { enabled: true, title: "Encuesta" },
+    });
+    if (!evaluaciones.ok) throw new Error(`paso evaluaciones inválido: ${JSON.stringify(evaluaciones)}`);
+    const completitud = await saveStep(adminA, draftId, "completitud", { requireSurvey: "on" });
+    if (!completitud.ok) throw new Error(`paso completitud inválido: ${JSON.stringify(completitud)}`);
+
+    const [r1, r2] = await Promise.all([generateFromDraft(adminA, draftId), generateFromDraft(adminA, draftId)]);
+    const results = [r1, r2];
+    const succeeded = results.filter((r) => r.ok);
+    const rejected = results.filter((r) => !r.ok);
+
+    // Exactamente UNA gana; la otra se rechaza por `already_generated` (no
+    // por un error genérico) — el rollback re-lee el draft y detecta que la
+    // ganadora ya lo enlazó.
+    expect(succeeded).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    const winner = succeeded[0]!;
+    const loser = rejected[0]!;
+    if (!winner.ok || loser.ok) throw new Error("unreachable");
+    expect(loser.error).toBe("already_generated");
+
+    const draft = await getDraft(adminA, draftId);
+    expect(draft?.status).toBe("generated");
+    expect(draft?.generatedCourseId).toBe(winner.courseId);
+
+    // Fila REAL en `courses`: ni un curso huérfano de la perdedora quedó
+    // colgando (se hizo rollback), ni se creó una segunda fila para el mismo
+    // draft — exactamente UNA, la de la ganadora.
+    const courses = await listCourses(adminA);
+    const matches = courses.filter((c) => c.name === uniqueName);
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.id).toBe(winner.courseId);
+
+    // Y su contenido tampoco se duplicó (1 lección-cabecera + 1 evaluación).
+    expect(await listLessons(adminA, winner.courseId)).toHaveLength(1);
+    expect(await listQuizzesByCourse(adminA, winner.courseId)).toHaveLength(1);
+  });
+});
+
+describe("wizard-service — estabilidad de ids de módulo al reeditar 'estructura' (4-ojos MED)", () => {
+  it("reordenar módulos PRESERVANDO sus ids explícitos (como hace la UI corregida) no reasigna aprendizajes/lecciones/evaluaciones ya cargados", async () => {
+    const draftId = await seedSenceDraft(adminA, 2, 4); // m1 "Módulo 1" 4h, m2 "Módulo 2" 4h
+
+    await saveStep(adminA, draftId, "aprendizajes", { m1: "Aprendizaje de M1", m2: "Aprendizaje de M2" });
+    const contenido = await saveStep(adminA, draftId, "contenido", {
+      lessons: [
+        { moduleId: "m1", title: "Lección de M1", kind: "text", content: "contenido m1" },
+        { moduleId: "m2", title: "Lección de M2", kind: "text", content: "contenido m2" },
+      ],
+    });
+    expect(contenido.ok).toBe(true);
+    const evaluaciones = await saveStep(adminA, draftId, "evaluaciones", {
+      quizzes: [
+        { moduleId: "m1", title: "Eval M1" },
+        { moduleId: "m2", title: "Eval M2" },
+      ],
+      survey: { enabled: true, title: "Encuesta" },
+    });
+    expect(evaluaciones.ok).toBe(true);
+    await saveStep(adminA, draftId, "completitud", { requireSurvey: "on" });
+
+    // Reabre "estructura" e INVIERTE el orden de las líneas, PRESERVANDO los
+    // ids ("id | título | horas") — así reenvía la textarea la UI corregida
+    // (`EstructuraStepForm`/`parseModulesTextarea`) tras el fix.
+    const swap = await saveStep(adminA, draftId, "estructura", {
+      modules: [
+        { id: "m2", title: "Módulo 2", hours: "4" },
+        { id: "m1", title: "Módulo 1", hours: "4" },
+      ],
+    });
+    expect(swap.ok).toBe(true);
+
+    const result = await generateFromDraft(adminA, draftId);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // El bucle de generación recorre `estructura.modules` en su orden ACTUAL
+    // (m2 primero tras el swap): la cabecera+lección de M2 deben traer SU
+    // aprendizaje/contenido — no el de M1 (que quedaría mal atribuido si el
+    // id se hubiera reasignado por posición en vez de preservarse).
+    const lessons = await listLessons(adminA, result.courseId);
+    expect(lessons.map((l) => l.title)).toEqual([
+      "Módulo 1 — Módulo 2",
+      "Lección de M2",
+      "Módulo 2 — Módulo 1",
+      "Lección de M1",
+    ]);
+    expect(lessons[0]?.content).toContain("Aprendizaje de M2");
+    expect(lessons[2]?.content).toContain("Aprendizaje de M1");
+
+    const quizzes = await listQuizzesByCourse(adminA, result.courseId);
+    expect(quizzes.map((q) => q.title).sort()).toEqual(["Eval M1", "Eval M2"]);
+  });
+
+  it("borrar un módulo con contenido/evaluaciones/aprendizajes ya cargados bloquea la generación (no los descarta/misatribuye en silencio)", async () => {
+    const draftId = await seedSenceDraft(adminA, 2, 4); // m1, m2 — 8h
+
+    await saveStep(adminA, draftId, "aprendizajes", { m1: "Aprendizaje de M1", m2: "Aprendizaje de M2" });
+    await saveStep(adminA, draftId, "contenido", {
+      lessons: [{ moduleId: "m2", title: "Lección de M2", kind: "text", content: "contenido m2" }],
+    });
+    await saveStep(adminA, draftId, "evaluaciones", {
+      quizzes: [
+        { moduleId: "m1", title: "Eval M1" },
+        { moduleId: "m2", title: "Eval M2" },
+      ],
+      survey: { enabled: true, title: "Encuesta" },
+    });
+    await saveStep(adminA, draftId, "completitud", { requireSurvey: "on" });
+
+    // Vuelve a "estructura", BAJA las horas del curso y BORRA m2 (solo queda
+    // m1) — las referencias a "m2" en aprendizajes/contenido/evaluaciones
+    // quedan huérfanas.
+    await saveStep(adminA, draftId, "datos", {
+      name: "Curso con módulo borrado",
+      modality: "elearning",
+      hours: "4",
+      sence: "true",
+      codSence: "1234567890",
+    });
+    const estructura = await saveStep(adminA, draftId, "estructura", {
+      modules: [{ id: "m1", title: "Módulo 1", hours: "4" }],
+    });
+    expect(estructura.ok).toBe(true);
+
+    const result = await generateFromDraft(adminA, draftId);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("blocked");
+    if (result.error !== "blocked") return;
+    expect(result.blockers.some((b) => b.includes("m2") && b.includes("lecciones"))).toBe(true);
+    expect(result.blockers.some((b) => b.includes("m2") && b.includes("evaluaciones"))).toBe(true);
+    expect(result.blockers.some((b) => b.includes("m2") && b.includes("aprendizajes"))).toBe(true);
+
+    // Nada se generó: ni curso ni contenido.
+    const draft = await getDraft(adminA, draftId);
+    expect(draft?.generatedCourseId).toBeNull();
+    expect(draft?.status).toBe("in_progress");
+  });
+});
+
 describe("wizard-service — bloqueos de validateForGeneration (estado incoherente entre pasos)", () => {
   it("horas incoherentes (se edita 'datos' DESPUÉS de fijar 'estructura'): bloquea sin generar nada", async () => {
     const draftId = await seedSenceDraft(adminA, 2, 4); // 8h, estructura ya guardada en 8h
@@ -306,6 +478,22 @@ describe("wizard-service — flujo 'desde descriptor SENCE'", () => {
     const result = await createDraft(adminA, {
       source: "descriptor",
       file: { name: "grande.docx", type: DOCX_MIME, size: 11 * 1024 * 1024, bytes: new ArrayBuffer(0) },
+    });
+    expect(result).toEqual({ ok: false, error: "file_rejected" });
+  });
+
+  it("rechaza un .docx que declara un tamaño descomprimido enorme (guardia anti zip-bomb, 4-ojos HIGH/MED)", async () => {
+    // "A".repeat(60 MB) con DEFLATE comprime a apenas unos KB (pasa de sobra
+    // el límite de 10 MB COMPRIMIDOS), pero declara honestamente 60 MB
+    // descomprimidos en el directorio central del .zip — por encima del
+    // presupuesto de `MAX_DESCRIPTOR_UNCOMPRESSED_BYTES` (50 MB).
+    const buffer = await buildDescriptorZipBombFixture(60 * 1024 * 1024);
+    const bytes = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+    expect(bytes.byteLength).toBeLessThan(10 * 1024 * 1024); // pasa el chequeo de tamaño COMPRIMIDO
+
+    const result = await createDraft(adminA, {
+      source: "descriptor",
+      file: { name: "bomba.docx", type: DOCX_MIME, size: bytes.byteLength, bytes },
     });
     expect(result).toEqual({ ok: false, error: "file_rejected" });
   });

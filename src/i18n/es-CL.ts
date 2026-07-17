@@ -370,6 +370,12 @@ export const esCL = {
     sourceScratch: "Desde cero",
     sourceDescriptor: "Desde descriptor",
 
+    generatedTitle: "Cursos generados con el asistente",
+    viewCourse: "Ver curso →",
+    downloadDescriptor: "Descargar descriptor",
+    downloadingDescriptor: "Generando enlace…",
+    downloadDescriptorError: "No se pudo generar el enlace de descarga.",
+
     fromScratch: "Desde cero",
     templateLabel: "Plantilla de curso",
     templateNone: "Sin plantilla (en blanco)",
@@ -395,7 +401,10 @@ export const esCL = {
     extractWarningsTitle: "El descriptor no trajo señal clara para esto — revísalo a mano:",
     seedHint: "Sugerido por el descriptor (edítalo si hace falta):",
 
-    estructuraHint: 'Un módulo por línea, con el formato "título | horas". Ejemplo: Introducción | 4',
+    estructuraHint:
+      'Un módulo por línea. Nuevo: "título | horas" (ej: Introducción | 4). Los módulos que ya guardaste ' +
+      'traen su id al inicio ("id | título | horas") — consérvalo tal cual para no perder las lecciones, ' +
+      "aprendizajes y evaluaciones que ya les cargaste.",
     estructuraLabel: "Módulos",
     estructuraPlaceholder: "Módulo 1 | 4\nMódulo 2 | 4\nMódulo 3 | 4",
 
@@ -420,6 +429,13 @@ export const esCL = {
     revisionSummaryEstructura: "Estructura",
     revisionSummaryEvaluaciones: "Evaluaciones",
     revisionSummaryCompletitud: "Reglas de completitud",
+    evaluationsCountLabel: "evaluaciones",
+    surveyLabel: "encuesta",
+    surveyDisabled: "deshabilitada",
+    minAttendanceLabel: "min. asistencia",
+    allLessonsLabel: "todas las lecciones",
+    partialLessonsLabel: "lecciones parciales",
+    surveyRequiredLabel: "encuesta obligatoria",
     revisionBlockersTitle: "Bloqueos pendientes (corrígelos en el paso correspondiente):",
     revisionReadyNotice: "Todo listo para generar el curso.",
     generate: "Generar curso (en borrador)",

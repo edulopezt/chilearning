@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createDraft, discardDraft } from "@/modules/academico/wizard-service";
+import { createDraft, descriptorDownloadUrl, discardDraft } from "@/modules/academico/wizard-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 
 /** Server Actions del punto de entrada del asistente (task 5.10). */
@@ -54,4 +54,20 @@ export async function discardDraftAction(draftId: string): Promise<{ ok: boolean
   const result = await discardDraft(principal, draftId);
   revalidatePath("/admin/cursos/asistente");
   return { ok: result.ok };
+}
+
+/**
+ * Signed URL (1h) del descriptor archivado de un borrador — incluidos los ya
+ * GENERADOS (4-ojos MED: el CA "descargable después de generar" no se
+ * cumplía porque ninguna pantalla exponía este servicio ya existente). El
+ * propio `descriptorDownloadUrl` reautoriza contra el tenant del principal.
+ */
+export async function descriptorDownloadUrlAction(
+  draftId: string,
+): Promise<{ readonly ok: true; readonly url: string } | { readonly ok: false }> {
+  const principal = await getPrincipal();
+  if (!principal) return { ok: false };
+  const result = await descriptorDownloadUrl(principal, draftId);
+  if (!result.ok) return { ok: false };
+  return { ok: true, url: result.url };
 }

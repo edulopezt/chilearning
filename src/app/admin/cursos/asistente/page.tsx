@@ -5,6 +5,7 @@ import { esCL } from "@/i18n/es-CL";
 import { listDrafts } from "@/modules/academico/wizard-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { DescriptorDownloadButton } from "./descriptor-download-button";
 import { DiscardButton } from "./discard-button";
 import { NewDraftForms } from "./new-draft-forms";
 
@@ -36,7 +37,13 @@ export default async function CourseWizardIndexPage() {
     );
   }
 
-  const drafts = (await listDrafts(principal)).filter((d) => d.status === "in_progress");
+  const allDrafts = await listDrafts(principal);
+  const drafts = allDrafts.filter((d) => d.status === "in_progress");
+  // Borradores YA generados: el .docx del descriptor queda archivado y el
+  // curso sigue existiendo, pero `[draftId]/page.tsx` redirige lejos de ellos
+  // (ya no son editables) — sin esta sección, ni el curso ni el descriptor
+  // quedaban alcanzables desde ninguna pantalla (4-ojos MED, CA incumplido).
+  const generatedDrafts = allDrafts.filter((d) => d.status === "generated");
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
@@ -100,6 +107,26 @@ export default async function CourseWizardIndexPage() {
           </>
         )}
       </section>
+
+      {generatedDrafts.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">{t.generatedTitle}</h2>
+          <ul className="flex flex-col gap-2">
+            {generatedDrafts.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
+                <span className="font-medium">{SOURCE_LABEL[d.source] ?? d.source}</span>
+                <span className="text-muted-foreground text-xs">{new Date(d.updatedAt).toLocaleString("es-CL")}</span>
+                {d.generatedCourseId ? (
+                  <Link href={`/admin/cursos/${d.generatedCourseId}/lecciones`} className="underline">
+                    {t.viewCourse}
+                  </Link>
+                ) : null}
+                {d.source === "descriptor" ? <DescriptorDownloadButton draftId={d.id} /> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <NewDraftForms />
 
