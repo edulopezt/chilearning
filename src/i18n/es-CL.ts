@@ -560,6 +560,10 @@ export const esCL = {
     colCertificate: "Certificado",
     noGrade: "Sin nota publicada",
     noCertificate: "Sin certificado",
+    // Un certificado REVOCADO conserva su folio: sin este rótulo, RRHH ve el folio
+    // y lo da por vigente. Mismo criterio que /admin, /mi-curso y /verificar.
+    certIssued: "Vigente",
+    certRevoked: "Revocado",
     becario: "Becario (sin registro SENCE)",
     runNote: "El RUN se muestra enmascarado por protección de datos personales.",
     days: "días",

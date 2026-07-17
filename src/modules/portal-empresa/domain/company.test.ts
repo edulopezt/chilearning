@@ -8,6 +8,7 @@ import {
   isValidRut,
   normalizeRut,
   sanitizeXlsxCell,
+  type CompanyCertLabels,
   type CompanyPanelInputs,
 } from "@/modules/portal-empresa/domain/company";
 
@@ -178,6 +179,18 @@ describe("companyPanelRows", () => {
     expect(byId.get(E2)!.certificateFolio).toBeNull();
   });
 
+  it("certificado REVOCADO sin reemitir: el estado viaja en la fila, no se pierde", () => {
+    // El caso que el test de arriba NO cubre: revocar es un UPDATE y el folio
+    // SOBREVIVE. Si la fila no llevara el estado, RRHH vería un folio idéntico al
+    // de un certificado vigente y lo daría por bueno.
+    const rows = companyPanelRows(
+      inputs({ certificates: [{ enrollmentId: E1, folio: "CERT-2026-000001", status: "revoked" }] }),
+    );
+    const row = rows.find((r) => r.enrollmentId === E1)!;
+    expect(row.certificateFolio).toBe("CERT-2026-000001");
+    expect(row.certificateStatus).toBe("revoked");
+  });
+
   it("el exento se marca como tal (no registra asistencia SENCE, I-14)", () => {
     const rows = companyPanelRows(
       inputs({
@@ -206,6 +219,9 @@ describe("companyPanelRows", () => {
 });
 
 describe("companyExportRowValues", () => {
+  /** Los rótulos reales de `esCL.companyPortal` (el llamador los inyecta). */
+  const LABELS: CompanyCertLabels = { issued: "Vigente", revoked: "Revocado" };
+
   it("serializa la fila con el RUN enmascarado y la nota con 1 decimal", () => {
     const rows = companyPanelRows(
       inputs({
@@ -217,15 +233,29 @@ describe("companyExportRowValues", () => {
         certificates: [{ enrollmentId: E1, folio: "CERT-2026-000001", status: "issued" }],
       }),
     );
-    expect(companyExportRowValues(rows[0]!)).toEqual([
+    expect(companyExportRowValues(rows[0]!, LABELS)).toEqual([
       "Pérez Soto, María José",
       "51.XXX.XXX-X",
       "50",
       "0",
       "7.0",
       "CERT-2026-000001",
-      "issued",
+      "Vigente",
     ]);
+  });
+
+  it("el estado sale en es-CL, no como el enum crudo de la BD", () => {
+    // El Excel lo abre RRHH y sus encabezados están en español: una celda que diga
+    // "revoked" bajo "ESTADO CERTIFICADO" no informa a nadie.
+    const rows = companyPanelRows(
+      inputs({
+        enrollments: [{ enrollmentId: E1, firstNames: "Ana", lastNames: "Bravo", run: "5126663-3", exento: false }],
+        certificates: [{ enrollmentId: E1, folio: "CERT-2026-000001", status: "revoked" }],
+      }),
+    );
+    const values = companyExportRowValues(rows[0]!, LABELS);
+    expect(values[6]).toBe("Revocado");
+    expect(values).not.toContain("revoked");
   });
 
   it("sin nota ni certificado deja celdas vacías (nunca 'null')", () => {
@@ -234,7 +264,7 @@ describe("companyExportRowValues", () => {
         enrollments: [{ enrollmentId: E1, firstNames: "Ana", lastNames: "Bravo", run: "5126663-3", exento: false }],
       }),
     );
-    const values = companyExportRowValues(rows[0]!);
+    const values = companyExportRowValues(rows[0]!, LABELS);
     expect(values[4]).toBe("");
     expect(values[5]).toBe("");
     expect(values[6]).toBe("");

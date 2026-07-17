@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { santiagoDate } from "@/modules/reportes/domain/cumplimiento";
+
 /**
  * Datos AGREGADOS del resumen semanal de la empresa cliente (HU-8.2).
  *
@@ -28,7 +30,11 @@ export interface CompanyWeeklySummaryData {
   readonly actions: number;
   /** Lecciones completadas DURANTE el período (avance de la semana). */
   readonly lessonsCompletedInPeriod: number;
-  /** Pares (trabajador, día) con asistencia SENCE cerrada en el período. */
+  /**
+   * Pares (trabajador, día de Santiago) con asistencia SENCE cerrada en el
+   * período. El día se atribuye por `opened_at`, igual que el panel y el reporte
+   * oficial de cumplimiento.
+   */
   readonly attendanceDaysInPeriod: number;
   /** Notas publicadas en el período. */
   readonly gradesPublishedInPeriod: number;
@@ -130,16 +136,20 @@ export async function collectWeeklySummaryData(
         .order("id", { ascending: true })
         .range(offset, offset + PAGE - 1),
     ),
-    fetchChunked<{ enrollment_id: string; closed_at: string | null }>(ids, (chunk, offset) =>
-      db
-        .from("sence_sessions")
-        .select("enrollment_id, closed_at, id")
-        .eq("tenant_id", tenantId)
-        .eq("status", "cerrada")
-        .gte("closed_at", sinceIso)
-        .in("enrollment_id", chunk)
-        .order("id", { ascending: true })
-        .range(offset, offset + PAGE - 1),
+    // El PERÍODO se filtra por `closed_at` (la sesión CERRÓ esta semana), pero el
+    // DÍA se atribuye por `opened_at ?? created_at`: ver la nota del cómputo.
+    fetchChunked<{ enrollment_id: string; opened_at: string | null; created_at: string }>(
+      ids,
+      (chunk, offset) =>
+        db
+          .from("sence_sessions")
+          .select("enrollment_id, opened_at, created_at, id")
+          .eq("tenant_id", tenantId)
+          .eq("status", "cerrada")
+          .gte("closed_at", sinceIso)
+          .in("enrollment_id", chunk)
+          .order("id", { ascending: true })
+          .range(offset, offset + PAGE - 1),
     ),
     fetchChunked<{ id: string }>(ids, (chunk, offset) =>
       db
@@ -164,12 +174,23 @@ export async function collectWeeklySummaryData(
     ),
   ]);
 
-  // Un trabajador con dos sesiones el mismo día es UN día con asistencia
-  // (misma regla que el panel: `companyPanelRows`).
+  // Un trabajador con dos sesiones el mismo día es UN día con asistencia — y "día"
+  // significa EXACTAMENTE lo mismo que en el resto de la app, no algo parecido:
+  //  · Zona: `santiagoDate` (America/Santiago). `closed_at`/`opened_at` son
+  //    `timestamptz` y PostgREST los serializa en UTC; cortar el ISO con
+  //    `.slice(0, 10)` daba la fecha UTC, y Chile es UTC-4/-3 → toda sesión de las
+  //    20:00 en adelante caía al día siguiente. Un adulto que estudia de noche es
+  //    justo el público de esto.
+  //  · Ancla: `opened_at ?? created_at`, igual que `companyPanelRows`
+  //    (company-portal-service) y que el cálculo OFICIAL de cumplimiento SENCE
+  //    (`buildAttendanceMatrix`, reportes/domain/cumplimiento). Anclar en
+  //    `closed_at` partía en dos una sesión abierta el día N y cerrada el N+1.
+  // Si divergen, el correo semanal contradice al panel que la MISMA RRHH mira, y a
+  // la asistencia que el coordinador reporta a SENCE.
   const attendanceDays = new Set(
-    sessions
-      .filter((s) => s.closed_at !== null)
-      .map((s) => `${s.enrollment_id}|${(s.closed_at as string).slice(0, 10)}`),
+    sessions.map(
+      (s) => `${s.enrollment_id}|${santiagoDate(Date.parse(s.opened_at ?? s.created_at))}`,
+    ),
   );
 
   return {

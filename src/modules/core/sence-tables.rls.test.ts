@@ -68,10 +68,10 @@ function serviceClient(): SupabaseClient {
 const DEMO_COURSE = "c0000000-0000-4000-8000-000000000001";
 const STUDENT_A = "aaaaaaaa-0000-4000-8000-000000000005";
 // `sub` DEBE ser un uuid real: GoTrue jamás emite otra cosa, y `auth.uid()` castea
-// el claim a uuid. Un sub de fantasía ("u") revienta con 22P02 en cuanto la policy
-// de la tabla dereferencia auth.uid() — que es justo lo que pasó al escopar el rol
-// `company` en sence_sessions (task 5.2). Los usuarios semilla mantienen los tests
-// realistas y a salvo de ese falso rojo; las aserciones no cambian.
+// el claim a uuid. Un sub de fantasía ("u") revienta con 22P02 en cuanto CUALQUIER
+// policy de la tabla dereferencia auth.uid() — un falso rojo que aparece al tocar
+// las policies y no dice nada del aislamiento. Los usuarios semilla mantienen los
+// tests realistas y a salvo de eso; las aserciones no cambian.
 const ADMIN_A = "aaaaaaaa-0000-4000-8000-000000000001";
 const ADMIN_B = "bbbbbbbb-0000-4000-8000-000000000001";
 

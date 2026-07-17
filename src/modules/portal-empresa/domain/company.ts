@@ -208,8 +208,24 @@ export const COMPANY_EXPORT_HEADERS = [
   "ESTADO CERTIFICADO",
 ] as const;
 
+/**
+ * Rótulos del estado del certificado. Los inyecta el llamador (mismo patrón que
+ * `CsvLabels` en `evaluacion/domain/gradebook`): el dominio no habla es-CL, y sin
+ * esto el Excel salía con encabezados en español y celdas que decían "issued".
+ */
+export interface CompanyCertLabels {
+  readonly issued: string;
+  readonly revoked: string;
+}
+
+function certStatusLabel(status: string | null, labels: CompanyCertLabels): string {
+  if (status === "issued") return labels.issued;
+  if (status === "revoked") return labels.revoked;
+  return "";
+}
+
 /** Valores de una fila del export, en el orden de `COMPANY_EXPORT_HEADERS`. */
-export function companyExportRowValues(row: CompanyPanelRow): string[] {
+export function companyExportRowValues(row: CompanyPanelRow, labels: CompanyCertLabels): string[] {
   return [
     row.nombre,
     row.runMasked,
@@ -217,6 +233,6 @@ export function companyExportRowValues(row: CompanyPanelRow): string[] {
     String(row.attendanceDays),
     row.grade === null ? "" : row.grade.toFixed(1),
     row.certificateFolio ?? "",
-    row.certificateStatus ?? "",
+    certStatusLabel(row.certificateStatus, labels),
   ];
 }

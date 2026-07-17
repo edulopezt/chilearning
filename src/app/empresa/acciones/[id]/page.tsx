@@ -14,8 +14,31 @@ function gradeLabel(row: CompanyPanelRow): string {
   return row.grade === null ? "—" : row.grade.toFixed(1);
 }
 
-function certLabel(row: CompanyPanelRow): string {
-  return row.certificateFolio ?? "—";
+/**
+ * Folio + ESTADO. Nunca el folio a secas: un certificado revocado conserva su
+ * folio (revocar es un UPDATE de `status`), así que pintar solo el folio le dice
+ * a RRHH que su trabajador está certificado cuando el documento ya no vale.
+ * Mismo badge que /admin/acciones/[id]/certificados.
+ */
+function CertCell({ row }: { row: CompanyPanelRow }) {
+  if (!row.certificateFolio) {
+    return <span className="text-muted-foreground">{t.noCertificate}</span>;
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span className="break-all">{row.certificateFolio}</span>
+      {row.certificateStatus === "issued" && (
+        <span className="rounded bg-green-100 px-2 py-0.5 font-sans text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+          {t.certIssued}
+        </span>
+      )}
+      {row.certificateStatus === "revoked" && (
+        <span className="rounded bg-red-100 px-2 py-0.5 font-sans text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-200">
+          {t.certRevoked}
+        </span>
+      )}
+    </span>
+  );
 }
 
 /**
@@ -90,7 +113,9 @@ export default async function CompanyActionPage({ params }: { params: Promise<{ 
                     <td className="py-2 pr-3">{row.progressPct}%</td>
                     <td className="py-2 pr-3">{row.exento ? t.becario : row.attendanceDays}</td>
                     <td className="py-2 pr-3">{gradeLabel(row)}</td>
-                    <td className="py-2 font-mono text-xs">{certLabel(row)}</td>
+                    <td className="py-2 font-mono text-xs">
+                      <CertCell row={row} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -113,8 +138,8 @@ export default async function CompanyActionPage({ params }: { params: Promise<{ 
                   <dt className="text-muted-foreground text-xs">{t.colGrade}</dt>
                   <dd className="text-xs">{row.grade === null ? t.noGrade : gradeLabel(row)}</dd>
                   <dt className="text-muted-foreground text-xs">{t.colCertificate}</dt>
-                  <dd className="font-mono text-xs break-all">
-                    {row.certificateFolio ?? t.noCertificate}
+                  <dd className="font-mono text-xs">
+                    <CertCell row={row} />
                   </dd>
                 </dl>
               </li>

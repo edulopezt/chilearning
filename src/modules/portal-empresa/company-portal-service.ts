@@ -9,15 +9,21 @@ import {
   companyPanelRows,
   COMPANY_EXPORT_HEADERS,
   sanitizeXlsxCell,
+  type CompanyCertLabels,
   type CompanyPanelRow,
 } from "@/modules/portal-empresa/domain/company";
 import { buildXlsx } from "@/modules/reportes/xlsx";
 
 /**
  * Portal de la EMPRESA CLIENTE GATED (task 5.2, HU-8.1) — ESPEJO de
- * `supervisor-portal-service`. Única puerta de RRHH a los datos de SUS
- * trabajadores: como el service-role SALTA RLS, aquí se re-verifica en código la
- * membresía ACTIVA y se acota TODA consulta a `company_id = mi empresa`, y CADA
+ * `supervisor-portal-service`. ÚNICA puerta de RRHH a los datos de SUS
+ * trabajadores, y esto es literal: la migración 20260717030000 dejó al rol
+ * `company` SIN rama en `enrollments_select` / `sence_sessions_select_staff`
+ * (ni en `grades_select` / `certificates_select`), así que por PostgREST ve 0
+ * filas. Todo dato de trabajador pasa por aquí o no pasa.
+ *
+ * Como el service-role SALTA RLS, aquí se re-verifica en código la membresía
+ * ACTIVA y se acota TODA consulta a `company_id = mi empresa`, y CADA
  * consulta/descarga queda en `audit_log` (RLS no escribe en SELECT).
  *
  * Las páginas /empresa/* usan SOLO este servicio — nunca `cumplimiento-service`
@@ -266,10 +272,12 @@ async function buildPanel(
         .order("id", { ascending: true })
         .range(offset, offset + PAGE - 1),
     ),
-    fetchChunked<{ enrollment_id: string }>(enrollmentIds, (chunk, offset) =>
+    // Trae `lesson_id` porque el numerador se filtra DESPUÉS contra las lecciones
+    // publicadas: el progreso de una lección despublicada sobrevive en la tabla.
+    fetchChunked<{ enrollment_id: string; lesson_id: string }>(enrollmentIds, (chunk, offset) =>
       guard.db
         .from("lesson_progress")
-        .select("enrollment_id, id")
+        .select("enrollment_id, lesson_id, id")
         .eq("tenant_id", tenantId)
         .eq("completed", true)
         .in("enrollment_id", chunk)
@@ -292,10 +300,14 @@ async function buildPanel(
         .from("certificates")
         // Sin `snapshot`: ese jsonb lleva el RUN COMPLETO (precedente D-030) y
         // aquí solo se necesitan folio y estado.
-        .select("enrollment_id, folio, status, issued_at")
+        .select("enrollment_id, folio, status, issued_at, id")
         .eq("tenant_id", tenantId)
         .in("enrollment_id", chunk)
+        // `issued_at` no es único y el dominio hace "el primero gana": sin el
+        // desempate por `id` el orden no es total, y Postgres no lo garantiza
+        // estable entre las páginas de `.range()` ni entre ejecuciones.
         .order("issued_at", { ascending: false })
+        .order("id", { ascending: true })
         .range(offset, offset + PAGE - 1),
     ),
     // Libro OFICIAL de la acción (misma nota que ve el coordinador). Trae todas
@@ -310,6 +322,12 @@ async function buildPanel(
     if (row.finalGrade !== null) grades.set(row.enrollmentId, row.finalGrade);
   }
 
+  // Numerador y denominador sobre el MISMO conjunto: si el OTEC despublica una
+  // lección, el `lesson_progress` de quien ya la completó sigue ahí, y contarlo
+  // contra un denominador que ya la excluye daba 100 % a quien no completó ninguna
+  // lección vigente.
+  const publishedLessons = new Set(lessons.map((l) => l.id));
+
   const rows = companyPanelRows({
     enrollments: enrollments.map((e) => ({
       enrollmentId: e.id,
@@ -319,7 +337,9 @@ async function buildPanel(
       exento: e.exento,
     })),
     totalLessons: lessons.length,
-    completedLessons: progress.map((p) => ({ enrollmentId: p.enrollment_id })),
+    completedLessons: progress
+      .filter((p) => publishedLessons.has(p.lesson_id))
+      .map((p) => ({ enrollmentId: p.enrollment_id })),
     sessions: sessions.map((s) => ({
       enrollmentId: s.enrollment_id,
       status: s.status,
@@ -368,7 +388,11 @@ export async function getCompanyActionPanel(
 }
 
 /** Export XLSX de las MISMAS filas. Audita `company.report_downloaded`. */
-export async function getCompanyExport(principal: Principal, actionId: string): Promise<CompanyExport | null> {
+export async function getCompanyExport(
+  principal: Principal,
+  actionId: string,
+  labels: CompanyCertLabels,
+): Promise<CompanyExport | null> {
   if (!gate(principal)) return null;
   const guard = tenantGuard(principal.tenantId!);
   const mine = await activeCompany(guard, principal.userId);
@@ -380,7 +404,7 @@ export async function getCompanyExport(principal: Principal, actionId: string): 
   // TODA celda de texto pasa por el saneado anti-fórmula (D-021): los nombres
   // vienen del roster importado, o sea de entrada de terceros.
   const headers = COMPANY_EXPORT_HEADERS.map(sanitizeXlsxCell);
-  const values = panel.rows.map((r) => companyExportRowValues(r).map(sanitizeXlsxCell));
+  const values = panel.rows.map((r) => companyExportRowValues(r, labels).map(sanitizeXlsxCell));
   const buffer = await buildXlsx("Avance", headers, values);
 
   await writeAudit(guard, {

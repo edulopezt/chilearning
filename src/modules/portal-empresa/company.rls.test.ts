@@ -5,9 +5,18 @@
  * Prueba a nivel BD la CA literal de la HU: "jamás ve alumnos de otras empresas".
  * Antes de esta task el rol `company` tenía permiso PLANO en `enrollments_select` y
  * `sence_sessions_select_staff`: leía a TODOS los inscritos del tenant (con RUN) y
- * toda la asistencia SENCE del OTEC. El caso ESTRELLA de aquí es el cruce DENTRO
- * del mismo tenant (Los Aromos vs Vulcano): el aislamiento por tenant ya existía y
- * NO cubría este hueco.
+ * toda la asistencia SENCE del OTEC.
+ *
+ * ⚠ RULING DEL 4-OJOS (lo que fija esta suite): la rama `company` no se escopó, se
+ * ELIMINÓ. Escoparla dejaba el RUN de SUS trabajadores alcanzable por PostgREST
+ * (`select=nombre,run` con la anon key), saltándose el enmascarado y la auditoría
+ * del portal — o sea, el enmascarado era cosmético. `company` comparte el rol de
+ * Postgres `authenticated` con el alumno y el staff, así que un `revoke select
+ * (run)` no era opción. Por eso lo que se afirma aquí es más fuerte que "solo ve lo
+ * suyo": `company` ve CERO filas de todo lo que lleva dato personal, y llega a sus
+ * trabajadores SOLO por `company-portal-service` (ver company-portal.integration).
+ * El cruce dentro del tenant (Los Aromos vs Vulcano) queda imposible por
+ * construcción, no por filtro.
  *
  * Requiere `supabase start` + `supabase db reset`.
  *
@@ -154,44 +163,62 @@ afterAll(async () => {
   }
 });
 
-describe("H4-R-008 — el rol `company` queda escopado a SU empresa", () => {
-  it("★ CRUCE DENTRO DEL TENANT: solo ve a su trabajadora; ni la de otra empresa ni al particular", async () => {
+describe("H4-R-008 — el rol `company` no lee dato de trabajador por tabla", () => {
+  it("★ NI SU PROPIA TRABAJADORA: 0 filas de enrollments, y el RUN es inalcanzable", async () => {
+    // USER_COMPANY_A tiene membresía VIGENTE en Los Aromos y su trabajadora María
+    // José existe en esta acción: el 0 es por RLS, no por vacío. Que también exista
+    // Carolina (Vulcano) y Rodrigo (particular) hace verificable la CA de HU-8.1.
     const db = await companyClient(USER_COMPANY_A);
-    const { data, error } = await db.from("enrollments").select("id, company_id").eq("action_id", DEMO_ACTION);
+    const { data, error } = await db.from("enrollments").select("id, run, company_id").eq("action_id", DEMO_ACTION);
     expect(error).toBeNull();
+    expect(data ?? [], "company no lee enrollments por tabla, ni las de su empresa").toEqual([]);
+  });
 
-    // La aserción dura: la lista COMPLETA es exactamente su inscripción.
-    expect((data ?? []).map((r) => r.id)).toEqual([ENR_AROMOS]);
-    // Y explícitamente lo que ANTES filtraba (regresión de H4-R-008):
-    const ids = new Set((data ?? []).map((r) => r.id));
-    expect(ids.has(ENR_VULCANO), "fuga cross-company: ve a la trabajadora de Vulcano").toBe(false);
-    expect(ids.has(ENR_PARTICULAR), "fuga: ve al alumno particular, que no es de ninguna empresa").toBe(false);
-    expect((data ?? []).every((r) => r.company_id === CO_LOS_AROMOS)).toBe(true);
+  it("★ el RUN de su PROPIA trabajadora no sale por PostgREST (el enmascarado no es cosmético)", async () => {
+    // El defecto que cerró el 4-ojos: con la rama `company` escopada, ESTA consulta
+    // devolvía `5126663-3` en claro, saltándose `maskRun` y la auditoría del portal.
+    // El grant de `enrollments` a `authenticated` es de tabla completa, así que la
+    // ÚNICA defensa posible es que la fila no pase el USING.
+    const db = await companyClient(USER_COMPANY_A);
+    const enr = await db.from("enrollments").select("run").eq("id", ENR_AROMOS);
+    expect(enr.error).toBeNull();
+    expect(enr.data ?? [], "fuga: el RUN completo de su trabajadora por lectura directa").toEqual([]);
+
+    // Mismo caso en la sesión SENCE: 20260716120000 oculta `callback_nonce` por
+    // grant de columna, pero `run_alumno` sí está concedido a `authenticated`.
+    const sess = await db.from("sence_sessions").select("run_alumno").eq("id", SESS_AROMOS);
+    expect(sess.error).toBeNull();
+    expect(sess.data ?? [], "fuga: el RUN por la sesión SENCE de su trabajadora").toEqual([]);
   });
 
   it("no alcanza al alumno de otra empresa ni pidiéndolo por id (sin fuga por filtro)", async () => {
     const db = await companyClient(USER_COMPANY_A);
-    for (const [label, id] of [["Vulcano", ENR_VULCANO], ["particular", ENR_PARTICULAR]] as const) {
+    for (const [label, id] of [
+      ["Vulcano", ENR_VULCANO],
+      ["particular", ENR_PARTICULAR],
+      ["su propia trabajadora", ENR_AROMOS],
+    ] as const) {
       const { data, error } = await db.from("enrollments").select("id, run").eq("id", id);
       expect(error).toBeNull();
       expect(data ?? [], `apuntar directo al id de ${label} no debe devolver la fila`).toEqual([]);
     }
   });
 
-  it("miembro REVOCADO ⇒ 0 filas (la revocación corta el acceso al instante)", async () => {
+  it("miembro REVOCADO ⇒ pierde hasta la razón social de su ex-empresa", async () => {
+    // En enrollments ya no ve nada por definición; lo que la revocación corta a
+    // nivel de RLS es `company_member_company_id()` → NULL → 0 empresas. (Que la
+    // revocación además corte el PORTAL lo fija company-portal.integration.)
     const db = await companyClient(USER_REVOKED);
-    const { data, error } = await db.from("enrollments").select("id");
-    expect(error).toBeNull();
-    expect(data ?? []).toEqual([]);
+    expect((await db.from("enrollments").select("id")).data ?? []).toEqual([]);
+    expect((await db.from("companies").select("id")).data ?? []).toEqual([]);
   });
 
   it("rol `company` SIN vinculación a empresa ⇒ 0 filas (entra cerrado, sin backfill)", async () => {
     // El usuario `company` semilla del tenant B no tiene company_members: es el
     // estado exacto de todo usuario `company` recién migrado (deny-by-default).
     const db = await companyClient("bbbbbbbb-0000-4000-8000-000000000006", TENANT_B);
-    const { data, error } = await db.from("enrollments").select("id");
-    expect(error).toBeNull();
-    expect(data ?? []).toEqual([]);
+    expect((await db.from("enrollments").select("id")).data ?? []).toEqual([]);
+    expect((await db.from("companies").select("id")).data ?? []).toEqual([]);
   });
 });
 
@@ -206,11 +233,14 @@ describe("aislamiento entre tenants (el escopado nuevo no debilita RNF-1)", () =
     expect((await b.from("companies").select("id").eq("tenant_id", TENANT_A)).data ?? []).toEqual([]);
   });
 
-  it("company@B sí ve LO SUYO (el aislamiento no es una negación global)", async () => {
+  it("company@B sí ve LO SUYO donde le corresponde (el aislamiento no es una negación global)", async () => {
+    // `companies` es la tabla que el rol SÍ lee: no lleva dato personal del
+    // trabajador (razón social + RUT de la empresa). Sin esta aserción, todo el
+    // resto de la suite pasaría con un `using (false)` global.
     const b = await companyClient(USER_COMPANY_B, TENANT_B);
-    const { data, error } = await b.from("enrollments").select("id");
+    const { data, error } = await b.from("companies").select("id");
     expect(error).toBeNull();
-    expect((data ?? []).map((r) => r.id)).toEqual([ENR_B]);
+    expect((data ?? []).map((r) => r.id)).toEqual([CO_B1]);
   });
 
   it("un miembro de empresa NO hereda acceso en otro tenant (claim cruzado)", async () => {
@@ -221,45 +251,41 @@ describe("aislamiento entre tenants (el escopado nuevo no debilita RNF-1)", () =
   });
 });
 
-describe("sence_sessions — la asistencia SENCE también queda escopada", () => {
-  it("solo ve las sesiones de las inscripciones de SU empresa", async () => {
+describe("sence_sessions — la asistencia SENCE tampoco se lee por tabla", () => {
+  it("no ve sesión alguna: ni la suya (SESS_AROMOS) ni la ajena (SESS_VULCANO)", async () => {
     const db = await companyClient(USER_COMPANY_A);
     const { data, error } = await db.from("sence_sessions").select("id, enrollment_id");
     expect(error).toBeNull();
-    expect((data ?? []).map((r) => r.id)).toEqual([SESS_AROMOS]);
-    expect((data ?? []).some((r) => r.id === SESS_VULCANO), "fuga: asistencia SENCE de otra empresa").toBe(false);
-    expect((data ?? []).every((r) => r.enrollment_id === ENR_AROMOS)).toBe(true);
+    expect(data ?? [], "company no lee sence_sessions por tabla").toEqual([]);
   });
 
   it("no alcanza la sesión de otra empresa ni por id, ni el RUN que lleva dentro", async () => {
     const db = await companyClient(USER_COMPANY_A);
-    const { data, error } = await db.from("sence_sessions").select("id, run_alumno").eq("id", SESS_VULCANO);
-    expect(error).toBeNull();
-    expect(data ?? []).toEqual([]);
-  });
-
-  it("miembro revocado no ve sesión alguna", async () => {
-    const db = await companyClient(USER_REVOKED);
-    expect((await db.from("sence_sessions").select("id")).data ?? []).toEqual([]);
+    for (const id of [SESS_VULCANO, SESS_AROMOS]) {
+      const { data, error } = await db.from("sence_sessions").select("id, run_alumno").eq("id", id);
+      expect(error).toBeNull();
+      expect(data ?? []).toEqual([]);
+    }
   });
 });
 
-describe("notas y certificados NO se leen por tabla (llegan curados por el servicio)", () => {
-  it("company no lee `grades` — ni siquiera la nota de SU PROPIA trabajadora", async () => {
-    // El seed tiene una nota PUBLICADA de María José (Los Aromos). Aun así: 0.
-    // `grades_select` no tiene rama company a propósito; la nota va curada por el
-    // servicio del portal (parte 2).
+describe("la REGLA es una sola: todo lo que lleva RUN llega curado por el servicio", () => {
+  // Las 4 tablas con dato personal, en un solo lugar, para que la próxima persona
+  // que agregue una rama `company` vea el patrón completo y no una excepción suelta.
+  it("company no lee enrollments / sence_sessions / grades / certificates — ni lo de SU trabajadora", async () => {
     const db = await companyClient(USER_COMPANY_A);
-    const { data, error } = await db.from("grades").select("id").eq("enrollment_id", ENR_AROMOS);
-    expect(error).toBeNull();
-    expect(data ?? []).toEqual([]);
-  });
-
-  it("company no lee `certificates` (el snapshot lleva el RUN completo — D-030)", async () => {
-    const db = await companyClient(USER_COMPANY_A);
-    const { data, error } = await db.from("certificates").select("id");
-    expect(error).toBeNull();
-    expect(data ?? []).toEqual([]);
+    for (const [table, column] of [
+      ["enrollments", "run"],
+      ["sence_sessions", "run_alumno"],
+      // El seed tiene una nota PUBLICADA de María José (Los Aromos). Aun así: 0.
+      ["grades", "id"],
+      // El snapshot del certificado lleva el RUN completo (precedente D-030).
+      ["certificates", "id"],
+    ] as const) {
+      const { data, error } = await db.from(table).select(column);
+      expect(error, `${table} no debería dar error de RLS`).toBeNull();
+      expect(data ?? [], `fuga: company lee ${table}.${column} por tabla`).toEqual([]);
+    }
   });
 });
 
@@ -307,8 +333,8 @@ describe("companies / company_members — visibilidad y solo-lectura", () => {
     expect(updEnr.error !== null || (updEnr.data ?? []).length === 0).toBe(true);
 
     // Y la fuga NO ocurrió por ninguna de las vías anteriores.
-    const after = await db.from("enrollments").select("id").eq("action_id", DEMO_ACTION);
-    expect((after.data ?? []).map((r) => r.id)).toEqual([ENR_AROMOS]);
+    const after = await db.from("enrollments").select("id, run").eq("action_id", DEMO_ACTION);
+    expect(after.data ?? []).toEqual([]);
   });
 });
 
@@ -325,17 +351,29 @@ describe("REGRESIÓN: el escopado de company no tocó al resto de la matriz", ()
   });
 
   it("el staff del OTEC sigue viendo a TODOS los inscritos (la empresa no lo acota)", async () => {
+    // Anclado a los 3 ids del seed, NO a un conteo total: `enrollment-service`
+    // importa alumnos DENTRO de la acción demo, así que un `.length === 3` se cae
+    // en la segunda corrida sin `db reset` según el orden de los archivos.
+    const seeded = [ENR_AROMOS, ENR_PARTICULAR, ENR_VULCANO];
     for (const role of ["otec_admin", "coordinator", "instructor", "tutor"]) {
       const db = client(await jwt(USER_STUDENT_A, [role], TENANT_A));
-      const { data, error } = await db.from("enrollments").select("id").eq("action_id", DEMO_ACTION);
+      const { data, error } = await db.from("enrollments").select("id").eq("action_id", DEMO_ACTION).in("id", seeded);
       expect(error, `${role} no debería recibir error`).toBeNull();
-      expect((data ?? []).length, `${role} debe seguir viendo los 3 inscritos`).toBe(3);
+      expect(
+        new Set((data ?? []).map((r) => r.id)),
+        `${role} debe seguir viendo a los 3 inscritos del seed`,
+      ).toEqual(new Set(seeded));
     }
   });
 
-  it("el alumno sigue viendo SU inscripción (la rama user_id no se tocó)", async () => {
+  it("el alumno sigue viendo SU inscripción, y solo la suya (la rama user_id no se tocó)", async () => {
+    // Igual que arriba: `instructor-board.integration` hace upsert de OTRA
+    // inscripción para este mismo usuario, así que se afirma pertenencia, no lista.
     const db = client(await jwt(USER_STUDENT_A, ["student"], TENANT_A));
-    const { data, error } = await db.from("enrollments").select("id");
+    const { data, error } = await db
+      .from("enrollments")
+      .select("id")
+      .in("id", [ENR_AROMOS, ENR_PARTICULAR, ENR_VULCANO]);
     expect(error).toBeNull();
     expect((data ?? []).map((r) => r.id)).toEqual([ENR_AROMOS]);
   });

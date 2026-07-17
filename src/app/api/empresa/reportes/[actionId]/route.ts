@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { esCL } from "@/i18n/es-CL";
 import { enforce } from "@/lib/rate-limit";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getCompanyExport } from "@/modules/portal-empresa/company-portal-service";
+import type { CompanyCertLabels } from "@/modules/portal-empresa/domain/company";
 
 const paramsSchema = z.object({ actionId: z.string().uuid() });
 
@@ -32,7 +34,14 @@ export async function GET(
   ]);
   if (limited) return limited;
 
-  const result = await getCompanyExport(principal, parsed.data.actionId);
+  // El Excel lo abre RRHH: el estado del certificado va en es-CL, no como el enum
+  // crudo de la BD ("issued"/"revoked") bajo un encabezado en español.
+  const labels: CompanyCertLabels = {
+    issued: esCL.companyPortal.certIssued,
+    revoked: esCL.companyPortal.certRevoked,
+  };
+
+  const result = await getCompanyExport(principal, parsed.data.actionId, labels);
   if (!result) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   return new Response(new Uint8Array(result.buffer), {

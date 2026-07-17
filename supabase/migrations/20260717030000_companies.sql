@@ -1,6 +1,7 @@
 -- =============================================================================
 -- Task 5.2 (Hito 5, HU-8.1): Portal de la EMPRESA CLIENTE — modelo `companies`
--- + `company_members` y ESCOPADO del rol `company` a SUS trabajadores.
+-- + `company_members`, y CIERRE del acceso directo del rol `company` a las tablas
+-- con dato personal (llega a sus trabajadores solo por el servicio del portal).
 --
 -- ⚠ MIGRACIÓN SENSIBLE (4-ojos) — cierra el follow-up de seguridad H4-R-008.
 --
@@ -12,19 +13,44 @@
 -- un usuario con rol `company` leía TODAS las inscripciones y TODAS las sesiones
 -- SENCE de su tenant, es decir, las de TODAS las empresas clientes del OTEC —
 -- incluido el RUN de cada trabajador ajeno. La CA de HU-8.1 exige literalmente lo
--- contrario: "jamás ve alumnos de otras empresas". El agujero existía porque NO
--- había modelo company↔trabajadores contra el cual filtrar: esta migración lo crea
--- y lo aplica en la MISMA transacción que lo necesita.
+-- contrario: "jamás ve alumnos de otras empresas".
 --
--- El cambio de las 2 policies solo RESTRINGE (nunca amplía): la rama `company` pasa
--- de `true` a `true AND <la fila es de MI empresa>`. Ninguna otra rama se toca — el
--- texto de las demás (alumno/staff/supervisor) se copia LITERAL de la migración
--- 3.11 para no reabrir el escopado del fiscalizador.
+-- EL RULING (4-ojos): la rama `company` se ELIMINA, no se escopa
+-- ----------------------------------------------------------------
+-- La primera versión de esta migración acotaba la rama a "las filas de MI empresa".
+-- Sonaba a defensa en profundidad; era lo contrario. Razón, en dos pasos:
 --
--- NO se agrega rama `company` a `grades_select` ni a `certificates_select`: el
--- snapshot del certificado lleva el RUN completo (precedente D-030). Notas y
--- certificados llegan a la empresa CURADOS por el servicio del portal (parte 2),
--- nunca por lectura directa de tabla.
+--  1. La rama NO defiende el camino real. El portal lee por SERVICE-ROLE (a través
+--     de `tenantGuard`), y el service-role BYPASSA RLS: si un día una consulta del
+--     servicio olvidara `.eq("company_id", …)`, esta policy no la detendría. O sea:
+--     sobre el único camino de la app, la rama aporta CERO.
+--  2. La rama SÍ abre el camino que nadie usa, y ahí sí filtra. `company`,
+--     `student` e `instructor` comparten el MISMO rol de Postgres (`authenticated`),
+--     y el grant vivo de `enrollments` es de TABLA COMPLETA — incluida `run` — igual
+--     que el de columnas de `sence_sessions` incluye `run_alumno` (20260716120000).
+--     Con la anon key y su access token en el browser, RRHH podía hacer
+--     `GET /rest/v1/enrollments?select=nombre,run` y saltarse el servicio que
+--     enmascara y audita. Un `revoke select (run)` no es opción: rompería al alumno
+--     y al staff, que son el mismo rol de Postgres.
+--
+-- Es decir: el enmascarado del RUN era COSMÉTICO (solo de UI) mientras existiera la
+-- rama. El ruling ya aprobado dice "la empresa NUNCA ve el RUN completo"
+-- (minimización, Ley 21.719); esto es lo que lo hace VERDADERO a nivel de dato.
+--
+-- Con la rama fuera, el rol `company` ve 0 filas de `enrollments` y `sence_sessions`
+-- por PostgREST, y el ÚNICO camino al dato es `company-portal-service`, que enmascara
+-- el RUN, acota por empresa y audita CADA consulta. No se pierde funcionalidad: la
+-- matriz del spec §3 ("Empresa: R sus trabajadores") se sigue cumpliendo por ese
+-- servicio, exactamente igual que ya se cumple para Calificaciones y Certificados.
+--
+-- Y es coherente con lo que esta misma migración ya decidía para `grades_select` y
+-- `certificates_select`, que tampoco reciben rama `company` (el snapshot del
+-- certificado lleva el RUN completo — precedente D-030). Ahora las 4 tablas con dato
+-- personal siguen la MISMA regla: a la empresa llegan CURADAS por el servicio, nunca
+-- por lectura directa de tabla.
+--
+-- Ninguna otra rama se toca — el texto de las demás (alumno/staff/supervisor) se
+-- copia LITERAL de la migración 3.11 para no reabrir el escopado del fiscalizador.
 --
 -- Las tablas SENCE no cambian su contrato ni su escritura (siguen INSERT-only):
 -- aquí solo se acota QUIÉN puede SELECT (esto es RLS, no el módulo `sence/`).
@@ -41,7 +67,11 @@ create table public.companies (
   updated_at timestamptz not null default now(),
   -- El RUT identifica a la empresa DENTRO del OTEC: dos tenants pueden atender a
   -- la misma empresa real sin colisionar (y sin verse: son filas distintas).
-  constraint companies_tenant_rut_uk unique (tenant_id, rut)
+  constraint companies_tenant_rut_uk unique (tenant_id, rut),
+  -- Clave candidata redundante con la PK, pero necesaria como DESTINO de las FK
+  -- compuestas de abajo: es lo que permite que el esquema —y no la memoria de cada
+  -- writer— garantice que una empresa y lo que cuelga de ella son del MISMO tenant.
+  constraint companies_id_tenant_uk unique (id, tenant_id)
 );
 create index companies_tenant_idx on public.companies (tenant_id);
 create trigger companies_touch before update on public.companies
@@ -57,7 +87,13 @@ create table public.company_members (
   revoked_at timestamptz,       -- null = vigente
   revoked_by uuid,
   created_by uuid,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- INTEGRIDAD COMPUESTA POR TENANT: sin esto nada del esquema impide una fila
+  -- `(tenant_id = A, company_id = <empresa del tenant B>)`. `inviteCompanyMember`
+  -- ya lo valida, pero un invariante multi-tenant no puede depender de que TODOS
+  -- los writers futuros se acuerden.
+  constraint company_members_company_same_tenant_fk
+    foreign key (company_id, tenant_id) references public.companies (id, tenant_id)
 );
 create index company_members_company_idx on public.company_members (company_id);
 -- Un usuario `company` pertenece a UNA sola empresa ACTIVA por tenant (ruling
@@ -74,17 +110,33 @@ alter table public.enrollments
   add column company_id uuid references public.companies (id) on delete restrict;
 create index enrollments_company_idx on public.enrollments (company_id)
   where company_id is not null;
+-- Misma integridad compuesta que en `company_members`: una inscripción del tenant A
+-- no puede quedar etiquetada con una empresa del tenant B. MATCH SIMPLE (el default)
+-- no exige nada cuando `company_id` es NULL, así que el alumno particular sigue
+-- funcionando sin `tenant_id` de por medio.
+alter table public.enrollments
+  add constraint enrollments_company_same_tenant_fk
+  foreign key (company_id, tenant_id) references public.companies (id, tenant_id);
 
--- ---------- Helpers de escopado (usados en las policies) ----------
+-- ---------- Helper de escopado (usado en las policies de las 2 tablas nuevas) ----------
 -- Mismo patrón que `supervisor_has_active_grant()` (3.11): SECURITY DEFINER para
 -- leer `company_members` dentro de una policy sin exigirle al usuario `company`
 -- SELECT directo sobre la tabla; `search_path=''` obliga nombres calificados
 -- (anti-secuestro); STABLE = una evaluación por statement.
 --
+-- Alcance deliberadamente CHICO: solo escopa `companies` y `company_members`, que
+-- NO llevan dato personal del trabajador (razón social, RUT de la empresa, correo
+-- del propio equipo de RRHH). Las tablas con RUN —`enrollments`, `sence_sessions`,
+-- `grades`, `certificates`— no tienen rama `company` en absoluto: ver el ruling de
+-- la cabecera.
+--
 -- Devuelve NULL si el usuario no tiene membresía vigente (o si su tenant no está
 -- activo: `jwt_tenant_id()` ya devuelve NULL en ese caso, 20260717010000). Ese NULL
 -- propaga a las comparaciones de las policies como NULL → la fila NO pasa el USING:
 -- deny-by-default (P7) sin ramas especiales.
+--
+-- No revalida el tenant de la empresa devuelta porque ya no puede hacer falta: la FK
+-- compuesta `company_members_company_same_tenant_fk` lo garantiza en el esquema.
 create or replace function public.company_member_company_id()
 returns uuid language sql stable security definer set search_path = '' as $$
   select cm.company_id
@@ -95,21 +147,7 @@ returns uuid language sql stable security definer set search_path = '' as $$
   limit 1
 $$;
 
--- Transitivo: la sesión SENCE cuelga de una inscripción, no de la empresa.
--- `e.company_id is not null` es explícito (y no solo implícito por la igualdad)
--- para que la intención se lea sola: el alumno particular NO es de nadie.
-create or replace function public.company_enrollment_is_mine(eid uuid)
-returns boolean language sql stable security definer set search_path = '' as $$
-  select exists (
-    select 1 from public.enrollments e
-    where e.id = eid
-      and e.company_id is not null
-      and e.company_id = public.company_member_company_id()
-  )
-$$;
-
 grant execute on function public.company_member_company_id() to authenticated;
-grant execute on function public.company_enrollment_is_mine(uuid) to authenticated;
 
 -- ---------- RLS de las tablas nuevas ----------
 alter table public.companies enable row level security;
@@ -141,11 +179,10 @@ grant select, insert, update on public.company_members to service_role;
 -- pg_policies); el ÚNICO cambio es la rama `company`.
 -- =============================================================================
 
--- 1) enrollments: `or public.has_role('company')`
---    → `or (public.has_role('company') and company_id is not null
---           and company_id = public.company_member_company_id())`
---    La comparación va INLINE (no por helper) porque la fila ya trae `company_id`:
---    el planner filtra por índice en vez de invocar la función por fila.
+-- 1) enrollments: `or public.has_role('company')` → la rama DESAPARECE.
+--    La fila de `enrollments` lleva `run` y el grant a `authenticated` es de tabla
+--    completa: cualquier rama `company` aquí entrega el RUN por PostgREST. RRHH lee
+--    a sus trabajadores por `company-portal-service` (RUN enmascarado + auditoría).
 drop policy enrollments_select on public.enrollments;
 create policy enrollments_select on public.enrollments
   for select to authenticated
@@ -160,19 +197,13 @@ create policy enrollments_select on public.enrollments
         or public.has_role('instructor')
         or public.has_role('tutor')
         or (public.has_role('supervisor') and public.supervisor_action_in_scope(action_id))
-        or (
-          public.has_role('company')
-          and company_id is not null
-          and company_id = public.company_member_company_id()
-        )
       )
     )
   );
 
--- 2) sence_sessions: `or public.has_role('company')`
---    → `or (public.has_role('company') and public.company_enrollment_is_mine(enrollment_id))`
---    Transitivo por `enrollment_id` (la sesión no tiene `company_id` propio).
---    Los grants de COLUMNA de 20260716120000 (callback_nonce oculto) no se tocan.
+-- 2) sence_sessions: `or public.has_role('company')` → la rama DESAPARECE.
+--    Mismo motivo: los grants de COLUMNA de 20260716120000 ocultan `callback_nonce`
+--    pero conceden `run_alumno` a `authenticated`. Esos grants no se tocan.
 drop policy sence_sessions_select_staff on public.sence_sessions;
 create policy sence_sessions_select_staff on public.sence_sessions
   for select to authenticated
@@ -186,16 +217,14 @@ create policy sence_sessions_select_staff on public.sence_sessions
         or public.has_role('instructor')
         or public.has_role('tutor')
         or (public.has_role('supervisor') and public.supervisor_enrollment_in_scope(enrollment_id))
-        or (public.has_role('company') and public.company_enrollment_is_mine(enrollment_id))
       )
     )
   );
 
--- ---------- Sin backfill: el escopado ENTRA CERRADO (a diferencia de 3.11) ----------
+-- ---------- Sin backfill: el acceso ENTRA CERRADO (a diferencia de 3.11) ----------
 -- 3.11 backfilleó grants tenant-wide para PRESERVAR el acceso del supervisor. Aquí
--- lo correcto es lo opuesto: no existe dato de qué empresa es cada usuario `company`
--- (el modelo nace en esta migración), así que inventar una vinculación sería
--- inventar el permiso que este PR viene a acotar. Tras migrar, todo usuario
--- `company` ve 0 inscripciones hasta que un admin/coordinador lo vincule a su
--- empresa (parte 2). Es exactamente el estado seguro: H4-R-008 cerrado por
--- construcción, y el acceso se vuelve a abrir SOLO de forma explícita y auditada.
+-- lo correcto es lo opuesto: tras migrar, todo usuario `company` ve 0 inscripciones
+-- y 0 sesiones por tabla —para siempre— y llega a sus trabajadores SOLO cuando un
+-- admin/coordinador lo vincula a su empresa (parte 2) y SOLO a través del servicio
+-- del portal, que enmascara el RUN y audita cada consulta. H4-R-008 queda cerrado
+-- por construcción, y el acceso se abre únicamente de forma explícita y auditada.

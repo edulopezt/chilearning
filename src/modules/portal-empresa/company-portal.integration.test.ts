@@ -43,9 +43,14 @@ import {
   getMyCompany,
   listCompanyActions,
 } from "@/modules/portal-empresa/company-portal-service";
+import { collectWeeklySummaryData } from "@/modules/portal-empresa/company-weekly-data";
+import type { CompanyCertLabels } from "@/modules/portal-empresa/domain/company";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
 const TENANT_B = "22222222-2222-4222-8222-222222222222";
+
+/** Los rótulos que inyecta la ruta del export (esCL.companyPortal). */
+const CERT_LABELS: CompanyCertLabels = { issued: "Vigente", revoked: "Revocado" };
 
 const admin: Principal = {
   userId: "aaaaaaaa-0000-4000-8000-000000000001",
@@ -97,6 +102,8 @@ interface Fixture {
   enrW1: string;
   enrW2: string;
   enrW3: string;
+  /** Folio del certificado de W2, REVOCADO y sin reemitir. */
+  revokedFolio: string;
 }
 
 /** Curso + 2 lecciones publicadas + quiz publicado + acción + 3 inscripciones. */
@@ -124,6 +131,22 @@ async function seedFixture(): Promise<Fixture> {
       status: "published",
     })),
   );
+
+  // Lección DESPUBLICADA que W1 alcanzó a completar cuando estaba publicada. NO es
+  // denominador ni numerador: el `lesson_progress` sobrevive a la despublicación, y
+  // contarlo contra un denominador que ya la excluye daba 100 % (2/2) a quien va por
+  // la mitad del curso vigente.
+  const unpublishedLesson = randomUUID();
+  await svc.from("lessons").insert({
+    id: unpublishedLesson,
+    tenant_id: TENANT_A,
+    course_id: courseId,
+    title: "Lección retirada del curso",
+    kind: "text",
+    content: "Contenido ficticio.",
+    position: 3,
+    status: "draft",
+  });
 
   // Instrumento del libro OFICIAL: sin quiz publicado no hay nota consolidada.
   const quizId = randomUUID();
@@ -185,14 +208,23 @@ async function seedFixture(): Promise<Fixture> {
     },
   ]);
 
-  // Avance de W1: 1 de 2 lecciones → 50 %.
-  await svc.from("lesson_progress").insert({
-    tenant_id: TENANT_A,
-    enrollment_id: enrW1,
-    lesson_id: lessonIds[0]!,
-    completed: true,
-    completed_at: new Date().toISOString(),
-  });
+  // Avance de W1: 1 de 2 lecciones PUBLICADAS → 50 % (la despublicada no suma).
+  await svc.from("lesson_progress").insert([
+    {
+      tenant_id: TENANT_A,
+      enrollment_id: enrW1,
+      lesson_id: lessonIds[0]!,
+      completed: true,
+      completed_at: new Date().toISOString(),
+    },
+    {
+      tenant_id: TENANT_A,
+      enrollment_id: enrW1,
+      lesson_id: unpublishedLesson,
+      completed: true,
+      completed_at: new Date().toISOString(),
+    },
+  ]);
 
   // Asistencia SENCE de W1: 2 sesiones cerradas el MISMO día → 1 día.
   await svc.from("sence_sessions").insert([
@@ -223,6 +255,37 @@ async function seedFixture(): Promise<Fixture> {
       environment: "rcetest",
       opened_at: "2026-07-06T18:00:00Z",
       closed_at: "2026-07-06T19:00:00Z",
+    },
+    // W2: el BORDE de día. Chile es UTC-4 en julio, así que esta sesión ocurre el
+    // 5-jul 22:00 en Santiago pero el 6-jul en UTC. Con la siguiente son 2 días
+    // distintos para Santiago y UNO SOLO si alguien bucketiza por la fecha UTC.
+    {
+      tenant_id: TENANT_A,
+      enrollment_id: enrW2,
+      sence_course_code: "1234567890",
+      action_code: "EMP-TEST",
+      training_line: 3,
+      run_alumno: "20111333-4",
+      id_sesion_alumno: `t52-${randomUUID().slice(0, 8)}`,
+      id_sesion_sence: "525254",
+      status: "cerrada",
+      environment: "rcetest",
+      opened_at: "2026-07-06T02:00:00Z", // 2026-07-05 22:00 Santiago
+      closed_at: "2026-07-06T03:00:00Z", // 2026-07-05 23:00 Santiago
+    },
+    {
+      tenant_id: TENANT_A,
+      enrollment_id: enrW2,
+      sence_course_code: "1234567890",
+      action_code: "EMP-TEST",
+      training_line: 3,
+      run_alumno: "20111333-4",
+      id_sesion_alumno: `t52-${randomUUID().slice(0, 8)}`,
+      id_sesion_sence: "525255",
+      status: "cerrada",
+      environment: "rcetest",
+      opened_at: "2026-07-06T13:00:00Z", // 2026-07-06 09:00 Santiago
+      closed_at: "2026-07-06T14:00:00Z",
     },
   ]);
 
@@ -258,11 +321,38 @@ async function seedFixture(): Promise<Fixture> {
     snapshot: { nombre: "Valentina Rojas Miranda", runMasked: "20.XXX.XXX-X" },
   });
 
+  // W2: certificado REVOCADO y NO reemitido. Revocar es un UPDATE: la fila y el
+  // folio sobreviven, así que el panel puede pintar un folio que ya no vale. Es el
+  // caso que el fixture original no tenía y por eso nadie cazaba.
+  const revokedFolio = `CERT-2026-${randomUUID().slice(0, 6)}`;
+  await svc.from("certificates").insert({
+    tenant_id: TENANT_A,
+    enrollment_id: enrW2,
+    action_id: actionId,
+    course_id: courseId,
+    folio: revokedFolio,
+    verification_token: randomUUID(),
+    status: "revoked",
+    revoked_reason: "Error en el folio (fixture)",
+    revoked_at: new Date().toISOString(),
+    snapshot: { nombre: "Sin nombre", runMasked: "20.XXX.XXX-X" },
+  });
+
   const a = await createCompany(admin, { rut: randomRut(), razonSocial: `Empresa A ${randomUUID().slice(0, 4)}` });
   const b = await createCompany(admin, { rut: randomRut(), razonSocial: `Empresa B ${randomUUID().slice(0, 4)}` });
   if (!a.ok || !b.ok) throw new Error("no se pudieron crear las empresas del fixture");
 
-  return { actionId, courseId, quizId, companyA: a.companyId, companyB: b.companyId, enrW1, enrW2, enrW3 };
+  return {
+    actionId,
+    courseId,
+    quizId,
+    companyA: a.companyId,
+    companyB: b.companyId,
+    enrW1,
+    enrW2,
+    enrW3,
+    revokedFolio,
+  };
 }
 
 let fx: Fixture;
@@ -430,11 +520,20 @@ describe("portal empresa — invitación, escopado, auditoría, export y revocac
 
     const w1 = panel!.rows.find((r) => r.enrollmentId === fx.enrW1)!;
     const w2 = panel!.rows.find((r) => r.enrollmentId === fx.enrW2)!;
-    expect(w1.progressPct).toBe(50); // 1 de 2 lecciones publicadas
+    // 1 de 2 lecciones PUBLICADAS. W1 también completó la lección despublicada: si
+    // el numerador no la descartara, esto sería 100 % (2/2) y RRHH leería "terminó
+    // el curso" de quien va por la mitad.
+    expect(w1.progressPct).toBe(50);
     expect(w1.attendanceDays).toBe(1); // 2 sesiones cerradas el mismo día
     expect(w1.grade).toBe(6.5); // nota PUBLICADA
     expect(w1.certificateFolio).toBeTruthy();
+    expect(w1.certificateStatus).toBe("issued");
     expect(w2.grade, "la nota en BORRADOR jamás llega a la empresa").toBeNull();
+
+    // El certificado de W2 está REVOCADO y conserva su folio: la fila DEBE llevar
+    // el estado, o la UI pinta un folio muerto como si estuviera vigente.
+    expect(w2.certificateFolio).toBe(fx.revokedFolio);
+    expect(w2.certificateStatus).toBe("revoked");
 
     // El RUN va SIEMPRE enmascarado: ningún RUN completo sale del servicio.
     expect(w1.runMasked).toBe("20.XXX.XXX-X");
@@ -447,7 +546,7 @@ describe("portal empresa — invitación, escopado, auditoría, export y revocac
     ).toBeGreaterThanOrEqual(1);
 
     // ---- Export XLSX: parsea y viene saneado (D-021) ----
-    const exported = await getCompanyExport(rrhh, fx.actionId);
+    const exported = await getCompanyExport(rrhh, fx.actionId, CERT_LABELS);
     expect(exported).not.toBeNull();
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(exported!.buffer as unknown as ArrayBuffer);
@@ -461,6 +560,10 @@ describe("portal empresa — invitación, escopado, auditoría, export y revocac
     expect(cells).toContain("20.XXX.XXX-X");
     expect(cells.join("|")).not.toContain("20111222-3");
     expect(cells.some((c) => c.includes("Soto Vera")), "el ajeno no está en el Excel").toBe(false);
+    // El estado va en es-CL (lo abre RRHH), no como el enum crudo de la BD.
+    expect(cells, "el certificado revocado se declara como tal en el Excel").toContain("Revocado");
+    expect(cells).toContain("Vigente");
+    expect(cells).not.toContain("revoked");
 
     expect(
       (await svc.from("audit_log").select("id").eq("action", "company.report_downloaded").eq("entity_id", fx.actionId))
@@ -471,7 +574,7 @@ describe("portal empresa — invitación, escopado, auditoría, export y revocac
     expect((await revokeCompanyMember(admin, invited.memberId)).ok).toBe(true);
     expect(await listCompanyActions(rrhh)).toHaveLength(0);
     expect(await getCompanyActionPanel(rrhh, fx.actionId)).toBeNull();
-    expect(await getCompanyExport(rrhh, fx.actionId)).toBeNull();
+    expect(await getCompanyExport(rrhh, fx.actionId, CERT_LABELS)).toBeNull();
     expect(await getMyCompany(rrhh)).toBeNull();
     expect(
       (await svc.from("audit_log").select("id").eq("action", "company.member_revoked").eq("entity_id", invited.memberId))
@@ -533,4 +636,33 @@ describe("portal empresa — invitación, escopado, auditoría, export y revocac
     expect(panelB!.rows).toHaveLength(1);
     expect(panelB!.rows[0]!.enrollmentId).toBe(fx.enrW3);
   }, 60_000);
+});
+
+describe("collectWeeklySummaryData — los agregados del digest (HU-8.2, punto de extensión de 5.9)", () => {
+  it("cuenta los días de asistencia en hora de SANTIAGO y por `opened_at`, igual que el panel", async () => {
+    // El borde que nadie cubría. W2 tiene 2 sesiones que caen el MISMO día en UTC
+    // (ambas cierran el 6-jul UTC) pero en DÍAS DISTINTOS en Santiago (5 y 6 de
+    // julio: Chile es UTC-4 en julio). Bucketizar por `closed_at.slice(0,10)` —el
+    // ISO en UTC— las colapsaba en 1 y el correo semanal contradecía al panel que
+    // esa misma RRHH está mirando, sobre asistencia SENCE (dato de valor legal).
+    const data = await collectWeeklySummaryData(svc, TENANT_A, fx.companyA, "2026-07-01T00:00:00Z");
+    expect(data).not.toBeNull();
+    // W1: 2 sesiones el mismo día de Santiago → 1. W2: 5-jul + 6-jul → 2.
+    expect(data!.attendanceDaysInPeriod, "W1 aporta 1 día y W2 aporta 2 (no 1)").toBe(3);
+    expect(data!.workers).toBe(2); // W1 y W2; W3 es de la otra empresa
+    expect(data!.actions).toBe(1);
+  });
+
+  it("no cuenta a los trabajadores de otra empresa ni devuelve dato personal", async () => {
+    const data = await collectWeeklySummaryData(svc, TENANT_A, fx.companyB, "2026-07-01T00:00:00Z");
+    expect(data!.workers).toBe(1); // solo W3
+    // Contrato de privacidad (RNF-10): del helper SOLO salen conteos + razón social.
+    const json = JSON.stringify(data);
+    expect(json).not.toContain("20111444-5");
+    expect(json).not.toContain("Soto Vera");
+  });
+
+  it("empresa inexistente en el tenant → null", async () => {
+    expect(await collectWeeklySummaryData(svc, TENANT_B, fx.companyA, "2026-07-01T00:00:00Z")).toBeNull();
+  });
 });
