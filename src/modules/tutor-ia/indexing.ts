@@ -50,7 +50,11 @@ export async function reindexLesson(
   lesson: IndexableLesson,
 ): Promise<void> {
   if (lesson.kind !== "text" || lesson.status !== "published") {
-    const { error } = await db.from("course_chunks").delete().eq("lesson_id", lesson.id);
+    const { error } = await db
+      .from("course_chunks")
+      .delete()
+      .eq("lesson_id", lesson.id)
+      .eq("tenant_id", lesson.tenant_id);
     if (error) {
       console.error("[tutor-ia] fallo borrando chunks de una leccion no indexable", {
         lessonId: lesson.id,
@@ -68,7 +72,11 @@ export async function reindexLesson(
   // corrupto) -- FTS/embeddings son indices DERIVADOS y regenerables; el
   // reconcile diario del worker backfillea cualquier leccion que quede sin
   // chunks por una falla a medio camino.
-  const del = await db.from("course_chunks").delete().eq("lesson_id", lesson.id);
+  const del = await db
+    .from("course_chunks")
+    .delete()
+    .eq("lesson_id", lesson.id)
+    .eq("tenant_id", lesson.tenant_id);
   if (del.error) {
     console.error("[tutor-ia] fallo borrando chunks previos", { lessonId: lesson.id, message: del.error.message });
     return;

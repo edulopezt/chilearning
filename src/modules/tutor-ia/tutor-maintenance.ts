@@ -31,7 +31,15 @@ function retentionDays(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_RETENTION_DAYS;
 }
 
-async function purgeOldConversations(
+/**
+ * Exportada para testear el manejo de errores sin depender de Supabase local
+ * (hallazgo de revisión, MED): antes, un fallo del SELECT quedaba indistinguible
+ * en logs de "no había nada que purgar" (el `console.error` era código muerto,
+ * inalcanzable detrás del `return` temprano), y los DELETE nunca chequeaban
+ * `.error` — un fallo real de la purga de retención (Ley 21.719/HU-11.3) se
+ * reportaba igual como éxito con 0 filas.
+ */
+export async function purgeOldConversations(
   db: SupabaseClient,
   cutoffIso: string,
 ): Promise<{ purgedMessages: number; purgedConversations: number }> {
@@ -39,17 +47,30 @@ async function purgeOldConversations(
     .from("tutor_conversations")
     .select("id")
     .lt("updated_at", cutoffIso);
-  const ids = (staleConversations.data ?? []).map((r) => r.id as string);
-  if (ids.length === 0) return { purgedMessages: 0, purgedConversations: 0 };
-
-  const deletedMessages = await db.from("tutor_messages").delete().in("conversation_id", ids).select("id");
-  const deletedConversations = await db.from("tutor_conversations").delete().in("id", ids).select("id");
-
   if (staleConversations.error) {
     console.error("[worker][tutor-reconcile] fallo listando conversaciones vencidas", {
       message: staleConversations.error.message,
     });
+    return { purgedMessages: 0, purgedConversations: 0 };
   }
+
+  const ids = (staleConversations.data ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return { purgedMessages: 0, purgedConversations: 0 };
+
+  const deletedMessages = await db.from("tutor_messages").delete().in("conversation_id", ids).select("id");
+  if (deletedMessages.error) {
+    console.error("[worker][tutor-reconcile] fallo borrando mensajes vencidos", {
+      message: deletedMessages.error.message,
+    });
+  }
+
+  const deletedConversations = await db.from("tutor_conversations").delete().in("id", ids).select("id");
+  if (deletedConversations.error) {
+    console.error("[worker][tutor-reconcile] fallo borrando conversaciones vencidas", {
+      message: deletedConversations.error.message,
+    });
+  }
+
   return {
     purgedMessages: deletedMessages.data?.length ?? 0,
     purgedConversations: deletedConversations.data?.length ?? 0,

@@ -24,6 +24,12 @@
 create extension if not exists vector with schema extensions;
 
 -- ---------- course_chunks (índice de contenido del tutor IA) ----------
+-- ⚠ Límite conocido de minimización: `content` es contenido curricular tal
+-- cual lo redactó el relator/instructor (via `lessons.content`) — NO pasa por
+-- ningún saneo de PII (a diferencia del `firstName` que sí sanea `prompt.ts`
+-- antes de llegar al modelo). Si un instructor pega un RUN/correo/nombre real
+-- en el material, ese texto llega íntegro al prompt del tutor. Higiene de
+-- este campo = responsabilidad editorial de la OTEC, no de este esquema.
 create table public.course_chunks (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references public.tenants (id) on delete restrict,
@@ -199,23 +205,57 @@ create policy tutor_usage_daily_select on public.tutor_usage_daily
 
 grant select on public.tutor_usage_daily to authenticated, service_role;
 -- SIN insert/update para NADIE (ni authenticated ni service_role) a nivel de
--- tabla: toda escritura pasa por la RPC `tutor_add_usage` (atómica, valida el
--- propio usuario). La RPC es SECURITY DEFINER: escribe con los privilegios de
--- su dueño sin necesitar un GRANT de tabla aparte (deny-by-default real).
+-- tabla: toda escritura pasa por una de las 2 RPCs atómicas de más abajo
+-- (`tutor_add_usage` para el propio alumno vía sesión, `tutor_add_usage_system`
+-- para escrituras de sistema vía service_role) — ambas SECURITY DEFINER,
+-- escriben con los privilegios de su dueño sin necesitar un GRANT de tabla
+-- aparte (deny-by-default real).
 
--- ---------- RPC tutor_add_usage (upsert atómico, valida al propio usuario) ----------
--- Decisión (verificado contra `src/lib/tenant-guard.ts`): `tenantGuard().db`
--- SIEMPRE usa la service-role key (jamás el JWT del usuario) — así que si esta
--- RPC se llama vía `guard.db`, `auth.uid()` es NULL. Por diseño, el endpoint de
--- 5.8b que reporte uso del PROPIO alumno debería preferir el cliente de sesión
--- (`createSupabaseServerClient()`, sujeto a RLS/JWT del usuario — ver
--- `src/lib/supabase/server.ts`) para que `p_user_id = auth.uid()` se verifique
--- de verdad. La rama `auth.uid() is null` es la ruta de `service_role` (tests
--- de integración, y un futuro backfill del worker si hiciera falta): un
--- caller sin JWT de usuario SOLO puede llegar aquí si tiene el GRANT de
--- EXECUTE (deny-by-default normal), así que se concede a `service_role`
--- TAMBIÉN — la seguridad real la da el chequeo de `auth.uid()` dentro de la
--- función, no la ausencia del grant.
+-- ---------- upsert interno compartido (SIN grant propio; solo vía las 2 RPCs de abajo) ----------
+-- Ambas RPCs (`tutor_add_usage`, `tutor_add_usage_system`) son SECURITY DEFINER
+-- con el mismo dueño que esta función, así que pueden invocarla sin necesitar
+-- un GRANT de EXECUTE explícito (Postgres resuelve la ejecución interna con el
+-- rol dueño). No se otorga a `authenticated`/`service_role` a propósito: la
+-- ÚNICA forma de llegar aquí es a través de una de las 2 puertas de arriba,
+-- cada una con su propio contrato de autorización.
+create or replace function public.tutor_upsert_usage_daily(
+  p_tenant_id uuid,
+  p_user_id uuid,
+  p_day date,
+  p_messages int,
+  p_input_tokens bigint,
+  p_output_tokens bigint
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.tutor_usage_daily (tenant_id, user_id, day, messages, input_tokens, output_tokens)
+  values (p_tenant_id, p_user_id, p_day, coalesce(p_messages, 0), coalesce(p_input_tokens, 0), coalesce(p_output_tokens, 0))
+  on conflict (tenant_id, user_id, day) do update set
+    messages = public.tutor_usage_daily.messages + excluded.messages,
+    input_tokens = public.tutor_usage_daily.input_tokens + excluded.input_tokens,
+    output_tokens = public.tutor_usage_daily.output_tokens + excluded.output_tokens;
+end;
+$$;
+revoke all on function public.tutor_upsert_usage_daily(uuid, uuid, date, int, bigint, bigint) from public;
+
+-- ---------- RPC tutor_add_usage (upsert atómico, SOLO usuario autenticado) ----------
+-- Hallazgo de revisión (5.8a, MED): la versión anterior solo validaba
+-- `p_user_id`/`p_tenant_id` cuando `auth.uid() is not null`; llamada vía
+-- `tenantGuard().db` (SIEMPRE service-role, confirmado contra
+-- `src/lib/tenant-guard.ts`) `auth.uid()` es NULL y AMBOS checks se saltaban
+-- por completo, aceptando cualquier `p_user_id`/`p_tenant_id`. `guard.db` es
+-- el patrón dominante del repo (la ÚNICA puerta "permitida" al service-role) —
+-- exactamente el que un endpoint de 5.8b tendería a usar por default, con
+-- riesgo real de que un alumno infle/corrompa el contador de OTRO alumno.
+-- Ahora el chequeo de identidad es INCONDICIONAL: sin `auth.uid()` (JWT real
+-- de usuario), la función SIEMPRE rechaza. Cualquier endpoint de reporte de
+-- uso del PROPIO alumno (5.8b) DEBE usar el cliente de sesión
+-- (`createSupabaseServerClient()`, sujeto al JWT real — ver
+-- `src/lib/supabase/server.ts`), nunca `guard.db`, para esta RPC.
 create or replace function public.tutor_add_usage(
   p_tenant_id uuid,
   p_user_id uuid,
@@ -233,23 +273,55 @@ begin
   if p_tenant_id is null or p_user_id is null or p_day is null then
     raise exception 'tutor_add_usage: parámetros obligatorios faltantes';
   end if;
-  if auth.uid() is not null and p_user_id is distinct from auth.uid() then
+  if auth.uid() is null then
+    raise exception 'tutor_add_usage: requiere un usuario autenticado; las llamadas de sistema usan tutor_add_usage_system' using errcode = '42501';
+  end if;
+  if p_user_id is distinct from auth.uid() then
     raise exception 'tutor_add_usage: p_user_id no coincide con el usuario autenticado' using errcode = '42501';
   end if;
-  if auth.uid() is not null and p_tenant_id is distinct from public.jwt_tenant_id() then
+  if p_tenant_id is distinct from public.jwt_tenant_id() then
     raise exception 'tutor_add_usage: p_tenant_id no coincide con el tenant del usuario autenticado' using errcode = '42501';
   end if;
 
-  insert into public.tutor_usage_daily (tenant_id, user_id, day, messages, input_tokens, output_tokens)
-  values (p_tenant_id, p_user_id, p_day, coalesce(p_messages, 0), coalesce(p_input_tokens, 0), coalesce(p_output_tokens, 0))
-  on conflict (tenant_id, user_id, day) do update set
-    messages = public.tutor_usage_daily.messages + excluded.messages,
-    input_tokens = public.tutor_usage_daily.input_tokens + excluded.input_tokens,
-    output_tokens = public.tutor_usage_daily.output_tokens + excluded.output_tokens;
+  perform public.tutor_upsert_usage_daily(p_tenant_id, p_user_id, p_day, p_messages, p_input_tokens, p_output_tokens);
 end;
 $$;
 revoke all on function public.tutor_add_usage(uuid, uuid, date, int, bigint, bigint) from public;
-grant execute on function public.tutor_add_usage(uuid, uuid, date, int, bigint, bigint) to authenticated, service_role;
+-- SOLO `authenticated`: con el chequeo de `auth.uid()` ahora incondicional, un
+-- caller `service_role` (sin JWT de usuario) SIEMPRE fallaría igual, así que
+-- no se le concede el grant (deny-by-default explícito, no solo implícito).
+grant execute on function public.tutor_add_usage(uuid, uuid, date, int, bigint, bigint) to authenticated;
+
+-- ---------- RPC tutor_add_usage_system (escritura de sistema; SOLO service_role) ----------
+-- Puerta EXPLÍCITA y separada para escrituras de uso que NO representan un
+-- reporte del propio alumno vía sesión: seed/fixtures de test, y un futuro
+-- backfill del worker (`tutor-maintenance.ts`) si hiciera falta. Sin chequeo
+-- de `auth.uid()` porque, por diseño, nunca lo hay en esta ruta — la
+-- seguridad la da el GRANT (solo `service_role`, que ya bypassa RLS por
+-- convención del repo), no una validación de identidad de usuario.
+create or replace function public.tutor_add_usage_system(
+  p_tenant_id uuid,
+  p_user_id uuid,
+  p_day date,
+  p_messages int,
+  p_input_tokens bigint,
+  p_output_tokens bigint
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_tenant_id is null or p_user_id is null or p_day is null then
+    raise exception 'tutor_add_usage_system: parámetros obligatorios faltantes';
+  end if;
+
+  perform public.tutor_upsert_usage_daily(p_tenant_id, p_user_id, p_day, p_messages, p_input_tokens, p_output_tokens);
+end;
+$$;
+revoke all on function public.tutor_add_usage_system(uuid, uuid, date, int, bigint, bigint) from public;
+grant execute on function public.tutor_add_usage_system(uuid, uuid, date, int, bigint, bigint) to service_role;
 
 -- ---------- tutor_tenant_budget (knob de plataforma/facturación) ----------
 create table public.tutor_tenant_budget (

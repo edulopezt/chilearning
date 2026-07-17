@@ -14,6 +14,14 @@
  *     alumno. Un `Principal`/enrollment completo NUNCA se le pasa a
  *     `buildTutorPrompt` — eso es justamente lo que blinda el test estrella
  *     de `prompt.test.ts`.
+ *
+ * LÍMITE CONOCIDO del blindaje: `TutorPromptFragment.text` (contenido
+ * curricular de `course_chunks.content`, ver `indexing.ts`/`retrieval.ts`) NO
+ * pasa por ningún saneo de PII — llega íntegro al modelo tal como lo redactó
+ * el relator/instructor en la lección. Si un instructor pega un RUN, un
+ * nombre real o un correo en el material, ese texto SÍ se envía. La higiene
+ * de ese campo es responsabilidad del proceso editorial de la OTEC, no de
+ * esta función (ver el caso de prueba correspondiente en `prompt.test.ts`).
  */
 
 /** Caracteres de control Unicode (categoría Cc: tabs, saltos, nulos, DEL, …). */

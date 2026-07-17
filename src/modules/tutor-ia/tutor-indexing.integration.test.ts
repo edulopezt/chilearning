@@ -18,10 +18,12 @@ import { searchChunksLexical } from "@/modules/tutor-ia/retrieval";
 import { tenantGuard } from "@/lib/tenant-guard";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
+const TENANT_B = "22222222-2222-4222-8222-222222222222";
 
 let svc: SupabaseClient;
 let courseId = "";
 let lessonId = "";
+let courseIdB = "";
 
 function env(): { apiUrl: string; serviceRoleKey: string } {
   const out = execSync("supabase status -o env", { encoding: "utf8" });
@@ -112,6 +114,17 @@ beforeAll(async () => {
     status: "draft",
   });
   if (lessonInsert.error) throw new Error(`seed lección: ${lessonInsert.error.message}`);
+
+  // Curso de OTRO tenant, solo para el test de defensa-en-profundidad de abajo
+  // (simula un chunk "mal etiquetado" que comparte lesson_id con TENANT_A).
+  courseIdB = randomUUID();
+  const courseBInsert = await svc.from("courses").insert({
+    id: courseIdB,
+    tenant_id: TENANT_B,
+    name: "Curso fixture tutor-indexing (tenant B, defensa en profundidad)",
+    sence: false,
+  });
+  if (courseBInsert.error) throw new Error(`seed curso tenant B: ${courseBInsert.error.message}`);
 });
 
 afterAll(async () => {
@@ -119,6 +132,7 @@ afterAll(async () => {
   await svc.from("course_chunks").delete().eq("lesson_id", lessonId);
   await svc.from("lessons").delete().eq("id", lessonId);
   await svc.from("courses").delete().eq("id", courseId);
+  await svc.from("courses").delete().eq("id", courseIdB);
 });
 
 describe("reindexLesson (HU-11.1)", () => {
@@ -181,5 +195,38 @@ describe("reindexLesson (HU-11.1)", () => {
 
     await reindexLesson(svc, { aiClient: noopAiClient() }, baseLesson({ kind: "video", content: "abc123" }));
     expect(await chunksOf(lessonId)).toEqual([]);
+  });
+
+  it("NUNCA borra chunks de OTRO tenant aunque compartan lesson_id — defensa en profundidad (hallazgo MED de revisión)", async () => {
+    // El worker corre con un cliente service-role crudo (sin tenantGuard()):
+    // este test reproduce el escenario que la revisión marcó como riesgo — un
+    // chunk mal etiquetado (tenant_id distinto al de la lección real) que
+    // comparte `lesson_id`. `course_chunks` no tiene una constraint que ate su
+    // `tenant_id` al tenant real de `lessons`, así que esto es insertable
+    // directo con el service client, igual que lo sería un futuro bug/refactor.
+    const foreignChunkId = randomUUID();
+    const foreign = await svc.from("course_chunks").insert({
+      id: foreignChunkId,
+      tenant_id: TENANT_B,
+      course_id: courseIdB,
+      lesson_id: lessonId,
+      chunk_index: 77,
+      lesson_title: "chunk ajeno (fixture defensa en profundidad)",
+      content: "contenido que NO debe borrarse desde otro tenant",
+    });
+    if (foreign.error) throw new Error(`seed chunk ajeno: ${foreign.error.message}`);
+
+    const survives = async () =>
+      (await svc.from("course_chunks").select("id").eq("id", foreignChunkId)).data ?? [];
+
+    // Camino 1: delete-then-insert (lección published) -- indexing.ts línea 71.
+    await reindexLesson(svc, { aiClient: noopAiClient() }, baseLesson());
+    expect(await survives()).toHaveLength(1);
+
+    // Camino 2: no-indexable (lección draft) -- indexing.ts línea 53.
+    await reindexLesson(svc, { aiClient: noopAiClient() }, baseLesson({ status: "draft" }));
+    expect(await survives()).toHaveLength(1);
+
+    await svc.from("course_chunks").delete().eq("id", foreignChunkId);
   });
 });

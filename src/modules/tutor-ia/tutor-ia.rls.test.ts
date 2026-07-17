@@ -135,7 +135,10 @@ beforeAll(async () => {
     .upsert({ tenant_id: TENANT_A, monthly_token_budget: 1_000_000 }, { onConflict: "tenant_id" });
   if (budget.error) throw new Error(`seed tutor_tenant_budget: ${budget.error.message}`);
 
-  const usage = await svc.rpc("tutor_add_usage", {
+  // Seed vía service_role: usa `tutor_add_usage_system` (la puerta explícita
+  // para escrituras SIN sesión de usuario) — `tutor_add_usage` ahora rechaza
+  // incondicionalmente cualquier llamada sin `auth.uid()` (hallazgo MED).
+  const usage = await svc.rpc("tutor_add_usage_system", {
     p_tenant_id: TENANT_A,
     p_user_id: STUDENT_A1,
     p_day: new Date().toISOString().slice(0, 10),
@@ -307,6 +310,21 @@ describe("tutor_usage_daily — el propio alumno o staff leen; sin insert/update
 });
 
 describe("RPC tutor_add_usage — valida al propio usuario y acumula", () => {
+  it("rechaza SIEMPRE una llamada sin auth.uid() (service_role) — hallazgo MED: antes el chequeo se saltaba entero", async () => {
+    const svc = serviceClient();
+    const { error } = await svc.rpc("tutor_add_usage", {
+      p_tenant_id: TENANT_A,
+      p_user_id: STUDENT_A1,
+      p_day: new Date().toISOString().slice(0, 10),
+      p_messages: 1,
+      p_input_tokens: 1,
+      p_output_tokens: 1,
+    });
+    // No hay GRANT de EXECUTE para service_role en esta RPC (deny-by-default
+    // explícito) -- Postgres rechaza antes incluso de entrar a la función.
+    expect(error).not.toBeNull();
+  });
+
   it("rechaza p_user_id distinto de auth.uid() cuando se llama como usuario autenticado", async () => {
     const c = client(await jwt({ sub: STUDENT_A1, tenant_id: TENANT_A, roles: ["student"] }));
     const { error } = await c.rpc("tutor_add_usage", {
@@ -354,5 +372,46 @@ describe("RPC tutor_add_usage — valida al propio usuario y acumula", () => {
 
     // Best-effort (sin grant de DELETE, ver el comentario del afterAll de arriba).
     await svc.from("tutor_usage_daily").delete().eq("tenant_id", TENANT_A).eq("user_id", STUDENT_A1).eq("day", day);
+  });
+});
+
+describe("RPC tutor_add_usage_system — puerta explícita SOLO service_role, sin chequeo de auth.uid()", () => {
+  it("un usuario autenticado NO puede invocarla (sin GRANT de EXECUTE; deny-by-default)", async () => {
+    const c = client(await jwt({ sub: STUDENT_A1, tenant_id: TENANT_A, roles: ["student"] }));
+    const { error } = await c.rpc("tutor_add_usage_system", {
+      p_tenant_id: TENANT_A,
+      p_user_id: STUDENT_A1,
+      p_day: new Date().toISOString().slice(0, 10),
+      p_messages: 1,
+      p_input_tokens: 1,
+      p_output_tokens: 1,
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("service_role SÍ puede invocarla y acumula (ruta de sistema: seed/tests, futuro backfill del worker)", async () => {
+    const svc = serviceClient();
+    const day = "2020-09-09"; // fecha fija, ajena a otros tests
+    const first = await svc.rpc("tutor_add_usage_system", {
+      p_tenant_id: TENANT_A,
+      p_user_id: STUDENT_A2,
+      p_day: day,
+      p_messages: 4,
+      p_input_tokens: 9,
+      p_output_tokens: 11,
+    });
+    expect(first.error).toBeNull();
+
+    const { data } = await svc
+      .from("tutor_usage_daily")
+      .select("messages, input_tokens, output_tokens")
+      .eq("tenant_id", TENANT_A)
+      .eq("user_id", STUDENT_A2)
+      .eq("day", day)
+      .maybeSingle();
+    expect(data).toEqual({ messages: 4, input_tokens: 9, output_tokens: 11 });
+
+    // Best-effort (sin grant de DELETE, ver el comentario del afterAll de arriba).
+    await svc.from("tutor_usage_daily").delete().eq("tenant_id", TENANT_A).eq("user_id", STUDENT_A2).eq("day", day);
   });
 });
