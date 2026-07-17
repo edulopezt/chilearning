@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
  * La sonda vive en `@/lib/observability/db-probe` desde la task 5.5: el tablero
  * superadmin (HU-10.3) reporta la MISMA salud sin duplicar lógica. El contrato de
  * este endpoint (payload, códigos, caché de 5 s) no cambia; sí se CORRIGIÓ la
- * sonda, que devolvía 503 siempre — ver la nota en db-probe.ts.
+ * sonda, que dependía de un GRANT que solo existe por drift del cloud (daba 503
+ * en local/CI con la BD sana) — ver la nota en db-probe.ts.
  */
 
 const CACHE_MS = 5_000;

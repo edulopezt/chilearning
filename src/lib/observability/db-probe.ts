@@ -15,13 +15,18 @@ import type { HealthChecks } from "@/lib/observability/health";
  * de dejar la request pegada.
  *
  * ⚠ CAMBIO DE COMPORTAMIENTO DELIBERADO (task 5.5): la sonda original hacía
- * `from("tenants").select("id")` con el cliente anónimo, pero `anon` NO tiene
- * GRANT sobre `public.tenants` (es deny-by-default a propósito: lo afirma
- * isolation.rls.test.ts "anon no ve nada… 42501"). Es decir, la sonda devolvía
- * SIEMPRE 42501 → db:"fail" → status:"degraded" → /api/health respondía 503 en
- * TODOS los entornos, con la BD perfectamente sana. El test unitario solo cubría
- * `buildHealthPayload` (puro), así que nadie lo cazó. Verificado contra la BD
- * local antes de tocar nada.
+ * `from("tenants").select("id")` con el cliente anónimo. Eso depende de que
+ * `anon` tenga GRANT sobre `public.tenants`, y el GRANT existe SOLO por drift
+ * del cloud (medido 2026-07-17: en local `anon` recibe 42501 — deny-by-default,
+ * como afirma isolation.rls.test.ts — mientras que en el proyecto cloud `anon`
+ * tiene SELECT sobre las 39 tablas de `public`, herencia de los default
+ * privileges de Supabase que las migraciones nunca revocaron; RLS igual deniega
+ * todas las filas, verificado tabla por tabla: no hay fuga).
+ *
+ * O sea: /api/health responde 200 en staging/prod y 503 en local/CI con la BD
+ * sana, y el día que se corrija el drift (revocar esos grants es lo correcto)
+ * Uptime Kuma empezaría a paginar con la BD perfectamente viva. El test
+ * unitario solo cubría `buildHealthPayload` (puro), así que nadie lo cazó.
  *
  * Se sondea con `tenant_status_by_slug`, la RPC que anon YA tiene concedida
  * (migración 20260717010000): es SECURITY DEFINER, expone SOLO el enum de estado
