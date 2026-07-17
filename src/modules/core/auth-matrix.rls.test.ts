@@ -106,7 +106,8 @@ describe("RLS con login real respeta la matriz (spec §3)", () => {
   it("superadmin ve ambos tenants (login real)", async () => {
     const { db } = await login("superadmin@chilearning.test");
     const tenants = await db.from("tenants").select("slug");
-    expect(tenants.data?.map((r) => r.slug).sort()).toEqual(["otec-pacifico", "seminarea"]);
+    // "demo" = tenant demo de venta (task 5.7), aditivo al seed.
+    expect(tenants.data?.map((r) => r.slug).sort()).toEqual(["demo", "otec-pacifico", "seminarea"]);
   });
 
   it("student@A no ve la BITÁCORA de eventos SENCE (solo admin/supervisor)", async () => {

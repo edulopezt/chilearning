@@ -96,7 +96,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 5.4 Sincrónico en vivo (lección tipo videoconferencia + asistencia RCE por sesión ⚠ validar norma) — spec §7-R3
 - 5.5 Tablero superadmin + métricas de negocio — HU-10.3
 - 5.6 Marca definitiva, dominio, landing comercial, política de privacidad y contrato de encargo revisados por abogado — Plan §13.3, §9
-- 5.7 Documentación de venta: demo con datos ficticios + one-pager "cumplimiento SENCE + Ley 21.719"
+- 5.7 ✅ Documentación de venta: demo con datos ficticios + one-pager "cumplimiento SENCE + Ley 21.719" — **hecho 2026-07-18**: tenant demo `demo` (3er tenant, 100% ficticio, aditivo) sembrado con curso/SENCE/evaluaciones/encuesta/certificado/foro coherentes entre sí (certificado emitido solo con datos que sí cumplen las reglas reales de elegibilidad — `evaluateEligibility`/`attendancePctFromCells` — nunca un snapshot inventado), `docs/venta/GUION-DEMO.md` (guion 15-20 min) y `docs/venta/ONE-PAGER.md`
 - 5.8 Tutor IA (M11): RAG con pgvector, chat streaming, límites y panel de uso, derivación a humano — ADR-007
 - 5.9 IA por lotes en n8n: resúmenes ejecutivos para empresas, borradores human-in-the-loop para tutores, recordatorios personalizados (upgrade de 3.9) — HU-8.2, 9.5, 5.9
 - 5.10 Creación asistida de cursos: asistente guiado paso a paso con dos entradas (desde cero o desde descriptor SENCE .docx) + plantillas por tipo — HU-3.5, 4.5

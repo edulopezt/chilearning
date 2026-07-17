@@ -24,7 +24,16 @@
 
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
-- **Fecha:** 2026-07-17
+- **Fecha:** 2026-07-18
+- **Tarea 5.7 cerrada (rama `feat/h5-5.7-demo-venta`):** doc de venta + tenant demo `demo` (3er
+  tenant, aditivo). Revisión adversarial post-implementación cazó 1 HIGH real (certificado con
+  snapshot inventado que contradecía la propia asistencia/avance sembrados) — corregido: ver detalle
+  en la fila 5.7 de abajo.
+- **⚠️ Deuda de tablero detectada esta sesión (no corregida, fuera de alcance de 5.7):** las tareas
+  5.1–5.6, 5.10, 5.12 y 5.13 ya están mergeadas a `main` (PRs #94–#105, #97) pero siguen marcadas ⬜
+  aquí y en `specs/03-tareas.md`. No las marco ✅ en esta sesión porque no verifiqué su Definición de
+  Hecho una por una (solo confirmé que están mergeadas) — falta una sesión dedicada a reconciliar el
+  tablero completo del Hito 5 contra `main`.
 - **🅿️ HITO 4 PARQUEADO (decisión de Edu, 2026-07-17): todo lo ejecutable está CERRADO; el piloto
   (4.2/4.5) espera mundo real** — curso de Seminarea codificado en SENCE + grupo de alumnos. El Hito 5
   parte en una sesión nueva. Sesión de cierre (2026-07-17, PRs #88–#93):
@@ -406,7 +415,15 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 - ⬜ **5.4** Sincrónico en vivo (videoconferencia + asistencia RCE por sesión ⚠ validar norma) — spec §7-R3.
 - ⬜ **5.5** Tablero superadmin + métricas de negocio — HU-10.3.
 - ⬜ **5.6** Marca/dominio definitivos, landing comercial, privacidad y contrato de encargo (abogado) — Plan §13.3/§9.
-- ⬜ **5.7** Documentación de venta (demo ficticia + one-pager cumplimiento).
+- ✅ **5.7** Documentación de venta (demo ficticia + one-pager cumplimiento) — **hecho 2026-07-18**:
+  tenant demo `demo` (3er tenant, aditivo, 100% ficticio) + `docs/venta/GUION-DEMO.md` +
+  `docs/venta/ONE-PAGER.md`. Revisión adversarial cazó y corrigió un HIGH real: el certificado
+  emitido por el seed usaba un snapshot inventado (100% asistencia, nota 6.5) que contradecía los
+  propios datos sembrados (3/5 lecciones, ~3% asistencia) — bajo las reglas reales de
+  `evaluateEligibility` la alumna NUNCA habría calificado. Fix: la alumna featured ahora SÍ cumple
+  las reglas reales (5/5 lecciones, 13/15 días hábiles con sesión SENCE cerrada = 87%, dentro del
+  rango de fechas de la acción acotado al pasado para que el cálculo sea estable) y el snapshot del
+  certificado cita esos mismos números — nunca inventados.
 - ⬜ **5.8** Tutor IA (M11): RAG con pgvector, chat streaming, límites, derivación a humano — ADR-007. ⚠ RNF-10.
 - ⬜ **5.9** IA por lotes en n8n (resúmenes, borradores human-in-the-loop, recordatorios) — HU-8.2/9.5/5.9.
 - ⬜ **5.10** Creación asistida de cursos (desde cero o desde descriptor SENCE .docx) — HU-3.5/4.5.

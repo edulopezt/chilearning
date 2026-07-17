@@ -143,7 +143,11 @@ describe("sence_errors_7d: errores SENCE REALES, no alertas disparadas (CA HU-10
    * Tenant ficticio propio: los conteos se afirman EXACTOS, así que no pueden
    * depender de lo que inserten otras suites (que corren en paralelo).
    */
-  const OWN_TENANT = "33333333-3333-4333-8333-333333333333";
+  // UUID de scratch DELIBERADAMENTE fuera del patrón 1111/2222/3333 del seed
+  // (task 5.7 sembró un tercer tenant real con ese mismo prefijo "3333..." —
+  // este test hacía upsert() sobre esa misma fila y le pisaba slug/nombre en
+  // silencio si corría después de `supabase db reset`).
+  const OWN_TENANT = "99999999-0000-4999-8000-000000000001";
 
   beforeAll(async () => {
     await svc.from("tenants").upsert({

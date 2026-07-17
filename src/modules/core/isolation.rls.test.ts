@@ -14,6 +14,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
 const TENANT_B = "22222222-2222-4222-8222-222222222222";
+// Tenant demo de venta (task 5.7): aditivo al seed, así que "superadmin ve
+// TODOS los tenants" debe incluirlo — no romper la RLS es lo que se prueba.
+const TENANT_C = "33333333-3333-4333-8333-333333333333";
 const SUPERADMIN_ID = "00000000-0000-4000-8000-00000000000a";
 
 const TENANT_ROLES = [
@@ -190,7 +193,7 @@ describe("matriz de permisos dentro del tenant", () => {
     const db = clientFor(token);
     const { data, error } = await db.from("tenants").select("id");
     expect(error).toBeNull();
-    expect(data?.map((r) => r.id).sort()).toEqual([TENANT_A, TENANT_B]);
+    expect(data?.map((r) => r.id).sort()).toEqual([TENANT_A, TENANT_B, TENANT_C]);
   });
 
   it("otec_admin@A lee la auditoría de su tenant (solo filas de A)", async () => {
