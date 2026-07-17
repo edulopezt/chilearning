@@ -1,14 +1,38 @@
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getPublicEnv } from "@/lib/env";
 import { resolveTenantFromHost } from "@/modules/core/domain/tenant";
 
 /** Rutas accesibles sin sesión. El resto de la app exige login. */
-const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar", "/api/health"];
+const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar", "/api/health", "/suspendido"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/**
+ * Caché module-level del estado del tenant por slug (HU-1.4): evita un RPC por
+ * request. Vive por instancia del runtime del middleware; una suspensión (o
+ * reactivación) se propaga en ≤30 s, suficiente para el caso de morosidad.
+ */
+const STATUS_TTL_MS = 30_000;
+const statusCache = new Map<string, { status: string | null; exp: number }>();
+
+async function tenantStatusBySlug(supabase: SupabaseClient, slug: string): Promise<string | null> {
+  const now = Date.now();
+  const hit = statusCache.get(slug);
+  if (hit && hit.exp > now) return hit.status;
+  const { data, error } = await supabase.rpc("tenant_status_by_slug", { p_slug: slug });
+  if (error) {
+    // Falla ABIERTO: una caída del RPC no puede tumbar la plataforma completa.
+    // Se conserva el último estado conocido (si lo hay) sin renovar el TTL.
+    return hit?.status ?? null;
+  }
+  const status = typeof data === "string" ? data : null;
+  statusCache.set(slug, { status, exp: now + STATUS_TTL_MS });
+  return status;
 }
 
 /**
@@ -56,6 +80,23 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // Tenant suspendido (HU-1.4): TODO el subdominio muestra el aviso, también
+  // sin sesión. Va DESPUÉS de getUser() (patrón oficial: nada entre crear el
+  // cliente y getUser()) y la reescritura CONSERVA las cookies refrescadas.
+  if (resolution.slug && pathname !== "/suspendido") {
+    const status = await tenantStatusBySlug(supabase, resolution.slug);
+    if (status === "suspended") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/suspendido";
+      const rewrite = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+      for (const cookie of response.cookies.getAll()) {
+        rewrite.cookies.set(cookie);
+      }
+      return rewrite;
+    }
+  }
+
   if (!user && !isPublicPath(pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
