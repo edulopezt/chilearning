@@ -20,6 +20,7 @@ export async function createCourseAction(
     sence: formData.get("sence"),
     codSence: formData.get("codSence"),
     status: formData.get("status"),
+    validityMonths: formData.get("validityMonths"),
     completionRules: {
       requireAllLessons: formData.get("requireAllLessons"),
       requireSurvey: formData.get("requireSurvey"),

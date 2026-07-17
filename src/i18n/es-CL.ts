@@ -528,6 +528,57 @@ export const esCL = {
     revokedReason: "Motivo de revocación",
     note: "Esta verificación muestra solo los datos mínimos del certificado. El RUN se muestra parcialmente por protección de datos personales (Ley 21.719).",
   },
+  /** Vencimientos y recertificación (task 5.12, HU-7.3). */
+  certExpiry: {
+    title: "Vencimientos y recertificación",
+    intro:
+      "Certificados con vigencia próxima a vencer. Avisamos automáticamente al alumno y puedes reinscribirlo en una acción nueva desde aquí.",
+    forbidden: "No tienes permiso para ver los vencimientos.",
+    empty: "No hay certificados con vencimiento en este filtro.",
+    // Filtros
+    filterCompany: "Empresa",
+    filterAllCompanies: "Todas las empresas",
+    filterParticular: "Sin empresa (particular)",
+    filterWindow: "Vence dentro de",
+    window30: "30 días",
+    window60: "60 días",
+    window90: "90 días",
+    windowAll: "Todos",
+    filterApply: "Filtrar",
+    // Tabla
+    colWorker: "Trabajador(a)",
+    colRun: "RUN",
+    colCourse: "Curso",
+    colAction: "Acción",
+    colFolio: "Folio",
+    colExpiresOn: "Vence el",
+    colDaysLeft: "Días restantes",
+    colCompany: "Empresa",
+    particular: "Particular",
+    expired: "VENCIDO",
+    days: "días",
+    download: "Descargar Excel",
+    runNote: "El RUN se muestra enmascarado por protección de datos personales (Ley 21.719).",
+    // Re-inscripción
+    recertify: "Reinscribir",
+    recertifyHint: "Te lleva al import de la próxima acción de este curso, con la acción ya seleccionada.",
+    recertifyNoAction: "Crear acción",
+    recertifyNoActionHint: "Este curso no tiene otra acción todavía: crea la nueva versión y luego reinscribe.",
+    // Configuración
+    configTitle: "Alertas de recertificación",
+    configIntro:
+      "Días de anticipación con que se avisa al alumno (y a los sistemas externos, de forma agregada y sin datos personales).",
+    configOffsets: "Avisar con esta anticipación (días, separados por coma)",
+    configOffsetsHint: "Por defecto 90, 60 y 30 días. Se admiten valores entre 1 y 365.",
+    configEnabled: "Enviar avisos automáticos de recertificación",
+    configSave: "Guardar",
+    configSaved: "Configuración guardada.",
+    configError: "No se pudo guardar la configuración.",
+    configDefaultNote: "Usando la configuración por defecto (90, 60 y 30 días).",
+    // Vigencia del curso (form de curso)
+    validityLabel: "Vigencia del certificado (meses)",
+    validityHint: "Vacío = el certificado no vence. Úsalo en cursos normativos (por ejemplo, 12 o 24 meses).",
+  },
   automation: {
     title: "Automatizaciones",
     intro: "Recordatorios automáticos por acción. Los correos los envía la plataforma; a los sistemas externos solo se manda información agregada y seudonimizada (sin datos personales).",
@@ -658,6 +709,13 @@ export const esCL = {
     becario: "Becario (sin registro SENCE)",
     runNote: "El RUN se muestra enmascarado por protección de datos personales.",
     days: "días",
+    // Certificados por vencer de mis trabajadores (task 5.12, HU-7.3).
+    expiryTitle: "Certificados por vencer",
+    expiryIntro: "Trabajadores tuyos que deben recertificarse. Conversa con el OTEC para reinscribirlos.",
+    expiryEmpty: "Ninguno de tus trabajadores tiene certificados próximos a vencer.",
+    expiryColExpiresOn: "Vence el",
+    expiryColDaysLeft: "Días restantes",
+    expiryExpired: "VENCIDO",
   },
   dj: {
     title: "Declaraciones Juradas (DJ/GCA)",

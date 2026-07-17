@@ -29,10 +29,20 @@ interface EnrollmentRow {
   companyId: string | null;
 }
 
-/** Import de alumnos por CSV (task 1.3, HU-2.2/3.2/3.3). Admin/coordinador. */
-export default async function ImportEnrollmentsPage() {
+/**
+ * Import de alumnos por CSV (task 1.3, HU-2.2/3.2/3.3). Admin/coordinador.
+ *
+ * `?actionId=` preselecciona la acción destino: es el aterrizaje del enlace de
+ * re-inscripción del listado de vencimientos (task 5.12, HU-7.3).
+ */
+export default async function ImportEnrollmentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ actionId?: string }>;
+}) {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
+  const { actionId: preselectedActionId } = await searchParams;
 
   if (!principal.tenantId || !authorize(principal, principal.tenantId, ["otec_admin", "coordinator"])) {
     return (
@@ -99,7 +109,7 @@ export default async function ImportEnrollmentsPage() {
       {actions.length === 0 ? (
         <p className="text-muted-foreground">{esCL.enrollmentImport.noActions}</p>
       ) : (
-        <ImportForm actions={actions} />
+        <ImportForm actions={actions} initialActionId={preselectedActionId} />
       )}
 
       <section className="flex flex-col gap-2">

@@ -20,6 +20,8 @@ export interface CourseRow {
   cod_sence: string | null;
   status: string;
   completion_rules: unknown;
+  /** Vigencia del certificado en meses; null = no vence (task 5.12, HU-7.3). */
+  validity_months: number | null;
 }
 
 export type CourseServiceError = "forbidden" | "no_tenant" | "not_found";
@@ -43,6 +45,7 @@ function toRow(value: CourseInput): Record<string, unknown> {
     cod_sence: value.codSence,
     completion_rules: value.completionRules,
     status: value.status,
+    validity_months: value.validityMonths,
   };
 }
 
@@ -51,7 +54,7 @@ export async function listCourses(principal: Principal): Promise<CourseRow[]> {
   const guard = tenantGuard(principal.tenantId);
   const { data } = await guard
     .from("courses")
-    .select("id, name, modality, hours, sence, cod_sence, status, completion_rules");
+    .select("id, name, modality, hours, sence, cod_sence, status, completion_rules, validity_months");
   return (data ?? []) as CourseRow[];
 }
 

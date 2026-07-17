@@ -46,13 +46,26 @@ function templateHref(codSence: string | null): string {
   return `data:text/csv;charset=utf-8,${encodeURIComponent(templateCsv(codSence))}`;
 }
 
-export function ImportForm({ actions }: { actions: ActionOption[] }) {
+export function ImportForm({
+  actions,
+  initialActionId,
+}: {
+  actions: ActionOption[];
+  /**
+   * Acción preseleccionada (task 5.12): es lo que hace real el "enlace directo a
+   * re-inscripción" del listado de vencimientos. Si el id no existe en el tenant
+   * se ignora y cae al default (no se confía en el searchParam).
+   */
+  initialActionId?: string;
+}) {
   const [state, formAction, pending] = useActionState<ImportActionState, FormData>(
     importEnrollmentsAction,
     { status: "idle" },
   );
   // Acción seleccionada: la plantilla descargable se genera con SU código SENCE.
-  const [selectedId, setSelectedId] = useState(actions[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(
+    (initialActionId && actions.some((a) => a.id === initialActionId) ? initialActionId : actions[0]?.id) ?? "",
+  );
   const selected = actions.find((a) => a.id === selectedId) ?? actions[0];
 
   return (

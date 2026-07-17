@@ -24,9 +24,15 @@ export interface CourseInput {
   codSence: string | null;
   completionRules: CompletionRules;
   status: CourseStatus;
+  /**
+   * Vigencia del certificado en meses (task 5.12, HU-7.3). `null` = no vence,
+   * y es el default: solo los cursos NORMATIVOS caducan.
+   */
+  validityMonths: number | null;
 }
 
-export type CourseField = "name" | "modality" | "hours" | "codSence" | "completionRules" | "status";
+export type CourseField =
+  | "name" | "modality" | "hours" | "codSence" | "completionRules" | "status" | "validityMonths";
 
 export interface FieldError {
   field: CourseField;
@@ -62,6 +68,22 @@ export function normalizeCompletionRules(raw: unknown): CompletionRules {
  * Valida la entrada del formulario de curso. Devuelve el valor normalizado o la
  * lista de errores de campo (para reporte en UI).
  */
+/**
+ * Vigencia en meses desde entrada desconocida (task 5.12, HU-7.3).
+ * Vacío/null/0 ⇒ `null` = no vence (un `<input type="number">` vacío manda "").
+ * Fuera de 1..120 o no entero ⇒ error de campo: mejor que el coordinador lo
+ * corrija a que se emita un certificado con una vigencia que él no quiso.
+ */
+function parseValidityMonths(raw: unknown, errors: FieldError[]): number | null {
+  if (raw === null || raw === undefined || String(raw).trim() === "") return null;
+  const months = Number(raw);
+  if (!Number.isInteger(months) || months < 0 || months > 120) {
+    errors.push({ field: "validityMonths", message: "La vigencia debe ser un número entero de meses entre 1 y 120 (vacío = no vence)." });
+    return null;
+  }
+  return months === 0 ? null : months;
+}
+
 export function parseCourseInput(raw: {
   name?: unknown;
   modality?: unknown;
@@ -70,6 +92,7 @@ export function parseCourseInput(raw: {
   codSence?: unknown;
   completionRules?: unknown;
   status?: unknown;
+  validityMonths?: unknown;
 }): ParseResult {
   const errors: FieldError[] = [];
 
@@ -107,10 +130,11 @@ export function parseCourseInput(raw: {
   }
 
   const completionRules = normalizeCompletionRules(raw.completionRules);
+  const validityMonths = parseValidityMonths(raw.validityMonths, errors);
 
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
-    value: { name, modality, hours, sence, codSence, completionRules, status },
+    value: { name, modality, hours, sence, codSence, completionRules, status, validityMonths },
   };
 }

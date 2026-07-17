@@ -11,10 +11,21 @@ import { ActionControls } from "./action-controls";
 
 export const dynamic = "force-dynamic";
 
-/** Gestión de acciones SENCE (task 1.2). Admin/coordinador. */
-export default async function ActionsPage() {
+/**
+ * Gestión de acciones SENCE (task 1.2). Admin/coordinador.
+ *
+ * `?courseId=` preselecciona el curso en el alta: es el aterrizaje del enlace
+ * "crear acción" del listado de vencimientos, cuando el curso todavía no tiene
+ * una acción nueva donde recertificar (task 5.12, HU-7.3).
+ */
+export default async function ActionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ courseId?: string }>;
+}) {
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
+  const { courseId: preselectedCourseId } = await searchParams;
 
   if (!principal.tenantId || !authorize(principal, principal.tenantId, ["otec_admin", "coordinator"])) {
     return (
@@ -115,7 +126,7 @@ export default async function ActionsPage() {
         {courses.length === 0 ? (
           <p className="text-muted-foreground text-sm">{esCL.actions.noCourses}</p>
         ) : (
-          <ActionForm courses={courses} />
+          <ActionForm courses={courses} initialCourseId={preselectedCourseId} />
         )}
       </section>
     </main>

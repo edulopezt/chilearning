@@ -28,15 +28,26 @@ export function verifyWebhook(secret: string, body: string, signature: string): 
   return expected.length === got.length && timingSafeEqual(expected, got);
 }
 
-/** Evento que se envía a n8n: agregado + seudónimos. SIN PII (por construcción). */
-export interface N8nReminderEvent {
-  readonly type: "reminder";
-  readonly kind: AutomationKind;
+/**
+ * Contrato MÍNIMO de todo evento que sale a n8n. Existe para que el emisor
+ * (`n8n-webhook`) acepte eventos de otros módulos —p.ej. el de vencimiento de
+ * certificados de `certificados/domain/expiry` (task 5.12)— sin que este módulo
+ * tenga que conocerlos, y para dejar el invariante escrito en un solo lugar:
+ * `tenant` es un SEUDÓNIMO y lo que viaja es un AGREGADO (`count`), nunca PII.
+ */
+export interface N8nEventBase {
+  readonly type: string;
   readonly tenant: string; // seudónimo
-  readonly action: string; // seudónimo
-  readonly recipients: readonly string[]; // seudónimos
   readonly count: number;
   readonly at: string;
+}
+
+/** Evento que se envía a n8n: agregado + seudónimos. SIN PII (por construcción). */
+export interface N8nReminderEvent extends N8nEventBase {
+  readonly type: "reminder";
+  readonly kind: AutomationKind;
+  readonly action: string; // seudónimo
+  readonly recipients: readonly string[]; // seudónimos
 }
 
 /**

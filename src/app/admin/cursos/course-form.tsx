@@ -7,6 +7,7 @@ import type { MutationResult } from "@/modules/academico/course-service";
 import { createCourseAction } from "./actions";
 
 const t = esCL.courses;
+const tExpiry = esCL.certExpiry;
 
 function fieldErrors(state: MutationResult | null): Record<string, string> {
   if (state && !state.ok && "validation" in state) {
@@ -76,6 +77,21 @@ export function CourseForm() {
           <input name="minAttendancePct" type="number" min={0} max={100} defaultValue={0} className="min-h-11 w-32 rounded-md border px-3 text-base" />
         </label>
       </fieldset>
+
+      {/* Vigencia del certificado (task 5.12, HU-7.3): vacío = no vence. */}
+      <label className="flex flex-col gap-1 text-sm">
+        {tExpiry.validityLabel}
+        <input
+          name="validityMonths"
+          type="number"
+          min={1}
+          max={120}
+          placeholder="—"
+          className="min-h-11 w-32 rounded-md border px-3 text-base"
+        />
+        <span className="text-muted-foreground text-xs">{tExpiry.validityHint}</span>
+        {errors.validityMonths ? <span className="text-xs text-red-600">{errors.validityMonths}</span> : null}
+      </label>
 
       <label className="flex flex-col gap-1 text-sm">
         {t.statusLabel}

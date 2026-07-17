@@ -139,6 +139,36 @@ ${button(params.brand.primaryColor, params.courseUrl, isAttendance ? "Registrar 
   return { subject, html: shell(params.brand, body), text };
 }
 
+/**
+ * Aviso de recertificación: al certificado le quedan `daysLeft` días (task 5.12,
+ * HU-7.3). PII solo aquí, al destinatario real; a n8n va el agregado sin PII.
+ *
+ * NO lleva el folio ni el RUN: el correo solo tiene que empujar al alumno a
+ * entrar (minimización, Ley 21.719 — el dato está tras el login, no en la
+ * bandeja). `daysLeft` es de calendario (lo calcula `daysUntil`).
+ */
+export function renderCertificateExpiringEmail(params: {
+  brand: EmailBrand;
+  recipientName: string;
+  courseName: string;
+  daysLeft: number;
+  /** Fecha de vencimiento ya formateada en es-CL por el llamador. */
+  expiresOn: string;
+  certificatesUrl: string;
+}): RenderedEmail {
+  const name = escapeHtml(params.recipientName || "");
+  const course = escapeHtml(params.courseName);
+  const days = Math.max(0, Math.trunc(params.daysLeft));
+  const when = days === 0 ? "hoy" : days === 1 ? "en 1 día" : `en ${days} días`;
+  const subject = `Tu certificado de ${params.courseName} vence ${when}`;
+  const body = `<p>Hola ${name},</p>
+<p>Tu certificado del curso <strong>${course}</strong> vence <strong>${escapeHtml(when)}</strong> (${escapeHtml(params.expiresOn)}).</p>
+<p>Si tu trabajo exige mantener esta certificación vigente, conversa con tu empresa o con nosotros para reinscribirte en una nueva versión del curso.</p>
+${button(params.brand.primaryColor, params.certificatesUrl, "Ver mis certificados")}`;
+  const text = `Hola ${params.recipientName},\n\nTu certificado del curso ${params.courseName} vence ${when} (${params.expiresOn}).\n\nSi necesitas mantenerlo vigente, conversa con tu empresa o con nosotros para reinscribirte en una nueva versión del curso.\n\nVer mis certificados: ${params.certificatesUrl}\n`;
+  return { subject, html: shell(params.brand, body), text };
+}
+
 /** Respuesta del relator/tutor a un hilo del foro (task 3.4, HU-9.2). */
 export function renderForumReplyEmail(params: {
   brand: EmailBrand;

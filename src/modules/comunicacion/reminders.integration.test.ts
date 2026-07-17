@@ -12,7 +12,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import type { EmailSender, OutgoingEmail } from "@/modules/comunicacion/email-sender";
 import type { N8nEmitter } from "@/modules/comunicacion/n8n-webhook";
-import { pseudonymize, type N8nReminderEvent } from "@/modules/comunicacion/domain/automation";
+import { pseudonymize, type N8nEventBase, type N8nReminderEvent } from "@/modules/comunicacion/domain/automation";
 import { runRemindersTick } from "@/modules/comunicacion/reminders";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
@@ -41,8 +41,13 @@ function captureSender(): { sender: EmailSender; sent: OutgoingEmail[] } {
   const sent: OutgoingEmail[] = [];
   return { sent, sender: { configured: true, async send(email) { sent.push(email); return { ok: true, id: "x" }; } } };
 }
-function captureN8n(): { n8n: N8nEmitter; events: N8nReminderEvent[] } {
-  const events: N8nReminderEvent[] = [];
+/** El emisor acepta cualquier `N8nEventBase` (task 5.12 sumó el de vencimientos),
+ *  así que se captura la base y se estrecha a `reminder` al afirmar. */
+function isReminderEvent(e: N8nEventBase): e is N8nReminderEvent {
+  return e.type === "reminder";
+}
+function captureN8n(): { n8n: N8nEmitter; events: N8nEventBase[] } {
+  const events: N8nEventBase[] = [];
   return { events, n8n: { configured: true, async emit(e) { events.push(e); return { ok: true }; } } };
 }
 const resolve = async () => new Map([[A, { email: EMAIL_A, name: NAME_A }], [B, { email: "b@o.cl", name: "Beto" }], [C, { email: "c@o.cl", name: "Cata" }]]);
@@ -104,7 +109,7 @@ describe("recordatorios — RNF-10, correo PII, opt-out, dedup", () => {
     // evento de OTRA acción según el orden de archivos/estado de la BD; se ancla al
     // seudónimo de NUESTRA acción (mismo cómputo que el emisor, sin PII).
     const myAction = pseudonymize(SECRET, TENANT_A, actionId);
-    const noAtt = events.find((e) => e.kind === "no_attendance" && e.action === myAction);
+    const noAtt = events.filter(isReminderEvent).find((e) => e.kind === "no_attendance" && e.action === myAction);
     expect(noAtt).toBeTruthy();
     expect(noAtt!.count).toBe(1);
     const json = JSON.stringify(noAtt);
