@@ -3,11 +3,20 @@ import "server-only";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
 import { parseLessonInput, type LessonFieldError, type LessonInput } from "@/modules/academico/domain/lesson";
+import { aiClientFromEnv, type AiClient } from "@/modules/tutor-ia/ai-client";
+import { reindexLesson } from "@/modules/tutor-ia/indexing";
 
 /**
  * Constructor de lecciones (task 1.4). CRUD + reordenar vía service-role bajo
  * tenantGuard, autorizado a otec_admin/coordinator. La lección se cuelga de un
  * curso del tenant (aislamiento verificado por el filtro explícito).
+ *
+ * HOOK del Tutor IA (task 5.8a, HU-11.1): tras un create/update exitoso se
+ * reindexa la lección para el RAG SÍNCRONAMENTE (no encolada) — el chunking +
+ * FTS son baratos/locales; el único costo de red es el embedding OpenRouter,
+ * aceptable para un guardado admin (ver `indexing.ts` para el detalle de esta
+ * decisión). Falla en silencio (logueado): un problema del tutor NUNCA debe
+ * bloquear el CRUD de lecciones, que es la operación primaria de este archivo.
  */
 
 export interface LessonRow {
@@ -36,6 +45,31 @@ const MANAGERS = ["otec_admin", "coordinator"] as const;
 
 function canManage(p: Principal): boolean {
   return Boolean(p.tenantId) && authorize(p, p.tenantId!, MANAGERS);
+}
+
+export interface LessonServiceDeps {
+  /** Inyectable para tests; por defecto usa `OPENROUTER_API_KEY` del env. */
+  aiClient?: AiClient;
+}
+
+/** Reindexa para el Tutor IA sin arriesgar el resultado del CRUD de la lección. */
+async function safeReindex(
+  guard: ReturnType<typeof tenantGuard>,
+  deps: LessonServiceDeps,
+  lesson: { id: string; course_id: string; title: string; kind: string; content: string; status: string },
+): Promise<void> {
+  try {
+    await reindexLesson(
+      guard.db,
+      { aiClient: deps.aiClient ?? aiClientFromEnv(process.env) },
+      { ...lesson, tenant_id: guard.tenantId },
+    );
+  } catch (err) {
+    console.error("[tutor-ia] fallo reindexando una leccion (no bloquea el CRUD)", {
+      lessonId: lesson.id,
+      message: (err as Error).message,
+    });
+  }
 }
 
 export async function listLessons(principal: Principal, courseId: string): Promise<LessonRow[]> {
@@ -81,6 +115,7 @@ export async function createLesson(
   principal: Principal,
   courseId: string,
   raw: Record<string, unknown>,
+  deps: LessonServiceDeps = {},
 ): Promise<LessonMutationResult> {
   if (!principal.tenantId) return { ok: false, error: "no_tenant" };
   if (!canManage(principal)) return { ok: false, error: "forbidden" };
@@ -112,6 +147,15 @@ export async function createLesson(
     .select("id")
     .single();
   if (error || !data) return { ok: false, error: "not_found" };
+
+  await safeReindex(guard, deps, {
+    id: data.id as string,
+    course_id: courseId,
+    title: parsed.value.title,
+    kind: parsed.value.kind,
+    content: parsed.value.content,
+    status: parsed.value.status,
+  });
   return { ok: true, id: data.id as string };
 }
 
@@ -119,6 +163,7 @@ export async function updateLesson(
   principal: Principal,
   lessonId: string,
   raw: Record<string, unknown>,
+  deps: LessonServiceDeps = {},
 ): Promise<LessonMutationResult> {
   if (!principal.tenantId) return { ok: false, error: "no_tenant" };
   if (!canManage(principal)) return { ok: false, error: "forbidden" };
@@ -144,9 +189,18 @@ export async function updateLesson(
     .update(toRow(parsed.value))
     .eq("id", lessonId)
     .eq("tenant_id", principal.tenantId)
-    .select("id")
+    .select("id, course_id")
     .maybeSingle();
   if (error || !data) return { ok: false, error: "not_found" };
+
+  await safeReindex(guard, deps, {
+    id: data.id as string,
+    course_id: data.course_id as string,
+    title: parsed.value.title,
+    kind: parsed.value.kind,
+    content: parsed.value.content,
+    status: parsed.value.status,
+  });
   return { ok: true, id: data.id as string };
 }
 
@@ -154,6 +208,10 @@ export async function deleteLesson(principal: Principal, lessonId: string): Prom
   if (!principal.tenantId) return { ok: false, error: "no_tenant" };
   if (!canManage(principal)) return { ok: false, error: "forbidden" };
   const guard = tenantGuard(principal.tenantId);
+  // `course_chunks.lesson_id` referencia `lessons` con `on delete restrict`
+  // (task 5.8a, Tutor IA): hay que soltar sus chunks ANTES de poder borrar la
+  // lección, o el DELETE de abajo revienta con una violación de FK.
+  await guard.db.from("course_chunks").delete().eq("lesson_id", lessonId).eq("tenant_id", principal.tenantId);
   const { data, error } = await guard.db
     .from("lessons")
     .delete()

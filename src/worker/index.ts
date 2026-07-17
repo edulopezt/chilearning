@@ -27,6 +27,7 @@ import { n8nEmitterFromEnv } from "../modules/comunicacion/n8n-webhook";
 import { runRemindersTick } from "../modules/comunicacion/reminders";
 import { runScormExtract, runScormSweep } from "../modules/contenido/scorm-extract";
 import { runTenantExportTick } from "../modules/reportes/tenant-export-runner";
+import { runTutorReconcile } from "../modules/tutor-ia/tutor-maintenance";
 
 const QUEUE_NAME = "sence";
 const TICK_JOB = "sence-tick";
@@ -37,6 +38,7 @@ const SCORM_EXTRACT_JOB = "scorm-extract";
 const SCORM_SWEEP_JOB = "scorm-sweep";
 const DESCRIPTOR_EXTRACT_JOB = "descriptor-extract";
 const DESCRIPTOR_SWEEP_JOB = "descriptor-sweep";
+const TUTOR_RECONCILE_JOB = "tutor-reconcile-tick";
 
 function remindersEveryMs(): number {
   const raw = Number(process.env.REMINDERS_EVERY_MS);
@@ -61,6 +63,11 @@ function scormSweepEveryMs(): number {
 function descriptorSweepEveryMs(): number {
   const raw = Number(process.env.DESCRIPTOR_SWEEP_EVERY_MS);
   return Number.isInteger(raw) && raw >= 60_000 ? raw : 5 * 60 * 1000; // default 5 min
+}
+
+function tutorReconcileEveryMs(): number {
+  const raw = Number(process.env.TUTOR_RECONCILE_EVERY_MS);
+  return Number.isInteger(raw) && raw >= 60_000 ? raw : 24 * 60 * 60 * 1000; // default 24 h
 }
 
 /** Índice user_id → {email, name} recorriendo el admin API (para el correo PII). */
@@ -170,6 +177,14 @@ async function descriptorSweepTick(db: SupabaseClient): Promise<void> {
   if (summary.reprocessed > 0) {
     console.log("[worker][descriptor-sweep] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
   }
+}
+
+/** Mantenimiento diario del Tutor IA (task 5.8a, HU-11.3): purga por
+ *  retención propia + backfill de lecciones publicadas sin chunks. */
+async function tutorReconcileTick(db: SupabaseClient): Promise<void> {
+  const startedAt = Date.now();
+  const summary = await runTutorReconcile(db, { now: startedAt });
+  console.log("[worker][tutor-reconcile] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
 }
 
 function requiredEnv(name: string): string {
@@ -299,6 +314,14 @@ async function main(): Promise<void> {
     { every: descriptorSweepEveryMs() },
     { name: DESCRIPTOR_SWEEP_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
   );
+  // Mantenimiento del Tutor IA (task 5.8a): cadencia de DÍAS (retención propia
+  // por antigüedad + backfill de lecciones sin chunks) — no tiene sentido
+  // correrlo cada minuto.
+  await queue.upsertJobScheduler(
+    TUTOR_RECONCILE_JOB,
+    { every: tutorReconcileEveryMs() },
+    { name: TUTOR_RECONCILE_JOB, opts: { removeOnComplete: { count: 30 }, removeOnFail: { age: 7 * 24 * 3600, count: 100 } } },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
@@ -310,6 +333,7 @@ async function main(): Promise<void> {
       else if (job.name === SCORM_SWEEP_JOB) await scormSweepTick(db);
       else if (job.name === DESCRIPTOR_EXTRACT_JOB) await descriptorExtractTick(db, job.data);
       else if (job.name === DESCRIPTOR_SWEEP_JOB) await descriptorSweepTick(db);
+      else if (job.name === TUTOR_RECONCILE_JOB) await tutorReconcileTick(db);
       else await tick(db);
     },
     { connection, concurrency: 1 },
