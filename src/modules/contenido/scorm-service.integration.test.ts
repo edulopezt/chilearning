@@ -24,14 +24,15 @@ const admin: Principal = { userId: "aaaaaaaa-0000-4000-8000-000000000001", tenan
 const student: Principal = { userId: "aaaaaaaa-0000-4000-8000-000000000005", tenantId: TENANT_A, roles: ["student"] };
 
 let svc: SupabaseClient;
+let anon: SupabaseClient;
 const seededPackages: string[] = [];
 const seededLessons: string[] = [];
 const seededCourses: string[] = [];
 
-function env(): { apiUrl: string; serviceRoleKey: string } {
+function env(): { apiUrl: string; serviceRoleKey: string; anonKey: string } {
   const out = execSync("supabase status -o env", { encoding: "utf8" });
   const get = (k: string): string => out.match(new RegExp(`^${k}="?([^"\\r\\n]+)"?$`, "m"))![1]!;
-  return { apiUrl: get("API_URL"), serviceRoleKey: get("SERVICE_ROLE_KEY") };
+  return { apiUrl: get("API_URL"), serviceRoleKey: get("SERVICE_ROLE_KEY"), anonKey: get("ANON_KEY") };
 }
 
 async function zipFile(): Promise<{ name: string; type: string; size: number; bytes: ArrayBuffer }> {
@@ -45,6 +46,11 @@ beforeAll(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = e.apiUrl;
   process.env.SUPABASE_SERVICE_ROLE_KEY = e.serviceRoleKey;
   svc = createClient(e.apiUrl, e.serviceRoleKey, { auth: { persistSession: false } });
+  // Cliente `anon`: NO tiene GRANT de UPDATE sobre `scorm_packages` (la
+  // migración solo lo concede a `service_role`) — sirve para reproducir un
+  // fallo REAL de esa escritura puntual sin SQL crudo (ver el hallazgo de
+  // 4-ojos sobre el `update({ zip_path })` sin chequear su error).
+  anon = createClient(e.apiUrl, e.anonKey, { auth: { persistSession: false } });
 });
 
 afterAll(async () => {
@@ -125,6 +131,35 @@ describe("uploadScormPackage (task 5.1a)", () => {
     }
     expect(result).toEqual({ ok: false, error: "storage_error" });
 
+    const after = await svc
+      .from("scorm_packages")
+      .select("id", { count: "exact", head: true })
+      .eq("course_id", COURSE_A);
+    expect(after.count).toBe(before.count);
+  });
+
+  it("compensa si el UPDATE que enlaza zip_path falla: sin fila huérfana parada en error para siempre (hallazgo 4-ojos MED)", async () => {
+    const before = await svc
+      .from("scorm_packages")
+      .select("id", { count: "exact", head: true })
+      .eq("course_id", COURSE_A);
+
+    // `linkDbOverride: anon` fuerza un fallo REAL (permission denied, código
+    // 42501) en el UPDATE que enlaza `zip_path` — `anon` no tiene GRANT de
+    // UPDATE sobre `scorm_packages` (solo `service_role` lo tiene) — sin
+    // necesitar SQL crudo ni mocks. Antes del fix, esta escritura fallaba en
+    // silencio: la fila quedaba con `zip_path: ""` (el placeholder del
+    // insert) para siempre, y el .zip ya subido quedaba huérfano en Storage.
+    const result = await uploadScormPackage(
+      admin,
+      COURSE_A,
+      { title: "Debe compensar", file: await zipFile() },
+      { linkDbOverride: anon },
+    );
+    expect(result).toEqual({ ok: false, error: "storage_error" });
+
+    // Ninguna fila nueva quedó atrás (ni con zip_path="" apuntando a nada):
+    // el fix compensa borrando la fila (mismo conteo que antes de intentar).
     const after = await svc
       .from("scorm_packages")
       .select("id", { count: "exact", head: true })

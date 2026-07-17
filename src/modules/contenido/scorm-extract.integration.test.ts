@@ -10,7 +10,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { runScormExtract, runScormSweep } from "@/modules/contenido/scorm-extract";
-import { buildScormFixtureZip } from "@/modules/contenido/testing/scorm-fixture";
+import { buildScormFixtureZip, buildScormZipBombFixture } from "@/modules/contenido/testing/scorm-fixture";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
 const COURSE_A = "c0000000-0000-4000-8000-000000000001";
@@ -128,6 +128,47 @@ describe("runScormExtract (task 5.1a)", () => {
     expect(row?.error_code).toBe("unsafe_path");
     expect(row?.extracted_prefix).toBeNull();
 
+    const list = await svc.storage.from(BUCKET).list(`${TENANT_A}/${id}/ext`);
+    expect(list.data ?? []).toHaveLength(0);
+  });
+
+  it("zip que MIENTE el tamaño descomprimido declarado de una entry → el streaming REAL corta igual (hallazgo 4-ojos HIGH, bypass del pre-chequeo)", async () => {
+    // Reproduce el ataque bit a bit (no solo la aritmética pura de
+    // `exceedsUncompressedBudget`): un .zip 100% válido cuya entry "bomb.bin"
+    // pesa 2.000.000 de bytes REALES al descomprimir, pero cuyo directorio
+    // central MIENTE que pesa apenas 10 bytes (`forgeDeclaredUncompressedSize`).
+    // El pre-chequeo por tamaño DECLARADO (`declaredUncompressedSize` +
+    // `exceedsUncompressedBudget`, contra el presupuesto real de producción de
+    // 500 MB) pasa igual de largo — declarado o real, 2 MB está muy por debajo
+    // de 500 MB — así que lo que debe atajar esto es el streaming de bytes
+    // REALES. `uncompressedBudgetOverrideBytes` (hook SOLO de tests) acota ese
+    // segundo guardia a 100 KB para no tener que inflar cientos de MB en CI:
+    // si `runScormExtract` alguna vez volviera a confiar en el campo mentiroso
+    // del header (10 bytes, muy por debajo de cualquier presupuesto) en vez de
+    // los bytes reales emitidos por jszip, este test fallaría.
+    const id = await seedPackage();
+    const REAL_BYTES = 2_000_000;
+    await uploadZip(id, await buildScormZipBombFixture(REAL_BYTES));
+
+    const result = await runScormExtract(svc, {
+      packageId: id,
+      tenantId: TENANT_A,
+      now: Date.now(),
+      uncompressedBudgetOverrideBytes: 100_000,
+    });
+    expect(result).toEqual({ ok: false, errorCode: "too_large" });
+
+    const { data: row } = await svc
+      .from("scorm_packages")
+      .select("status, error_code, extracted_prefix")
+      .eq("id", id)
+      .maybeSingle();
+    expect(row?.status).toBe("error");
+    expect(row?.error_code).toBe("too_large");
+    expect(row?.extracted_prefix).toBeNull();
+
+    // Nada llega a quedar subido en Storage: el corte ocurre durante el
+    // streaming, antes de completar la subida de ningún asset extraído.
     const list = await svc.storage.from(BUCKET).list(`${TENANT_A}/${id}/ext`);
     expect(list.data ?? []).toHaveLength(0);
   });

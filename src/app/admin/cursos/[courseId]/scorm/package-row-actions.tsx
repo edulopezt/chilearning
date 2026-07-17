@@ -10,7 +10,7 @@ const t = esCL.scorm;
 
 export function PackageRowActions({ courseId, pkg }: { courseId: string; pkg: ScormPackageRow }) {
   const [lessonTitle, setLessonTitle] = useState(pkg.title);
-  const btn = "inline-flex min-h-9 items-center justify-center rounded border px-2 text-sm disabled:opacity-30";
+  const btn = "inline-flex min-h-11 items-center justify-center rounded border px-2 text-sm disabled:opacity-30";
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -25,7 +25,7 @@ export function PackageRowActions({ courseId, pkg }: { courseId: string; pkg: Sc
             value={lessonTitle}
             onChange={(e) => setLessonTitle(e.target.value)}
             aria-label={t.titleLabel}
-            className="min-h-9 w-32 rounded border px-2 text-sm"
+            className="min-h-11 w-32 rounded border px-2 text-sm"
           />
           <button className={btn} onClick={() => createScormLessonAction(courseId, pkg.id, lessonTitle)}>
             {t.createLesson}

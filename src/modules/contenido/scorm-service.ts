@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { writeAudit } from "@/lib/audit";
 import { requireFeature } from "@/lib/feature-flags";
 import { enqueueScormExtract } from "@/lib/queue";
@@ -58,10 +60,22 @@ export interface ScormUploadInput {
   readonly file: { readonly name: string; readonly type: string; readonly size: number; readonly bytes: ArrayBuffer };
 }
 
+export interface ScormUploadTestHooks {
+  /**
+   * SOLO PARA TESTS: si se pasa, se usa este cliente (en vez del service-role
+   * de `guard.db`, que BYPASSA RLS y no puede bloquearse con una policy) para
+   * el UPDATE que enlaza `zip_path` tras la subida — permite reproducir un
+   * fallo REAL de esa escritura puntual (p.ej. un cliente sin privilegio
+   * UPDATE sobre `scorm_packages`, como `anon`) sin depender de SQL crudo.
+   */
+  readonly linkDbOverride?: SupabaseClient;
+}
+
 export async function uploadScormPackage(
   principal: Principal,
   courseId: string,
   input: ScormUploadInput,
+  testHooks: ScormUploadTestHooks = {},
 ): Promise<ScormUploadResult> {
   if (!principal.tenantId) return { ok: false, error: "no_tenant" };
   const guard = tenantGuard(principal.tenantId);
@@ -110,7 +124,21 @@ export async function uploadScormPackage(
     return { ok: false, error: "storage_error" };
   }
 
-  await guard.db.from("scorm_packages").update({ zip_path: path }).eq("id", packageId).eq("tenant_id", principal.tenantId);
+  const linkDb = testHooks.linkDbOverride ?? guard.db;
+  const { error: linkError } = await linkDb
+    .from("scorm_packages")
+    .update({ zip_path: path })
+    .eq("id", packageId)
+    .eq("tenant_id", principal.tenantId);
+  if (linkError) {
+    // Compensa: si esta escritura falla, la fila quedaría con `zip_path: ""`
+    // (el placeholder del insert) apuntando a NADA, mientras el .zip real
+    // queda huérfano en Storage — el worker jamás podría recuperarla (ver
+    // `retryScormPackage`, que no toca `zip_path`). Se limpia AMBOS lados.
+    await guard.db.storage.from(BUCKET).remove([path]);
+    await guard.db.from("scorm_packages").delete().eq("id", packageId).eq("tenant_id", principal.tenantId);
+    return { ok: false, error: "storage_error" };
+  }
 
   // Encolado best-effort: si Redis no está disponible, la fila queda
   // `uploaded` y el `scorm-sweep` periódico del worker la recoge igual — la

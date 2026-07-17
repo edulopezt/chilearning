@@ -82,3 +82,55 @@ export async function buildScormFixtureZip(options: ScormFixtureOptions = {}): P
   }
   return zip.generateAsync({ type: "nodebuffer" });
 }
+
+const CENTRAL_DIR_SIGNATURE = Buffer.from([0x50, 0x4b, 0x01, 0x02]); // "PK\x01\x02"
+
+/**
+ * Parchea, en el directorio CENTRAL de un .zip YA GENERADO, el campo de 4
+ * bytes "uncompressed size" de la entry `entryName` para que declare
+ * `lieBytes` en vez de su tamaño real (hallazgo H5-5.1a, 4-ojos HIGH:
+ * "zip-bomb guard trusts the attacker-controlled declared uncompressedSize
+ * field"). Reproduce el ataque BIT A BIT: jszip (`ZipEntry.readCentralPart`,
+ * `lib/zipEntry.js`) lee ese campo tal cual de los bytes del .zip sin
+ * corroborarlo contra el contenido comprimido real — el único campo que usa
+ * para saber CUÁNTOS bytes leer del payload es `compressedSize` (que este
+ * parche NO toca), así que el .zip resultante sigue siendo 100% válido y se
+ * abre sin error; solo MIENTE sobre cuánto pesará al descomprimir.
+ */
+export function forgeDeclaredUncompressedSize(zipBuffer: Buffer, entryName: string, lieBytes: number): Buffer {
+  const buf = Buffer.from(zipBuffer); // copia: nunca mutar el buffer del caller
+  const nameBytes = Buffer.from(entryName, "utf8");
+
+  let searchFrom = 0;
+  for (;;) {
+    const recordStart = buf.indexOf(CENTRAL_DIR_SIGNATURE, searchFrom);
+    if (recordStart === -1) {
+      throw new Error(`forgeDeclaredUncompressedSize: entry "${entryName}" no encontrada en el directorio central`);
+    }
+    const fileNameLength = buf.readUInt16LE(recordStart + 28);
+    const nameStart = recordStart + 46;
+    const candidateName = buf.subarray(nameStart, nameStart + fileNameLength);
+    if (fileNameLength === nameBytes.length && candidateName.equals(nameBytes)) {
+      buf.writeUInt32LE(lieBytes >>> 0, recordStart + 24); // offset 24 = "uncompressed size" (4 bytes)
+      return buf;
+    }
+    searchFrom = recordStart + 4;
+  }
+}
+
+/**
+ * Paquete SCORM 1.2 válido con una entry (`bomb.bin`) cuyo tamaño
+ * descomprimido REAL es `realUncompressedBytes`, pero cuyo directorio
+ * central MIENTE que pesa apenas `lieBytes` (por defecto, 10) — el .zip del
+ * bypass real del guardia anti zip-bomb (H5-5.1a). Usa contenido altamente
+ * repetible (un carácter) para que, con compresión DEFLATE real, el .zip
+ * resultante sea pequeño pese al tamaño real declarado como falso.
+ */
+export async function buildScormZipBombFixture(realUncompressedBytes: number, lieBytes = 10): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file("imsmanifest.xml", MANIFEST_XML);
+  zip.file("index.html", INDEX_HTML);
+  zip.file("bomb.bin", "A".repeat(realUncompressedBytes), { compression: "DEFLATE" });
+  const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  return forgeDeclaredUncompressedSize(buffer, "bomb.bin", lieBytes);
+}

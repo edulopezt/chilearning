@@ -7,7 +7,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
 
 import { parseScormManifest } from "./domain/scorm-manifest";
-import { contentTypeFor, exceedsUncompressedBudget, sanitizeScormPath, validateZipEntries } from "./domain/scorm-zip";
+import {
+  contentTypeFor,
+  exceedsUncompressedBudget,
+  MAX_UNCOMPRESSED_BYTES,
+  sanitizeScormPath,
+  validateZipEntries,
+} from "./domain/scorm-zip";
 
 /**
  * Extracción y validación de paquetes SCORM (task 5.1a, HU-4.2, ADR-006): la
@@ -31,6 +37,15 @@ export interface ScormExtractDeps {
   readonly packageId: string;
   readonly tenantId: string;
   readonly now: number;
+  /**
+   * SOLO PARA TESTS: acota el presupuesto de bytes REALES (no declarados)
+   * que `readEntryBytes` tolera antes de abortar. El worker en producción
+   * NUNCA pasa este campo (queda en `MAX_UNCOMPRESSED_BYTES` = 500 MB) — sin
+   * este hook, probar el guardia anti zip-bomb con un .zip que realmente
+   * mienta en su tamaño declarado exigiría inflar cientos de MB en cada
+   * corrida de CI.
+   */
+  readonly uncompressedBudgetOverrideBytes?: number;
 }
 
 export type ScormExtractResult = { ok: true } | { ok: false; errorCode: ScormErrorCode | "not_found" };
@@ -45,12 +60,95 @@ async function markError(db: SupabaseClient, packageId: string, tenantId: string
 
 /**
  * Campo INTERNO de jszip (no forma parte de su `.d.ts` público): lo llena al
- * PARSEAR el header local de cada entry, ANTES de descomprimir su contenido —
- * es lo que permite el guardia anti zip-bomb sin inflar todo en memoria.
+ * PARSEAR el directorio CENTRAL del .zip (`ZipEntry.readCentralPart`), ANTES
+ * de descomprimir nada. ⚠ Ese valor es 100% controlado por quien sube el
+ * archivo (nada en el formato zip lo ata criptográficamente al contenido
+ * comprimido real) — sirve solo como un PRE-CHEQUEO barato para rechazar sin
+ * IO paquetes que declaran honestamente ser enormes. NO es, por sí solo, una
+ * defensa anti zip-bomb: un .zip puede declarar aquí un tamaño chico y aun
+ * así inflar muchísimo más en la descompresión real. El guardia que sí
+ * importa es `readEntryBytes`, que mide bytes REALES mientras descomprime.
  */
 function declaredUncompressedSize(entry: JSZip.JSZipObject): number {
   const raw = (entry as unknown as { _data?: { uncompressedSize?: number } })._data;
   return typeof raw?.uncompressedSize === "number" ? raw.uncompressedSize : 0;
+}
+
+class UncompressedBudgetExceededError extends Error {
+  constructor() {
+    super("uncompressed bytes exceeded the SCORM package budget while streaming");
+    this.name = "UncompressedBudgetExceededError";
+  }
+}
+
+/**
+ * `internalStream(type)` es un método PÚBLICO de jszip (lo usan internamente
+ * tanto `.async()` como `.nodeStream()` — ver `jszip/lib/zipObject.js`), pero
+ * el `.d.ts` empaquetado solo tipa esos dos métodos derivados, no el stream
+ * crudo. Se tipa localmente (igual que `declaredUncompressedSize` castea
+ * `_data`) para poder engancharse a los eventos `data`/`end`/`error` chunk a
+ * chunk, en vez de esperar a que `.async()` acumule TODO en memoria primero.
+ */
+interface JSZipInternalStream {
+  on(event: "data", cb: (data: Uint8Array) => void): JSZipInternalStream;
+  on(event: "end", cb: () => void): JSZipInternalStream;
+  on(event: "error", cb: (err: unknown) => void): JSZipInternalStream;
+  pause(): JSZipInternalStream;
+  resume(): JSZipInternalStream;
+}
+interface JSZipObjectWithInternalStream {
+  internalStream(type: "uint8array"): JSZipInternalStream;
+}
+
+/**
+ * Descomprime una entry en STREAMING, sumando los bytes REALES emitidos por
+ * jszip contra un presupuesto acumulado y COMPARTIDO entre todas las entries
+ * del paquete (incluido el manifiesto). A diferencia de `entry.async(...)`
+ * —que primero infla la entry COMPLETA en memoria y solo AL FINAL compara el
+ * tamaño real contra el declarado (`compressedObject.js`, handler de
+ * `"end"`)—, este helper aborta apenas el acumulado real supera el
+ * presupuesto: pausa el stream (que jszip propaga hacia arriba, deteniendo
+ * la inflación) y rechaza la promesa en vez de esperar a terminar de inflar.
+ * Así, un .zip que MIENTE su tamaño declarado (el "pre-chequeo" de
+ * `declaredUncompressedSize`/`exceedsUncompressedBudget`) para sortear ese
+ * chequeo igual queda acotado por el volumen real de bytes procesados.
+ */
+function readEntryBytes(entry: JSZip.JSZipObject, budget: { remaining: number }): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    let settled = false;
+    const stream = (entry as unknown as JSZipObjectWithInternalStream).internalStream("uint8array");
+    stream
+      .on("data", (data: Uint8Array) => {
+        if (settled) return;
+        chunks.push(data);
+        total += data.length;
+        budget.remaining -= data.length;
+        if (budget.remaining < 0) {
+          settled = true;
+          stream.pause();
+          reject(new UncompressedBudgetExceededError());
+        }
+      })
+      .on("error", (err: unknown) => {
+        if (settled) return;
+        settled = true;
+        reject(err instanceof Error ? err : new Error(String(err)));
+      })
+      .on("end", () => {
+        if (settled) return;
+        settled = true;
+        const out = new Uint8Array(total);
+        let offset = 0;
+        for (const chunk of chunks) {
+          out.set(chunk, offset);
+          offset += chunk.length;
+        }
+        resolve(out);
+      })
+      .resume();
+  });
 }
 
 /** Nombre CRUDO de una entry: jszip ya sanea `.name` (neutraliza ".."); `unsafeOriginalName` trae el original si difiere. */
@@ -119,11 +217,17 @@ export async function runScormExtract(db: SupabaseClient, deps: ScormExtractDeps
     return { ok: false, errorCode };
   }
 
+  // Pre-chequeo BARATO (sin IO) contra el tamaño declarado — rechaza rápido
+  // paquetes que declaran honestamente ser enormes, pero NO es la defensa
+  // real: ver el aviso en `declaredUncompressedSize`. El presupuesto que de
+  // verdad protege el proceso es `runtimeBudget`, que mide bytes reales
+  // mientras se descomprime cada entry (`readEntryBytes`, más abajo).
   const totalUncompressed = entries.reduce((sum, e) => sum + declaredUncompressedSize(e), 0);
   if (exceedsUncompressedBudget(totalUncompressed)) {
     await markError(db, packageId, tenantId, "too_large");
     return { ok: false, errorCode: "too_large" };
   }
+  const runtimeBudget = { remaining: deps.uncompressedBudgetOverrideBytes ?? MAX_UNCOMPRESSED_BYTES };
 
   const manifestEntry = findManifestEntry(entries);
   if (!manifestEntry) {
@@ -131,7 +235,15 @@ export async function runScormExtract(db: SupabaseClient, deps: ScormExtractDeps
     return { ok: false, errorCode: "no_manifest" };
   }
 
-  const xml = await manifestEntry.async("string");
+  let manifestBytes: Uint8Array;
+  try {
+    manifestBytes = await readEntryBytes(manifestEntry, runtimeBudget);
+  } catch (err) {
+    if (!(err instanceof UncompressedBudgetExceededError)) throw err;
+    await markError(db, packageId, tenantId, "too_large");
+    return { ok: false, errorCode: "too_large" };
+  }
+  const xml = new TextDecoder().decode(manifestBytes);
   const parsed = parseScormManifest(xml);
   if (!parsed.ok) {
     const errorCode: ScormErrorCode = parsed.error === "no_entry" ? "entry_missing" : parsed.error === "no_manifest" ? "no_manifest" : "invalid_manifest";
@@ -160,7 +272,15 @@ export async function runScormExtract(db: SupabaseClient, deps: ScormExtractDeps
       await markError(db, packageId, tenantId, "unsafe_path");
       return { ok: false, errorCode: "unsafe_path" };
     }
-    const bytes = await entry.async("uint8array");
+    let bytes: Uint8Array;
+    try {
+      bytes = await readEntryBytes(entry, runtimeBudget);
+    } catch (err) {
+      if (!(err instanceof UncompressedBudgetExceededError)) throw err;
+      await cleanupUploaded(db, uploaded);
+      await markError(db, packageId, tenantId, "too_large");
+      return { ok: false, errorCode: "too_large" };
+    }
     const destPath = `${extractedPrefix}/${sanitized.value}`;
     const { error } = await db.storage
       .from(BUCKET)
