@@ -5,10 +5,27 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 import { resolveTenantFromHost, suspendedRequestAction } from "@/modules/core/domain/tenant";
 
-/** Rutas accesibles sin sesión. El resto de la app exige login. */
-const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar", "/api/health", "/suspendido"];
+/**
+ * Rutas accesibles sin sesión. El resto de la app exige login.
+ * Cada entrada abre la ruta EXACTA y todo su subárbol (`/verificar/<token>`).
+ */
+const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar", "/api/health", "/suspendido", "/privacidad"];
 
-function isPublicPath(pathname: string): boolean {
+/**
+ * @param isTenantHost True si el host es el subdominio de un tenant (hay slug).
+ */
+function isPublicPath(pathname: string, isTenantHost: boolean): boolean {
+  // La raíz exacta = landing comercial (task 5.6): pública SOLO en el dominio
+  // raíz, que es el que vende. En `{otec}.chilearning.cl` la puerta de entrada
+  // sigue siendo el login del OTEC: un alumno no puede aterrizar en el pitch
+  // comercial del proveedor (con la marca "Chilearning" en vez de la del OTEC,
+  // ignorando su branding de HU-1.10), y Google no indexa la misma página de
+  // marketing duplicada en cada subdominio del wildcard.
+  // Va como caso aparte y NO como entrada de PUBLIC_PATHS: con el prefijo "/"
+  // la comparación `startsWith("/" + "/")` dependería de que Next normalice
+  // siempre las barras duplicadas, y una ruta tipo "//admin" pasaría a leerse
+  // como pública. Igualdad estricta = sin superficie de bypass.
+  if (pathname === "/") return !isTenantHost;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
@@ -144,7 +161,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return NextResponse.redirect(homeUrl);
   }
 
-  if (!user && !isPublicPath(pathname)) {
+  if (!user && !isPublicPath(pathname, resolution.slug !== null)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname);
