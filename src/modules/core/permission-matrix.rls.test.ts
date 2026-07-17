@@ -14,6 +14,9 @@ import { SignJWT } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
+// Semilla de la task 5.2: la empresa del usuario `company` y su única trabajadora.
+const SEED_COMPANY_LOS_AROMOS = "c1000000-0000-4000-8000-000000000001";
+const SEED_ENROLLMENT_LOS_AROMOS = "e0000000-0000-4000-8000-000000000001";
 
 /** Rol → índice del usuario semilla en tenant A (aaaaaaaa-…-00000000000N). */
 const ROLE_BY_INDEX = {
@@ -38,7 +41,14 @@ const EXPECTED: Record<string, Record<string, Access>> = {
   instructor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some", assignments: "some", submissions: "some", notifications: "none" }, // ve su propia membership
   tutor:       { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some", assignments: "some", submissions: "some", notifications: "none" },
   student:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "none", quiz_attempts: "some", grades: "some", assignments: "some", submissions: "some", notifications: "none" }, // publicado/lo suyo; questions JAMÁS (pauta); notifications: solo si tiene alguna
-  company:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "none", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "none", quiz_attempts: "none", grades: "none", assignments: "some", submissions: "none", notifications: "none" },
+  // ⚠ `company` NO lee por tabla NINGÚN dato de trabajador: desde la task 5.2 el
+  // rol quedó sin rama en enrollments/sence_sessions/grades/certificates (todas
+  // llevan RUN, y `company` comparte el rol de Postgres `authenticated` con el
+  // alumno, así que un grant de columna no podía taparlo). "Empresa: R sus
+  // trabajadores" (spec §3) lo cumple `company-portal-service`, que enmascara el
+  // RUN y audita. Las "some" que quedan son catálogo del curso, sin dato personal.
+  // No agregar aquí una rama nueva sin leer el ruling de 20260717030000_companies.
+  company:     { courses: "some", actions: "some", lessons: "some", enrollments: "none", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "none", sence_sessions: "none", sence_events: "none", alerts: "none", quizzes: "some", questions: "none", quiz_attempts: "none", grades: "none", assignments: "some", submissions: "none", notifications: "none" },
   supervisor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some", quizzes: "some", questions: "none", quiz_attempts: "none", grades: "some", assignments: "some", submissions: "none", notifications: "none" },
 };
 
@@ -94,6 +104,29 @@ describe("matriz de permisos de los 8 roles (task 1.7, spec §3)", () => {
       });
     }
   }
+
+  it("el 'none' de company NO se relaja ni para SU PROPIA trabajadora (H4-R-008)", async () => {
+    // La matriz de grano grueso NO habría detectado el hueco original: con
+    // `has_role('company')` plano el rol veía a los 3 inscritos del tenant y esta
+    // suite igual pasaba en verde. El usuario `company` del seed SÍ tiene membresía
+    // vigente en Los Aromos y su trabajadora SÍ existe (ids de abajo): si el 0 de
+    // aquí fuera por vacío en vez de por RLS, este test no valdría nada.
+    const db = await clientForRole(6, "company");
+
+    // Pedir `run` explícitamente: el grant vivo de `enrollments` a `authenticated`
+    // es de TABLA COMPLETA, así que si alguna rama `company` volviera, el RUN
+    // saldría por PostgREST sin pasar por el enmascarado del portal.
+    const enr = await db.from("enrollments").select("id, run").eq("company_id", SEED_COMPANY_LOS_AROMOS);
+    expect(enr.error).toBeNull();
+    expect(enr.data ?? [], "company NO lee enrollments por tabla, ni las de SU empresa").toEqual([]);
+
+    const sessions = await db
+      .from("sence_sessions")
+      .select("enrollment_id, run_alumno")
+      .eq("enrollment_id", SEED_ENROLLMENT_LOS_AROMOS);
+    expect(sessions.error).toBeNull();
+    expect(sessions.data ?? [], "company NO lee sence_sessions por tabla (run_alumno)").toEqual([]);
+  });
 
   it("platform_admins es invisible para TODOS los roles del tenant", async () => {
     for (const [indexStr, role] of Object.entries(ROLE_BY_INDEX)) {

@@ -146,6 +146,25 @@ const BUSINESS_TABLES: Record<string, Record<string, unknown>> = {
     kind: "no_attendance",
     enabled: true,
   },
+  // Task 5.2: las 2 tablas que deciden QUÉ empresa ve a QUÉ trabajador. Son las
+  // que más importa blindar: una fila `company_members` auto-insertada convertiría
+  // a quien sea en RRHH de la empresa que elija.
+  companies: {
+    tenant_id: TENANT_A,
+    // RUT que NO existe en el seed (77123456-9 / 78654321-5): si colisionara con
+    // `companies_tenant_rut_uk`, el INSERT fallaría por el índice y el test pasaría
+    // en verde sin haber probado la RLS.
+    rut: "76543210-3",
+    razon_social: "Pirata SpA",
+  },
+  company_members: {
+    tenant_id: TENANT_A,
+    company_id: "c1000000-0000-4000-8000-000000000001",
+    // Igual que arriba: SUPERVISOR_ID no tiene membresía activa, así que no choca
+    // con `company_members_active_uk` y el rechazo solo puede venir de la RLS.
+    user_id: SUPERVISOR_ID,
+    email: "pirata@sup.cl",
+  },
 };
 
 let db: SupabaseClient;

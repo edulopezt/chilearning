@@ -172,7 +172,24 @@ export async function getGradebook(
   actionId: string,
 ): Promise<GradebookView | null> {
   if (!principal.tenantId || !authorize(principal, principal.tenantId, VIEWERS)) return null;
-  const tenantId = principal.tenantId;
+  return gradebookUnchecked(principal, actionId);
+}
+
+/**
+ * Libro SIN authz: solo para llamadores que YA autorizaron (mismo patrón que
+ * `compliancePanelUnchecked` en `reportes/cumplimiento-service`).
+ *
+ * Lo consume `portal-empresa/company-portal-service` DESPUÉS de su gate, para
+ * que la nota que ve la empresa sea la MISMA del libro oficial (promedio
+ * ponderado parcial, D-022 §S10) y no un segundo promedio inventado que
+ * contradiga al del coordinador. El portal descarta las filas que no son de su
+ * empresa apenas recibe el libro.
+ */
+export async function gradebookUnchecked(
+  principal: Principal,
+  actionId: string,
+): Promise<GradebookView | null> {
+  const tenantId = principal.tenantId!;
   const guard = tenantGuard(tenantId);
 
   const { data: action } = await guard.db
