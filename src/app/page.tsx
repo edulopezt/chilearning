@@ -50,15 +50,8 @@ const FEATURES = [
 
 const OTEC_POINTS = [t.otecs.franchise, t.otecs.evidence, t.otecs.solo] as const;
 
-/**
- * ⚠ PENDIENTE DE EDU: apunta al ÚNICO buzón de entrada versionado en el repo
- * (`soporte@chilearning.cl`, el mismo del aviso de OTEC suspendida). Antes
- * apuntaba a `hola@chilearning.cl`, que no está confirmado en ninguna parte:
- * un CTA a una casilla inexistente pierde leads en silencio, sin error ni log.
- * Si Edu crea `hola@`, cambiar esta línea. De todos modos hay que CONFIRMAR que
- * la casilla existe y se lee antes de publicar en el dominio real.
- */
-const CONTACT_EMAIL = "soporte@chilearning.cl";
+/** Buzón comercial confirmado por Edu (2026-07-17). */
+const CONTACT_EMAIL = "hola@edulopezt.com";
 
 /** Foco visible y touch target ≥44px en todos los CTA (RNF-6, WCAG AA). */
 const FOCUS_RING =
