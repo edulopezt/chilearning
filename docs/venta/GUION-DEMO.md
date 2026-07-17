@@ -52,8 +52,10 @@ lección y narra el registro de asistencia SENCE: *"acá el alumno confirma su i
 Clave Única y el sistema abre una sesión contra el protocolo RCE de SENCE — en este demo el
 ambiente configurado es `rcetest` (el simulador oficial), porque la validación contra
 producción real de SENCE se completa recién en el primer curso del cliente (ver el matiz del
-one-pager)"*. Si el entorno lo permite, muestra el detalle de la sesión SENCE cerrada del
-alumno demo (`/admin/acciones/{actionId}/sesiones`): abierta y cerrada, sin errores.
+one-pager)"*. Si el entorno lo permite, muestra el detalle de las sesiones SENCE cerradas del
+alumno demo (`/admin/acciones/{actionId}/sesiones`): varios días con sesión abierta y cerrada,
+sin errores — y un par de días sin sesión (para que el semáforo del panel del paso 7 se vea
+realista, no un 100 % perfecto).
 
 ### 4. Evaluaciones y libro de notas — 3 min
 Con el mismo curso, abre **Evaluaciones** (`/admin/cursos/{courseId}/evaluaciones`): el quiz

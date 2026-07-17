@@ -316,10 +316,19 @@ insert into public.courses (id, tenant_id, name, sence, cod_sence, modality, hou
    '{"requireAllLessons": true, "requireSurvey": true, "minAttendancePct": 75}'::jsonb,
    'published');
 
+-- Rango YA CONCLUIDO (no "en curso" hasta una fecha lejana): el panel de
+-- cumplimiento (§7-R... , cumplimiento-service.ts) recalcula la asistencia como
+-- "días con sesión cerrada / días hábiles L-V entre starts_on y min(ends_on,
+-- hoy)" CADA VEZ que se abre — con `ends_on` en el futuro ese denominador crece
+-- sin parar cada día que pasa y el certificado (emitido más abajo con un
+-- snapshot fijo) se habría ido desalineando de la asistencia real mostrada en
+-- el panel. Con `ends_on` ya en el pasado el rango de días hábiles queda FIJO
+-- para siempre (15 días hábiles, L-V del 2026-06-15 al 2026-07-03, sin
+-- feriados en v1), así que la asistencia sembrada más abajo es estable.
 insert into public.actions (id, tenant_id, course_id, codigo_accion, training_line, environment, attendance_lock, starts_on, ends_on, status) values
   ('ac000000-0000-4000-8000-000000000002', '33333333-3333-4333-8333-333333333333',
    'c0000000-0000-4000-8000-000000000002', 'ACC-DEMO-9001', 3, 'rcetest', true,
-   '2026-06-01', '2026-12-15', 'active');
+   '2026-06-15', '2026-07-03', 'active');
 
 -- ---------- Empresa cliente demo (1 empresa, 2 trabajadoras vinculadas) ----------
 insert into public.companies (id, tenant_id, rut, razon_social) values
@@ -378,23 +387,57 @@ insert into public.lessons (tenant_id, course_id, title, kind, content, position
 insert into public.audit_log (tenant_id, actor_user_id, action, entity, details) values
   ('33333333-3333-4333-8333-333333333333', 'cccccccc-0000-4000-8000-000000000001', 'seed.created', 'tenant', '{"seed":true}');
 
--- ---------- Sesión SENCE cerrada de Camila (alumna featured del guion) ----------
+-- ---------- Sesiones SENCE cerradas de Camila (alumna featured del guion) ----------
+-- 13 de los 15 días hábiles del rango de la acción (2026-06-15 a 2026-07-03,
+-- ver comentario junto a `actions` de arriba) → 13/15 ≈ 87 % de asistencia real,
+-- calculado por el MISMO camino que usa el panel de cumplimiento
+-- (`attendancePctFromCells`, certificates-service.ts) — así el certificado
+-- emitido más abajo puede citar un `attendancePct` que coincide con lo que el
+-- panel de cumplimiento muestra en vivo, en vez de un 100 % inventado. Faltan
+-- a propósito 2026-06-22 (lunes) y 2026-07-02 (jueves): nadie asiste el 100 %
+-- de los días, y así el semáforo del panel también muestra huecos reales.
 insert into public.sence_sessions (id, tenant_id, enrollment_id, sence_course_code, action_code,
   training_line, run_alumno, id_sesion_alumno, id_sesion_sence, status, environment, opened_at, closed_at) values
-  ('50000000-0000-4000-8000-000000000003', '33333333-3333-4333-8333-333333333333',
-   'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3,
-   '9123456-4', 'seed-session-demo-0001', '525252', 'cerrada', 'rcetest',
-   now() - interval '3 hours', now() - interval '2 hours');
+  ('50000001-0000-4000-8000-000000000001', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0001', '530001', 'cerrada', 'rcetest', '2026-06-15 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-15 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-000000000002', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0002', '530002', 'cerrada', 'rcetest', '2026-06-16 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-16 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-000000000003', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0003', '530003', 'cerrada', 'rcetest', '2026-06-17 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-17 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-000000000004', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0004', '530004', 'cerrada', 'rcetest', '2026-06-18 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-18 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-000000000005', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0005', '530005', 'cerrada', 'rcetest', '2026-06-19 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-19 10:30:00'::timestamp at time zone 'America/Santiago'),
+  -- (falta 2026-06-22 a propósito)
+  ('50000001-0000-4000-8000-000000000006', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0006', '530006', 'cerrada', 'rcetest', '2026-06-23 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-23 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-000000000007', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0007', '530007', 'cerrada', 'rcetest', '2026-06-24 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-24 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-000000000008', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0008', '530008', 'cerrada', 'rcetest', '2026-06-25 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-25 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-000000000009', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0009', '530009', 'cerrada', 'rcetest', '2026-06-26 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-26 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-00000000000a', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0010', '530010', 'cerrada', 'rcetest', '2026-06-29 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-29 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-00000000000b', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0011', '530011', 'cerrada', 'rcetest', '2026-06-30 09:00:00'::timestamp at time zone 'America/Santiago', '2026-06-30 10:30:00'::timestamp at time zone 'America/Santiago'),
+  ('50000001-0000-4000-8000-00000000000c', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0012', '530012', 'cerrada', 'rcetest', '2026-07-01 09:00:00'::timestamp at time zone 'America/Santiago', '2026-07-01 10:30:00'::timestamp at time zone 'America/Santiago'),
+  -- (falta 2026-07-02 a propósito)
+  ('50000001-0000-4000-8000-00000000000d', '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', '9876543210', 'ACC-DEMO-9001', 3, '9123456-4', 'seed-session-demo-0013', '530013', 'cerrada', 'rcetest', '2026-07-03 09:00:00'::timestamp at time zone 'America/Santiago', '2026-07-03 10:30:00'::timestamp at time zone 'America/Santiago');
 
 insert into public.sence_events (tenant_id, session_id, kind, payload, error_codes, dedupe_hash) values
-  ('33333333-3333-4333-8333-333333333333', '50000000-0000-4000-8000-000000000003',
-   'start_ok', '{}', '{}', 'seed-event-demo-0001');
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000001', 'start_ok', '{}', '{}', 'seed-event-demo-0001'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000002', 'start_ok', '{}', '{}', 'seed-event-demo-0002'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000003', 'start_ok', '{}', '{}', 'seed-event-demo-0003'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000004', 'start_ok', '{}', '{}', 'seed-event-demo-0004'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000005', 'start_ok', '{}', '{}', 'seed-event-demo-0005'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000006', 'start_ok', '{}', '{}', 'seed-event-demo-0006'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000007', 'start_ok', '{}', '{}', 'seed-event-demo-0007'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000008', 'start_ok', '{}', '{}', 'seed-event-demo-0008'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-000000000009', 'start_ok', '{}', '{}', 'seed-event-demo-0009'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-00000000000a', 'start_ok', '{}', '{}', 'seed-event-demo-0010'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-00000000000b', 'start_ok', '{}', '{}', 'seed-event-demo-0011'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-00000000000c', 'start_ok', '{}', '{}', 'seed-event-demo-0012'),
+  ('33333333-3333-4333-8333-333333333333', '50000001-0000-4000-8000-00000000000d', 'start_ok', '{}', '{}', 'seed-event-demo-0013');
 
--- Progreso: Camila completó las 3 primeras lecciones (recorrido a medio camino).
+-- Progreso: Camila completó las 5 lecciones (recorrido completo). El curso
+-- exige `requireAllLessons: true` (completion_rules de arriba) — con menos de
+-- las 5 publicadas, `evaluateEligibility` (eligibility.ts) NUNCA la haría
+-- elegible para el certificado que se emite más abajo, sin importar nota o
+-- asistencia (`lessons_incomplete` bloquea siempre).
 insert into public.lesson_progress (tenant_id, enrollment_id, lesson_id, completed)
 select '33333333-3333-4333-8333-333333333333', 'e0000000-0000-4000-8000-000000000004', l.id, true
 from public.lessons l
-where l.course_id = 'c0000000-0000-4000-8000-000000000002' and l.position in (1, 2, 3);
+where l.course_id = 'c0000000-0000-4000-8000-000000000002' and l.position in (1, 2, 3, 4, 5);
 
 -- ---------- Evaluación demo: quiz publicado + intento enviado + nota ----------
 insert into public.quizzes (id, tenant_id, course_id, title, description, status, passing_pct) values
@@ -467,6 +510,26 @@ select public.submit_survey(
 -- snapshot.ts (CertificateSnapshot). p_pdf_path va NULL: el render del PDF es
 -- best-effort en el flujo real (certificates-service.ts) y este seed no sube
 -- el binario — el folio/token/snapshot ya alcanzan para narrar y verificar.
+--
+-- El RPC `issue_certificate` (a diferencia del flujo real de la app) NO
+-- re-valida elegibilidad — solo consistencia tenant/acción/curso (ver la
+-- función en supabase/migrations/20260716102000_certificates.sql) — así que
+-- estos valores del snapshot se calculan A MANO para que coincidan con lo que
+-- `getActionEligibility`/`getGradebook` calcularían de verdad con los datos
+-- sembrados arriba, y así el certificado NUNCA contradiga lo que el panel de
+-- cumplimiento (`/admin/acciones/{id}/cumplimiento`) muestra en vivo:
+--   · startsOn/endsOn: MISMAS fechas que la acción (comentario junto a
+--     `actions` arriba) — rango ya concluido, 15 días hábiles fijos.
+--   · attendancePct: 87 = round(13/15 * 100), las 13 sesiones `cerrada` de
+--     Camila entre los 15 días hábiles del rango (bloque `sence_sessions` de
+--     arriba) — el mismo cálculo que `attendancePctFromCells`
+--     (certificados/domain/attendance.ts). Supera el `minAttendancePct: 75`
+--     del curso.
+--   · finalGrade: 6.8 = la única nota PUBLICADA (`grades`, quiz demo, más
+--     abajo) — el libro de notas (`gradebook.ts::consolidate`) promedia solo
+--     los instrumentos calificados; la tarea quedó ENTREGADA sin calificar
+--     (igual que en la app real, no bloquea el promedio parcial) y por eso no
+--     entra al promedio.
 select public.issue_certificate(
   '60000000-0000-4000-8000-000000000001'::uuid,
   '33333333-3333-4333-8333-333333333333'::uuid,
@@ -481,12 +544,12 @@ select public.issue_certificate(
     'runMasked', '91.XXX.XXX-X',
     'courseName', 'Curso demo: Comunicación efectiva en equipos de trabajo',
     'hours', 16,
-    'startsOn', '2026-06-01',
-    'endsOn', '2026-12-15',
-    'finalGrade', 6.5,
+    'startsOn', '2026-06-15',
+    'endsOn', '2026-07-03',
+    'finalGrade', 6.8,
     'codSence', '9876543210',
     'actionCode', 'ACC-DEMO-9001',
-    'attendancePct', 100,
+    'attendancePct', 87,
     'otecName', 'OTEC Demo Chilearning',
     'otecRut', '76333333-7',
     'brandPrimary', '#1e3a8a',
