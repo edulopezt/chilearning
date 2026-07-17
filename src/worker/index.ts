@@ -24,11 +24,13 @@ import { runExpiryAlertsTick } from "../modules/certificados/expiry-alerts";
 import { emailSenderFromEnv } from "../modules/comunicacion/email-sender";
 import { n8nEmitterFromEnv } from "../modules/comunicacion/n8n-webhook";
 import { runRemindersTick } from "../modules/comunicacion/reminders";
+import { runTenantExportTick } from "../modules/reportes/tenant-export-runner";
 
 const QUEUE_NAME = "sence";
 const TICK_JOB = "sence-tick";
 const REMINDERS_JOB = "reminders-tick";
 const EXPIRY_JOB = "expiry-alerts-tick";
+const TENANT_EXPORT_JOB = "tenant-export-tick";
 
 function remindersEveryMs(): number {
   const raw = Number(process.env.REMINDERS_EVERY_MS);
@@ -38,6 +40,11 @@ function remindersEveryMs(): number {
 function certExpiryEveryMs(): number {
   const raw = Number(process.env.CERT_EXPIRY_EVERY_MS);
   return Number.isInteger(raw) && raw >= 60_000 ? raw : 6 * 60 * 60 * 1000; // default 6 h
+}
+
+function tenantExportEveryMs(): number {
+  const raw = Number(process.env.TENANT_EXPORT_EVERY_MS);
+  return Number.isInteger(raw) && raw >= 10_000 ? raw : 60 * 1000; // default 60 s: cola manual, hay que reaccionar rápido
 }
 
 /** Índice user_id → {email, name} recorriendo el admin API (para el correo PII). */
@@ -87,6 +94,21 @@ async function expiryAlertsTick(db: SupabaseClient): Promise<void> {
     appBaseUrl: process.env.APP_BASE_URL,
   });
   console.log("[worker][cert-expiry] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
+}
+
+/** Export completo del tenant en formatos abiertos (task 5.13, HU-1.5): reclama
+ *  a lo más UNA solicitud `pending` por tick (concurrency=1 del worker evita
+ *  doble-procesamiento; el claim de dos pasos es la segunda capa). */
+async function tenantExportTick(db: SupabaseClient): Promise<void> {
+  const startedAt = Date.now();
+  const summary = await runTenantExportTick(db, {
+    emailSender: emailSenderFromEnv(process.env),
+    resolveRecipients: await resolveRecipientsFactory(db),
+    appBaseUrl: process.env.APP_BASE_URL,
+  });
+  if (summary.claimed) {
+    console.log("[worker][tenant-export] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
+  }
 }
 
 function requiredEnv(name: string): string {
@@ -189,12 +211,22 @@ async function main(): Promise<void> {
     { every: certExpiryEveryMs() },
     { name: EXPIRY_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
   );
+  // Export completo del tenant (task 5.13): cola MANUAL (el admin pide un
+  // export), así que la cadencia por defecto es corta (60 s) para no hacerlo
+  // esperar; el índice único parcial de `tenant_exports` garantiza que a lo
+  // más UNO por tenant está `pending`/`running` a la vez.
+  await queue.upsertJobScheduler(
+    TENANT_EXPORT_JOB,
+    { every: tenantExportEveryMs() },
+    { name: TENANT_EXPORT_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
     async (job) => {
       if (job.name === REMINDERS_JOB) await remindersTick(db);
       else if (job.name === EXPIRY_JOB) await expiryAlertsTick(db);
+      else if (job.name === TENANT_EXPORT_JOB) await tenantExportTick(db);
       else await tick(db);
     },
     { connection, concurrency: 1 },

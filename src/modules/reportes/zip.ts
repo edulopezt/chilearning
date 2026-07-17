@@ -1,15 +1,10 @@
 import "server-only";
 
-import JSZip from "jszip";
-
 /**
- * Wrapper FINO sobre jszip (ADR-lite, task 3.12): solo ARMADO de un .zip en
- * memoria (Buffer), server-only. Aislado como `reportes/xlsx.ts`: si algún día se
- * reemplaza, este es el único archivo que cambia.
+ * Punto de entrada SERVER-ONLY de `buildZip` (task 3.12). La implementación
+ * vive en `zip-core.ts` (SIN `server-only`, task 5.13) porque el worker de
+ * exportación (`tenant-export-runner.ts`) también arma ZIPs y corre fuera de
+ * Next. Este archivo existe para que los llamadores server-only actuales
+ * (`expediente-service.ts`) no cambien su import ni su comportamiento.
  */
-export async function buildZip(files: readonly { name: string; bytes: Uint8Array }[]): Promise<Buffer> {
-  const zip = new JSZip();
-  for (const f of files) zip.file(f.name, f.bytes);
-  const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 6 } });
-  return buf;
-}
+export { buildZip } from "./zip-core";

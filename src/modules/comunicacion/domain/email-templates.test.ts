@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   escapeHtml,
   renderCertificateExpiringEmail,
+  renderExportFailedEmail,
+  renderExportReadyEmail,
   renderInvitationEmail,
   renderWelcomeEmail,
 } from "./email-templates";
@@ -92,5 +94,27 @@ describe("renderCertificateExpiringEmail (task 5.12, HU-7.3)", () => {
     const evil = renderCertificateExpiringEmail({ ...base, courseName: "<script>alert(1)</script>", daysLeft: 10 });
     expect(evil.html).not.toContain("<script>alert(1)</script>");
     expect(evil.html).toContain("&lt;script&gt;");
+  });
+});
+
+describe("renderExportReadyEmail / renderExportFailedEmail (task 5.13)", () => {
+  const params = {
+    brand,
+    recipientName: "Ana",
+    exportPageUrl: "https://seminarea.chilearning.cl/admin/exportacion",
+  };
+
+  it("el aviso de listo enlaza a la PÁGINA del export, no a un archivo", () => {
+    const email = renderExportReadyEmail(params);
+    expect(email.subject).toContain("Seminarea");
+    expect(email.html).toContain(params.exportPageUrl);
+    expect(email.text).toContain(params.exportPageUrl);
+    expect(email.html).not.toContain(".zip");
+  });
+
+  it("el aviso de fallo invita a reintentar y enlaza a la misma página", () => {
+    const email = renderExportFailedEmail(params);
+    expect(email.subject.toLowerCase()).toContain("no se pudo");
+    expect(email.html).toContain(params.exportPageUrl);
   });
 });

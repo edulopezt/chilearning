@@ -194,3 +194,41 @@ ${button(params.brand.primaryColor, params.courseUrl, "Leer el mensaje")}`;
   const text = `Tienes un nuevo mensaje sobre "${params.subjectLine}".\n\nLeer: ${params.courseUrl}\n`;
   return { subject, html: shell(params.brand, body), text };
 }
+
+/**
+ * Export completo del tenant listo para descargar (task 5.13, HU-1.5).
+ *
+ * ⚠ El enlace va a la PÁGINA del export (`/admin/exportacion`), NUNCA al
+ * archivo: el signed URL real expira en 1 h y se firma recién cuando el admin
+ * hace clic en "descargar" ya autenticado (minimización — el link del correo
+ * no es, por sí solo, una puerta al ZIP).
+ */
+export function renderExportReadyEmail(params: {
+  brand: EmailBrand;
+  recipientName: string;
+  exportPageUrl: string;
+}): RenderedEmail {
+  const name = escapeHtml(params.recipientName || "");
+  const subject = `Tu exportación de ${params.brand.orgName} está lista`;
+  const body = `<p>Hola ${name},</p>
+<p>La exportación completa de los datos de tu OTEC (cursos, alumnos, registros SENCE, notas, certificados y documentos) ya está lista para descargar.</p>
+${button(params.brand.primaryColor, params.exportPageUrl, "Ver mi exportación")}
+<p style="color:#71717a;font-size:13px;">El enlace de descarga expira 1 hora después de generarse; vuelve a esta página si necesitas uno nuevo.</p>`;
+  const text = `Hola ${params.recipientName},\n\nLa exportación completa de los datos de tu OTEC ya está lista.\n\nVer mi exportación: ${params.exportPageUrl}\n`;
+  return { subject, html: shell(params.brand, body), text };
+}
+
+/** Aviso de que el export del tenant FALLÓ (task 5.13, HU-1.5): invita a reintentar. */
+export function renderExportFailedEmail(params: {
+  brand: EmailBrand;
+  recipientName: string;
+  exportPageUrl: string;
+}): RenderedEmail {
+  const name = escapeHtml(params.recipientName || "");
+  const subject = `No se pudo generar tu exportación de ${params.brand.orgName}`;
+  const body = `<p>Hola ${name},</p>
+<p>Intentamos generar la exportación completa de los datos de tu OTEC, pero algo falló. Puedes solicitarla de nuevo.</p>
+${button(params.brand.primaryColor, params.exportPageUrl, "Reintentar")}`;
+  const text = `Hola ${params.recipientName},\n\nLa exportación de datos de tu OTEC falló. Puedes solicitarla nuevamente en:\n${params.exportPageUrl}\n`;
+  return { subject, html: shell(params.brand, body), text };
+}
