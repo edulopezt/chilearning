@@ -16,6 +16,7 @@ const TENANT_B = "22222222-2222-4222-8222-222222222222";
 interface LocalEnv {
   apiUrl: string;
   anonKey: string;
+  serviceKey: string;
   jwtSecret: string;
 }
 
@@ -26,7 +27,12 @@ function loadLocalEnv(): LocalEnv {
     if (!match?.[1]) throw new Error(`supabase status no expone ${key}; ¿está corriendo supabase start?`);
     return match[1];
   };
-  return { apiUrl: get("API_URL"), anonKey: get("ANON_KEY"), jwtSecret: get("JWT_SECRET") };
+  return {
+    apiUrl: get("API_URL"),
+    anonKey: get("ANON_KEY"),
+    serviceKey: get("SERVICE_ROLE_KEY"),
+    jwtSecret: get("JWT_SECRET"),
+  };
 }
 
 let env: LocalEnv;
@@ -104,6 +110,52 @@ describe("solo la plataforma administra tenants (HU-1.1/1.4)", () => {
     const { data, error } = await db.from("tenants").select("id");
     expect(error).toBeNull();
     expect(data?.map((r) => r.id)).toEqual([TENANT_A]);
+  });
+});
+
+describe("la suspensión corta el plano de datos con el JWT YA emitido (4-ojos)", () => {
+  // El hook solo actúa al EMITIR tokens: este test prueba que jwt_tenant_id()
+  // corta en la BD un access token vigente (ventana de hasta 1 h) al suspender,
+  // y que la reactivación restaura el MISMO token sin re-login. Usa un tenant
+  // PROPIO (no los del seed: otros archivos RLS corren en paralelo sobre ellos).
+  it("un token vigente pierde TODO al suspender y vuelve al reactivar", async () => {
+    const svc = createClient(env.apiUrl, env.serviceKey, { auth: { persistSession: false } });
+    const slug = `otec-rls-susp-${Date.now().toString(36)}`;
+    const { data: created, error: insertErr } = await svc
+      .from("tenants")
+      .insert({ slug, name: "OTEC RLS Suspensión (ficticia)" })
+      .select("id")
+      .single();
+    expect(insertErr).toBeNull();
+    const tenantId = created!.id as string;
+
+    // Token acuñado ANTES de la suspensión (sigue vigente 1 h).
+    const db = clientFor(
+      await mintJwt({
+        sub: "cccccccc-0000-4000-8000-000000000001",
+        tenant_id: tenantId,
+        roles: ["otec_admin"],
+      }),
+    );
+
+    // Con el tenant activo, el token opera.
+    const before = await db.from("tenants").select("id").eq("id", tenantId);
+    expect(before.error).toBeNull();
+    expect(before.data?.length).toBe(1);
+
+    // Suspensión: el MISMO token deja de ver todo AL INSTANTE (jwt_tenant_id
+    // devuelve NULL => toda policy de negocio deniega, sin esperar el refresh).
+    await svc.from("tenants").update({ status: "suspended" }).eq("id", tenantId);
+    const during = await db.from("tenants").select("id").eq("id", tenantId);
+    expect(during.error).toBeNull();
+    expect(during.data ?? []).toEqual([]);
+    const memberships = await db.from("memberships").select("id");
+    expect(memberships.data ?? []).toEqual([]);
+
+    // Reactivación en 1 clic: el mismo token vuelve a operar sin re-login.
+    await svc.from("tenants").update({ status: "active" }).eq("id", tenantId);
+    const after = await db.from("tenants").select("id").eq("id", tenantId);
+    expect(after.data?.length).toBe(1);
   });
 });
 

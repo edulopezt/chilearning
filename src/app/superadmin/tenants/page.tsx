@@ -18,6 +18,12 @@ const FLAG_LABEL: Record<FeatureKey, string> = {
   whatsapp: t.flagWhatsapp,
 };
 
+const PLAN_LABEL: Record<string, string> = {
+  standard: t.planStandard,
+  pro: t.planPro,
+  enterprise: t.planEnterprise,
+};
+
 /** Panel de tenants (task 5.3, HU-1.1/1.4/1.3). Solo superadmin (claim). */
 export default async function TenantsPage() {
   const principal = await getPrincipal();
@@ -55,7 +61,7 @@ export default async function TenantsPage() {
                     <p className="text-muted-foreground text-xs">
                       <code className="font-mono">{tenant.slug}</code>
                       {" · "}
-                      {t.planLabelShort}: {tenant.plan}
+                      {t.planLabelShort}: {PLAN_LABEL[tenant.plan] ?? tenant.plan}
                     </p>
                   </div>
                   <span

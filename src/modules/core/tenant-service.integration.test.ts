@@ -121,6 +121,27 @@ describe("createTenant (HU-1.1)", () => {
     const { data } = await svc.from("tenants").select("id").eq("slug", SLUG);
     expect(data?.length).toBe(1);
   });
+
+  it("rechaza un admin que YA pertenece a otra OTEC (admin_email_taken, 4-ojos)", async () => {
+    // Sin selección de tenant por sesión (Hito 1), una segunda membership
+    // dejaría al usuario con roles [] en TODOS sus tenants (hook multi-tenant).
+    const r = await createTenant(superadmin, {
+      name: "Segunda OTEC", slug: `${SLUG}-b`, plan: "standard", adminEmail: ADMIN_EMAIL,
+    });
+    expect(r).toEqual({ ok: false, error: "admin_email_taken" });
+
+    // Rollback compensatorio: sin fila fantasma del segundo tenant…
+    const { data: ghost } = await svc.from("tenants").select("id").eq("slug", `${SLUG}-b`);
+    expect(ghost?.length).toBe(0);
+    // …y el usuario conserva UNA sola membership (la original intacta).
+    const { data: member } = await svc.from("memberships").select("id").eq("user_id", createdAdminUserId);
+    expect(member?.length).toBe(1);
+
+    // Su login sigue funcionando contra el tenant original (hook intacto).
+    const claims = await hookClaims(createdAdminUserId);
+    expect(claims.roles).toEqual(["otec_admin"]);
+    expect(claims.tenant_id).toBe(createdTenantId);
+  });
 });
 
 describe("suspensión y reactivación (HU-1.4)", () => {

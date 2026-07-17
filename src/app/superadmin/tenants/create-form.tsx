@@ -10,6 +10,7 @@ const t = esCL.superadmin;
 const ERRORS: Record<string, string> = {
   invalid: t.errorInvalid,
   slug_taken: t.errorSlugTaken,
+  admin_email_taken: t.errorAdminEmailTaken,
   failed: t.errorFailed,
   forbidden: t.forbidden,
 };
@@ -94,11 +95,15 @@ export function CreateTenantForm() {
                   }}
                   className="min-h-11 rounded-md border px-3 text-xs"
                 >
-                  {copied ? "✓" : t.copy}
+                  {copied ? t.copied : t.copy}
                 </button>
               </div>
             </div>
-          ) : null}
+          ) : (
+            // Ni correo NI enlace: la invitación se perdió en silencio si no
+            // se advierte aquí (revisión 4-ojos; el CA de HU-1.1 la exige).
+            <p className="text-amber-700 dark:text-amber-300">{t.inviteLinkFailed}</p>
+          )}
         </div>
       ) : null}
     </form>

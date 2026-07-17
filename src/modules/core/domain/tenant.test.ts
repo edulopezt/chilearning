@@ -8,6 +8,7 @@ import {
   isValidTenantSlug,
   resolveTenantFromHost,
   RESERVED_SLUGS,
+  suspendedRequestAction,
 } from "@/modules/core/domain/tenant";
 
 const ROOT = "chilearning.cl";
@@ -90,6 +91,44 @@ describe("DEFAULT_TENANT_FLAGS (HU-1.3: configuración por defecto segura)", () 
   it("cubre exactamente las claves del contrato, todas apagadas", () => {
     expect(Object.keys(DEFAULT_TENANT_FLAGS).sort()).toEqual([...FEATURE_KEYS].sort());
     for (const key of FEATURE_KEYS) expect(DEFAULT_TENANT_FLAGS[key]).toBe(false);
+  });
+});
+
+describe("suspendedRequestAction (revisión 4-ojos: suspensión no destruye evidencia)", () => {
+  it("el callback SENCE pasa SIEMPRE (I-1: el POST se persiste, SENCE no reintenta)", () => {
+    expect(suspendedRequestAction("/api/sence/cb/abc123nonce")).toBe("allow");
+    expect(suspendedRequestAction("/api/sence/cb")).toBe("allow");
+    expect(suspendedRequestAction("/api/sence")).toBe("allow");
+  });
+
+  it("/api/health pasa (el monitoreo no puede recibir el HTML del aviso)", () => {
+    expect(suspendedRequestAction("/api/health")).toBe("allow");
+  });
+
+  it("/verificar pasa (verificación pública de certificados por terceros)", () => {
+    expect(suspendedRequestAction("/verificar")).toBe("allow");
+    expect(suspendedRequestAction("/verificar/CERT-0001")).toBe("allow");
+  });
+
+  it("la propia página del aviso pasa (evita loop de rewrite)", () => {
+    expect(suspendedRequestAction("/suspendido")).toBe("allow");
+  });
+
+  it("el resto de /api/* recibe 403 JSON, no el HTML reescrito", () => {
+    expect(suspendedRequestAction("/api")).toBe("block_api");
+    expect(suspendedRequestAction("/api/cursos")).toBe("block_api");
+    expect(suspendedRequestAction("/api/healthcheck")).toBe("block_api");
+  });
+
+  it("las rutas de documento se reescriben al aviso", () => {
+    expect(suspendedRequestAction("/")).toBe("rewrite");
+    expect(suspendedRequestAction("/admin/cursos")).toBe("rewrite");
+    expect(suspendedRequestAction("/login")).toBe("rewrite");
+  });
+
+  it("los prefijos exentos NO hacen match parcial de segmento", () => {
+    expect(suspendedRequestAction("/verificar-otro")).toBe("rewrite");
+    expect(suspendedRequestAction("/api/sencefake")).toBe("block_api");
   });
 });
 

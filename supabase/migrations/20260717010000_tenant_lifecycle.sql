@@ -4,6 +4,8 @@
 --   2) Auth Hook endurecido: usuario de tenant suspendido = login sin roles.
 --   3) Trigger de roles: exención explícita para el service_role (código de
 --      servidor confiable bajo tenantGuard) — sin ella HU-1.1 es imposible.
+--   4) jwt_tenant_id() endurecido: la suspensión corta el plano de datos al
+--      instante, no solo la emisión de tokens (revisión 4-ojos).
 -- No crea tablas: `tenants` ya trae slug/plan/branding/flags/status.
 -- =============================================================================
 
@@ -156,4 +158,34 @@ begin
   end if;
   return new;
 end;
+$$;
+
+-- ---------- 4) jwt_tenant_id(): la suspensión corta el plano de datos ----------
+-- El hook (sección 2) solo actúa al EMITIR tokens: un access token ya firmado
+-- (jwt_expiry = 3600) seguiría leyendo/escribiendo contra PostgREST hasta 1 h
+-- después de suspender — ese camino no pasa por el middleware de la app. Este
+-- endurecimiento cierra la BD: si el tenant del claim NO está activo,
+-- jwt_tenant_id() devuelve NULL y toda policy de negocio deniega AL INSTANTE
+-- (deny-by-default, P7). Simétrico: al reactivar, los tokens emitidos antes de
+-- la suspensión vuelven a operar sin re-login (HU-1.4, reactivación en 1 clic).
+--
+-- SECURITY DEFINER: la consulta a public.tenants corre como postgres, cubierta
+-- por la policy tenants_select_definer (sección 1). NO recursa: esa policy es
+-- `using (true)` y no invoca helpers de claims. El cast sigue siendo SEGURO
+-- (claim malformado => NULL, sin 22P02), como en 20260714185828.
+create or replace function public.jwt_tenant_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select t.id
+  from public.tenants t
+  where t.id = case
+      when (auth.jwt() ->> 'tenant_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        then (auth.jwt() ->> 'tenant_id')::uuid
+      else null
+    end
+    and t.status = 'active'
 $$;

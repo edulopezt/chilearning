@@ -68,6 +68,35 @@ export function isReservedSlug(slug: string): boolean {
   return RESERVED_SLUGS.has(slug);
 }
 
+/**
+ * Rutas que la suspensión NUNCA intercepta (revisión 4-ojos de la task 5.3):
+ * - `/api/sence`: el callback SENCE debe llegar SIEMPRE a su handler (I-1:
+ *   todo POST se persiste; SENCE no reintenta — interceptarlo pierde asistencia
+ *   de sesiones en vuelo de forma irrecuperable).
+ * - `/api/health`: el monitoreo (Kuma) no puede recibir HTML 200 del aviso.
+ * - `/verificar`: verificación pública de certificados por terceros — la
+ *   suspensión bloquea el acceso pero "los datos quedan intactos" (HU-1.4).
+ */
+const SUSPENSION_EXEMPT_PREFIXES = ["/api/sence", "/api/health", "/verificar"] as const;
+
+export type SuspendedRequestAction = "allow" | "block_api" | "rewrite";
+
+/**
+ * Decide qué hace el middleware con una request a un tenant SUSPENDIDO:
+ * - "allow": endpoints exentos (arriba) o la propia página de aviso.
+ * - "block_api": el resto de `/api/*` recibe 403 JSON explícito (jamás el HTML
+ *   del aviso reescrito, que engaña a clientes de máquina).
+ * - "rewrite": requests de documento → página `/suspendido`.
+ */
+export function suspendedRequestAction(pathname: string): SuspendedRequestAction {
+  if (pathname === "/suspendido") return "allow";
+  if (SUSPENSION_EXEMPT_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return "allow";
+  }
+  if (pathname === "/api" || pathname.startsWith("/api/")) return "block_api";
+  return "rewrite";
+}
+
 export interface TenantHostResolution {
   /** El slug candidato, o null si el host no corresponde a un subdominio de tenant. */
   readonly slug: string | null;

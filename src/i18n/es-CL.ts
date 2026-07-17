@@ -1054,9 +1054,14 @@ export const esCL = {
     emailSentInfo: "Enviamos la invitación al administrador por correo.",
     emailNotSent:
       "No hay correo configurado: copia este enlace de activación y envíaselo al administrador.",
+    inviteLinkFailed:
+      "La OTEC quedó creada, pero no pudimos generar el enlace de invitación. Pide al administrador ingresar con el acceso por enlace al correo desde la página de inicio de sesión, o contacta soporte.",
     copy: "Copiar",
+    copied: "Copiado",
     errorInvalid: "Revisa los datos: hay campos inválidos.",
     errorSlugTaken: "Ese subdominio ya está ocupado o reservado. Elige otro.",
+    errorAdminEmailTaken:
+      "Ese correo ya pertenece a otra OTEC. Usa un correo distinto para el administrador inicial.",
     errorFailed: "No pudimos crear la OTEC. Intenta nuevamente.",
     statusActive: "Activa",
     statusSuspended: "Suspendida",

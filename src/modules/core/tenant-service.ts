@@ -30,7 +30,7 @@ export interface TenantListItem {
 
 export type CreateTenantResult =
   | { ok: true; tenantId: string; slug: string; inviteLink: string | null; emailSent: boolean }
-  | { ok: false; error: "forbidden" | "invalid" | "slug_taken" | "failed" };
+  | { ok: false; error: "forbidden" | "invalid" | "slug_taken" | "admin_email_taken" | "failed" };
 
 export type TenantMutationResult =
   | { ok: true }
@@ -49,6 +49,23 @@ function guardFor(tenantId: string): TenantGuard | null {
     return tenantGuard(tenantId);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Borra la fila de tenants de un alta fallida (rollback compensatorio). El
+ * resultado SE VERIFICA: si este delete también falla (fallo correlacionado de
+ * red/PostgREST), queda un tenant ACTIVO huérfano con el slug ocupado y sin
+ * remediación en el panel — se deja rastro operable con contexto.
+ */
+async function rollbackTenantRow(guard: TenantGuard, tenantId: string, slug: string): Promise<void> {
+  const { error } = await guard.db.from("tenants").delete().eq("id", tenantId);
+  if (error) {
+    console.error("[tenant-service] rollback compensatorio FALLÓ: fila huérfana ACTIVA en tenants", {
+      tenantId,
+      slug,
+      message: error.message,
+    });
   }
 }
 
@@ -79,26 +96,69 @@ export async function createTenant(
 
   // Admin inicial: usuario de Auth + membership otec_admin. No hay transacción
   // que cruce Auth y Postgres: si el alta falla, ROLLBACK compensatorio (se
-  // borra el tenant recién creado; aún no tiene hijos ni auditoría).
-  const userId = await ensureUser(guard.db, adminEmail);
-  if (!userId) {
-    await guard.db.from("tenants").delete().eq("id", tenantId);
+  // borra el tenant recién creado; aún no tiene hijos ni auditoría). Si el
+  // usuario lo CREÓ esta llamada, también se limpia: no queda un usuario de
+  // Auth huérfano con correo personal (minimización, Ley 21.719).
+  const admin = await ensureUser(guard.db, adminEmail);
+  if (!admin) {
+    await rollbackTenantRow(guard, tenantId, slug);
     return { ok: false, error: "failed" };
+  }
+  const rollbackAdmin = async (): Promise<void> => {
+    await rollbackTenantRow(guard, tenantId, slug);
+    if (admin.created) {
+      const { error: delErr } = await guard.db.auth.admin.deleteUser(admin.userId);
+      if (delErr) {
+        console.error("[tenant-service] no se pudo limpiar el usuario de Auth creado en el alta fallida", {
+          userId: admin.userId,
+          message: delErr.message,
+        });
+      }
+    }
+  };
+
+  // Un correo que YA pertenece a otra OTEC no puede ser admin inicial: el Auth
+  // Hook multi-membership emite roles [] SIN tenant (falla cerrado) y la
+  // selección de tenant por sesión aún no existe — se crearía una OTEC sin
+  // admin funcional Y se bloquearía al usuario en su tenant original. Chequeo
+  // de PLATAFORMA (cruza tenants a propósito), como listTenants.
+  const { data: existing, error: existingErr } = await untenantedServiceClient()
+    .from("memberships")
+    .select("id")
+    .eq("user_id", admin.userId)
+    .eq("status", "active")
+    .limit(1);
+  if (existingErr) {
+    await rollbackAdmin();
+    return { ok: false, error: "failed" };
+  }
+  if ((existing ?? []).length > 0) {
+    await rollbackAdmin();
+    return { ok: false, error: "admin_email_taken" };
   }
 
   const { error: memberErr } = await guard.db
     .from("memberships")
-    .insert(guard.withTenant({ user_id: userId, roles: ["otec_admin"], status: "active" }));
+    .insert(guard.withTenant({ user_id: admin.userId, roles: ["otec_admin"], status: "active" }));
   if (memberErr) {
-    // El usuario NO se borra: puede preexistir (correo ya registrado).
-    await guard.db.from("tenants").delete().eq("id", tenantId);
+    await rollbackAdmin();
     return { ok: false, error: "failed" };
   }
 
   // Enlace de invitación (funciona sin RESEND: el superadmin lo copia).
   let inviteLink: string | null = null;
   const link = await guard.db.auth.admin.generateLink({ type: "recovery", email: adminEmail });
-  if (!link.error) inviteLink = link.data.properties?.action_link ?? null;
+  if (link.error) {
+    // La OTEC ya existe y es funcional: NO se compensa (un reintento daría
+    // slug_taken). Se degrada a "creada sin invitación" y la UI lo advierte.
+    console.error("[tenant-service] generateLink falló: OTEC creada SIN enlace de invitación", {
+      tenantId,
+      slug,
+      message: link.error.message,
+    });
+  } else {
+    inviteLink = link.data.properties?.action_link ?? null;
+  }
 
   let emailSent = false;
   const sender = deps.emailSender ?? emailSenderFromEnv(process.env);
