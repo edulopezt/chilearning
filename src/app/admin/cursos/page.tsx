@@ -41,6 +41,10 @@ export default async function CoursesPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{esCL.courses.title}</h1>
         <p className="text-muted-foreground text-sm">{esCL.courses.intro}</p>
+        {/* El constructor libre de abajo SIGUE disponible; el asistente es una entrada alternativa (task 5.10). */}
+        <Link href="/admin/cursos/asistente" className="mt-1 text-sm underline">
+          {esCL.courses.assistedCreate} →
+        </Link>
       </header>
 
       <section className="flex flex-col gap-3">

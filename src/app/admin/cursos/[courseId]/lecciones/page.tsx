@@ -19,8 +19,15 @@ const KIND_LABEL: Record<string, string> = {
   scorm: esCL.lessons.kindScorm,
 };
 
-export default async function LessonsPage({ params }: { params: Promise<{ courseId: string }> }) {
+export default async function LessonsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ courseId: string }>;
+  searchParams: Promise<{ wizard?: string }>;
+}) {
   const { courseId } = await params;
+  const { wizard } = await searchParams;
   const principal = await getPrincipal();
   if (!principal) redirect("/login");
 
@@ -55,6 +62,16 @@ export default async function LessonsPage({ params }: { params: Promise<{ course
           </Link>
         </span>
       </header>
+
+      {/* Cierre del asistente guiado (task 5.10): el curso llega aquí recién generado, en borrador. */}
+      {wizard === "ok" ? (
+        <p
+          role="status"
+          className="rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300"
+        >
+          {esCL.wizard.generatedOk}
+        </p>
+      ) : null}
 
       <section className="flex flex-col gap-3">
         {lessons.length === 0 ? (

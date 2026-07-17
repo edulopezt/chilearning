@@ -345,6 +345,127 @@ export const esCL = {
     cloneError: "No se pudo clonar el curso.",
     forbidden: "No tienes permiso para administrar cursos.",
     genericError: "No se pudo guardar el curso.",
+    assistedCreate: "Crear con asistente",
+  },
+  /** Asistente guiado de creación de cursos (task 5.10, HU-3.5/4.5). */
+  wizard: {
+    title: "Asistente de creación de cursos",
+    intro:
+      "Te guía paso a paso: datos del curso, módulos, aprendizajes, contenido, evaluaciones y reglas de completitud. " +
+      "Nada se publica sin que revises la propuesta al final. El constructor libre sigue disponible si prefieres armarlo tú mismo.",
+    forbidden: "No tienes permiso para usar el asistente de cursos.",
+    backToCourses: "← Volver a cursos",
+    backToWizard: "← Volver al asistente",
+
+    draftsTitle: "Borradores en curso",
+    draftsEmpty: "No tienes borradores en curso. Inicia uno abajo.",
+    resume: "Retomar",
+    discard: "Descartar",
+    discarding: "Descartando…",
+    discardConfirm: "¿Descartar este borrador? No se puede deshacer (queda registrado, pero ya no se puede editar).",
+    discardError: "No se pudo descartar el borrador.",
+    colSource: "Origen",
+    colStatus: "Estado",
+    colStep: "Paso",
+    colUpdated: "Última edición",
+    sourceScratch: "Desde cero",
+    sourceDescriptor: "Desde descriptor",
+    statusProcessing: "Procesando descriptor…",
+    statusFailed: "Error al procesar",
+
+    // Estados del descriptor SENCE mientras se procesa en el worker (fix de
+    // seguridad post-5.10): el .docx ya no se analiza al subirlo, así que la
+    // pantalla del draft debe cubrir "todavía no terminó" y "falló".
+    descriptorProcessingTitle: "Extrayendo el descriptor…",
+    descriptorProcessingBody:
+      "Estamos leyendo el archivo Word que subiste para prellenar el asistente. Puede tardar unos segundos — esta página se actualiza sola.",
+    refreshNow: "Refrescar ahora",
+    descriptorFailedTitle: "No se pudo procesar el descriptor",
+    descriptorErrors: {
+      invalid_zip: "El archivo no es un .docx válido o está dañado. Vuelve a exportarlo desde Word y súbelo de nuevo.",
+      too_large: "El descriptor pesa demasiado al descomprimirse (supera el límite permitido). Revisa que no traiga imágenes o archivos embebidos innecesarios.",
+      text_too_large: "El texto del descriptor es demasiado extenso para procesarlo automáticamente.",
+      storage_error: "No se pudo leer el archivo subido. Intenta subirlo de nuevo.",
+    },
+    descriptorErrorGeneric: "No se pudo procesar el descriptor. Intenta subirlo de nuevo.",
+    descriptorFailedHint: "Puedes descartar este borrador y volver a subir el archivo, o iniciar el curso desde cero.",
+
+    generatedTitle: "Cursos generados con el asistente",
+    viewCourse: "Ver curso →",
+    downloadDescriptor: "Descargar descriptor",
+    downloadingDescriptor: "Generando enlace…",
+    downloadDescriptorError: "No se pudo generar el enlace de descarga.",
+
+    fromScratch: "Desde cero",
+    templateLabel: "Plantilla de curso",
+    templateNone: "Sin plantilla (en blanco)",
+    startFromScratch: "Iniciar asistente",
+    fromDescriptor: "Desde descriptor SENCE",
+    descriptorFileLabel: "Descriptor del curso (.docx)",
+    descriptorFileHint: "Sube el Anexo 4 u otro descriptor en Word; máx. 10 MB. Se archiva junto al curso.",
+    startFromDescriptor: "Subir y analizar descriptor",
+    descriptorFileError: "Selecciona un archivo .docx válido (máx. 10 MB).",
+    genericError: "No se pudo iniciar el asistente.",
+
+    stepDatos: "Datos del curso",
+    stepEstructura: "Estructura de módulos",
+    stepAprendizajes: "Aprendizajes esperados",
+    stepContenido: "Contenido por lección",
+    stepEvaluaciones: "Evaluaciones",
+    stepCompletitud: "Reglas de completitud",
+    stepRevision: "Revisión final",
+    previous: "← Anterior",
+    saveAndContinue: "Guardar y continuar",
+    validationTitle: "Revisa estos campos:",
+
+    extractWarningsTitle: "El descriptor no trajo señal clara para esto — revísalo a mano:",
+    seedHint: "Sugerido por el descriptor (edítalo si hace falta):",
+
+    estructuraHint:
+      'Un módulo por línea. Nuevo: "título | horas" (ej: Introducción | 4). Los módulos que ya guardaste ' +
+      'traen su id al inicio ("id | título | horas") — consérvalo tal cual para no perder las lecciones, ' +
+      "aprendizajes y evaluaciones que ya les cargaste.",
+    estructuraLabel: "Módulos",
+    estructuraPlaceholder: "Módulo 1 | 4\nMódulo 2 | 4\nMódulo 3 | 4",
+
+    aprendizajesHint: "Un aprendizaje esperado por línea, para cada módulo.",
+    aprendizajesLabelFor: "Aprendizajes de",
+    outcomesSeedTitle: "Aprendizajes detectados en el descriptor (repártelos entre los módulos de abajo):",
+    noModulesYet: "Primero define la estructura de módulos.",
+
+    contenidoHint: 'Una lección por línea: "id del módulo | título | tipo | contenido". Tipos: text, video, file, embed.',
+    contenidoLabel: "Lecciones",
+    contenidoPlaceholder: "m1 | Bienvenida | text | Contenido de bienvenida del módulo 1",
+    moduleIdsHint: "Ids de módulo disponibles:",
+
+    quizzesHint: 'Una evaluación por línea: "id del módulo | título".',
+    quizzesLabel: "Evaluaciones por módulo",
+    quizzesPlaceholder: "m1 | Evaluación módulo 1\nm2 | Evaluación módulo 2",
+    surveyEnabledLabel: "Habilitar encuesta de satisfacción",
+    surveyTitleLabel: "Título de la encuesta",
+
+    revisionNotice: "Nada se publica sin tu revisión: el curso y todo su contenido se crean en borrador.",
+    revisionSummaryDatos: "Datos del curso",
+    revisionSummaryEstructura: "Estructura",
+    revisionSummaryEvaluaciones: "Evaluaciones",
+    revisionSummaryCompletitud: "Reglas de completitud",
+    evaluationsCountLabel: "evaluaciones",
+    surveyLabel: "encuesta",
+    surveyDisabled: "deshabilitada",
+    minAttendanceLabel: "min. asistencia",
+    allLessonsLabel: "todas las lecciones",
+    partialLessonsLabel: "lecciones parciales",
+    surveyRequiredLabel: "encuesta obligatoria",
+    revisionBlockersTitle: "Bloqueos pendientes (corrígelos en el paso correspondiente):",
+    revisionReadyNotice: "Todo listo para generar el curso.",
+    generate: "Generar curso (en borrador)",
+    generating: "Generando…",
+    generateError: "No se pudo generar el curso.",
+    partialGenerationTitle: "El curso se creó parcialmente",
+    partialGenerationBody:
+      "Alcanzamos a crear el curso pero algo falló al agregar su contenido. Continúa a mano en el constructor libre — nada se duplicará si vuelves a intentarlo aquí.",
+    goToBuilder: "Ir al constructor del curso →",
+    generatedOk: "Curso generado por el asistente. Revísalo y complétalo antes de publicarlo.",
   },
   enrollmentImport: {
     title: "Importar alumnos",

@@ -18,6 +18,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 
+import { runDescriptorExtract, runDescriptorSweep } from "../modules/academico/descriptor-extract";
 import { senceTimingFromEnv } from "../modules/sence/domain/timing";
 import { runDay1Check, runErrorRateCheck, runExpiryTick } from "../modules/sence/expiry";
 import { runExpiryAlertsTick } from "../modules/certificados/expiry-alerts";
@@ -34,6 +35,8 @@ const EXPIRY_JOB = "expiry-alerts-tick";
 const TENANT_EXPORT_JOB = "tenant-export-tick";
 const SCORM_EXTRACT_JOB = "scorm-extract";
 const SCORM_SWEEP_JOB = "scorm-sweep";
+const DESCRIPTOR_EXTRACT_JOB = "descriptor-extract";
+const DESCRIPTOR_SWEEP_JOB = "descriptor-sweep";
 
 function remindersEveryMs(): number {
   const raw = Number(process.env.REMINDERS_EVERY_MS);
@@ -52,6 +55,11 @@ function tenantExportEveryMs(): number {
 
 function scormSweepEveryMs(): number {
   const raw = Number(process.env.SCORM_SWEEP_EVERY_MS);
+  return Number.isInteger(raw) && raw >= 60_000 ? raw : 5 * 60 * 1000; // default 5 min
+}
+
+function descriptorSweepEveryMs(): number {
+  const raw = Number(process.env.DESCRIPTOR_SWEEP_EVERY_MS);
   return Number.isInteger(raw) && raw >= 60_000 ? raw : 5 * 60 * 1000; // default 5 min
 }
 
@@ -138,6 +146,29 @@ async function scormSweepTick(db: SupabaseClient): Promise<void> {
   const summary = await runScormSweep(db, { now: startedAt });
   if (summary.reprocessed > 0) {
     console.log("[worker][scorm-sweep] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
+  }
+}
+
+/** Procesamiento del descriptor SENCE (.docx) de UN draft del asistente de
+ *  cursos (fix de seguridad post-5.10): job one-off encolado por
+ *  `src/lib/queue.ts` al subirse el archivo. */
+async function descriptorExtractTick(db: SupabaseClient, data: unknown): Promise<void> {
+  const { draftId, tenantId } = (data ?? {}) as { draftId?: unknown; tenantId?: unknown };
+  if (typeof draftId !== "string" || typeof tenantId !== "string") {
+    console.error("[worker][descriptor-extract] job.data inválido", { data });
+    return;
+  }
+  const startedAt = Date.now();
+  const result = await runDescriptorExtract(db, { draftId, tenantId });
+  console.log("[worker][descriptor-extract] " + JSON.stringify({ tookMs: Date.now() - startedAt, draftId, ...result }));
+}
+
+/** Red de seguridad periódica: drafts `processing` huérfanos (encolado falló o el worker murió a medio proceso). */
+async function descriptorSweepTick(db: SupabaseClient): Promise<void> {
+  const startedAt = Date.now();
+  const summary = await runDescriptorSweep(db, { now: startedAt });
+  if (summary.reprocessed > 0) {
+    console.log("[worker][descriptor-sweep] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
   }
 }
 
@@ -259,6 +290,15 @@ async function main(): Promise<void> {
     { every: scormSweepEveryMs() },
     { name: SCORM_SWEEP_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
   );
+  // Red de seguridad del procesamiento de descriptores SENCE del asistente de
+  // cursos (fix de seguridad post-5.10): el job one-off `descriptor-extract`
+  // lo encola `src/lib/queue.ts` al subirse cada .docx — este scheduler es
+  // SOLO el barrido periódico de drafts `processing` huérfanos.
+  await queue.upsertJobScheduler(
+    DESCRIPTOR_SWEEP_JOB,
+    { every: descriptorSweepEveryMs() },
+    { name: DESCRIPTOR_SWEEP_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
@@ -268,6 +308,8 @@ async function main(): Promise<void> {
       else if (job.name === TENANT_EXPORT_JOB) await tenantExportTick(db);
       else if (job.name === SCORM_EXTRACT_JOB) await scormExtractTick(db, job.data);
       else if (job.name === SCORM_SWEEP_JOB) await scormSweepTick(db);
+      else if (job.name === DESCRIPTOR_EXTRACT_JOB) await descriptorExtractTick(db, job.data);
+      else if (job.name === DESCRIPTOR_SWEEP_JOB) await descriptorSweepTick(db);
       else await tick(db);
     },
     { connection, concurrency: 1 },
