@@ -94,6 +94,40 @@ describe("parseLiveSessionInput", () => {
     if (!r.ok) return;
     expect(r.value.details).toBe("");
   });
+
+  // 4-ojos (MED): `startsAt`/`endsAt` SIN offset (el formato exacto de
+  // `<input type="datetime-local">`) debe interpretarse como hora de reloj de
+  // CHILE, no como hora local del proceso (el contenedor corre en UTC).
+  describe("startsAt/endsAt SIN offset explícito: se interpretan como hora de Santiago", () => {
+    it("'2026-08-01T15:00' (agosto = invierno, UTC-4) equivale a 2026-08-01T19:00:00.000Z", () => {
+      const r = parseLiveSessionInput({ ...validRaw, startsAt: "2026-08-01T15:00", endsAt: "2026-08-01T16:00" });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.value.startsAtISO).toBe("2026-08-01T19:00:00.000Z");
+      expect(r.value.endsAtISO).toBe("2026-08-01T20:00:00.000Z");
+    });
+
+    it("NO se confunde con la hora UTC del proceso (no da 15:00Z)", () => {
+      const r = parseLiveSessionInput({ ...validRaw, startsAt: "2026-08-01T15:00", endsAt: "2026-08-01T16:00" });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.value.startsAtISO).not.toBe("2026-08-01T15:00:00.000Z");
+    });
+
+    it("el formato con offset explícito (Z) se sigue interpretando literal, sin tocar zona", () => {
+      const r = parseLiveSessionInput({ ...validRaw, startsAt: "2026-08-01T15:00:00.000Z", endsAt: "2026-08-01T16:00:00.000Z" });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.value.startsAtISO).toBe("2026-08-01T15:00:00.000Z");
+    });
+
+    it("el redondeo horario de verano/invierno no rompe endsAt > startsAt en una sesión normal", () => {
+      const r = parseLiveSessionInput({ ...validRaw, startsAt: "2026-01-15T09:00", endsAt: "2026-01-15T10:00" });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(Date.parse(r.value.endsAtISO)).toBeGreaterThan(Date.parse(r.value.startsAtISO));
+    });
+  });
 });
 
 describe("canSelfMark — ventana [starts - 15min, ends] (bordes exactos)", () => {

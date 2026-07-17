@@ -213,6 +213,31 @@ describe("selfMarkAttendance — ventana exacta + regla manual-gana", () => {
     expect(row?.present).toBe(false);
     expect(row?.note).toBe("el staff dice ausente");
   });
+
+  // 4-ojos (HIGH/MED): antes esto era un SELECT-luego-UPSERT no atómico — un
+  // self-mark y un markAttendance DISPARADOS EN SIMULTÁNEO (no en secuencia,
+  // como el test de arriba) podían intercalarse y dejar la fila en "self" pese
+  // a que el staff acababa de marcarla manual. Con la escritura atómica
+  // (`write_live_attendance`, migración 20260717070000) el resultado final es
+  // SIEMPRE "manual", sin importar cuál de las dos llamadas llegó primero a la
+  // base de datos — se repite varias veces para forzar ambos órdenes posibles.
+  it("concurrencia real (Promise.all): manual gana pase lo que pase con el orden de llegada", async () => {
+    for (let i = 0; i < 6; i++) {
+      const id = await createAndTrack(inProgressRaw());
+      const [self, manual] = await Promise.all([
+        selfMarkAttendance(studentA, id),
+        markAttendance(adminA, id, ENROLLMENT_STUDENT_A1, false, `concurrencia-${i}`),
+      ]);
+      expect(self.ok).toBe(true);
+      expect(manual).toEqual({ ok: true });
+
+      const rows = await attendanceForSession(adminA, id);
+      const row = rows?.find((x) => x.enrollmentId === ENROLLMENT_STUDENT_A1);
+      expect(row?.source).toBe("manual");
+      expect(row?.present).toBe(false);
+      expect(row?.note).toBe(`concurrencia-${i}`);
+    }
+  });
 });
 
 describe("deleteLiveSession — gateado por asistencia", () => {

@@ -197,7 +197,12 @@ export async function deleteLiveSession(
   if ((count ?? 0) > 0) return { ok: false, error: "has_attendance" };
 
   const { error } = await guard.db.from("live_sessions").delete().eq("id", sessionId).eq("tenant_id", tenantId);
-  if (error) return { ok: false, error: "not_found" };
+  // LOW (4-ojos): si una fila de asistencia se insertó justo entre el conteo
+  // (arriba) y este DELETE, el FK `on delete restrict` de
+  // `live_session_attendance.session_id` rechaza el borrado (23503) — se
+  // mapea a "has_attendance" (no al genérico "not_found") para que la UI
+  // muestre el mensaje correcto en esa ventana angosta.
+  if (error) return { ok: false, error: error.code === "23503" ? "has_attendance" : "not_found" };
   return { ok: true };
 }
 
@@ -297,18 +302,21 @@ export async function markAttendance(
   if (enrollment.action_id !== session.action_id) return { ok: false, error: "mismatched_action" };
 
   const trimmedNote = (note ?? "").trim().slice(0, 500);
-  const { error } = await guard.db.from("live_session_attendance").upsert(
-    guard.withTenant({
-      session_id: sessionId,
-      enrollment_id: enrollmentId,
-      present,
-      source: "manual",
-      marked_by: principal.userId,
-      note: trimmedNote,
-      marked_at: new Date().toISOString(),
-    }),
-    { onConflict: "session_id,enrollment_id" },
-  );
+  // Escritura atómica (4-ojos): `write_live_attendance` es UN solo
+  // `INSERT ... ON CONFLICT ... DO UPDATE ... WHERE` (ver migración
+  // 20260717070000), así que una auto-marca concurrente del alumno no puede
+  // intercalarse y pisar esta marca manual. El staff SIEMPRE escribe "manual"
+  // (la cláusula WHERE del RPC solo bloquea que un "self" pise un "manual",
+  // nunca al revés).
+  const { error } = await guard.db.rpc("write_live_attendance", {
+    p_tenant_id: tenantId,
+    p_session_id: sessionId,
+    p_enrollment_id: enrollmentId,
+    p_present: present,
+    p_source: "manual",
+    p_marked_by: principal.userId,
+    p_note: trimmedNote,
+  });
   if (error) return { ok: false, error: "not_found" };
 
   await writeAudit(guard, {
@@ -357,29 +365,25 @@ export async function selfMarkAttendance(principal: Principal, sessionId: string
   const endsAtMs = Date.parse(session.ends_at as string);
   if (!canSelfMark(startsAtMs, endsAtMs, Date.now())) return { ok: false, error: "outside_window" };
 
-  const { data: existing } = await guard.db
-    .from("live_session_attendance")
-    .select("id, source")
-    .eq("tenant_id", tenantId)
-    .eq("session_id", sessionId)
-    .eq("enrollment_id", enrollment.id)
-    .maybeSingle();
-  if (existing && existing.source === "manual") {
-    return { ok: true, kept: "manual" };
-  }
-
-  const { error } = await guard.db.from("live_session_attendance").upsert(
-    guard.withTenant({
-      session_id: sessionId,
-      enrollment_id: enrollment.id,
-      present: true,
-      source: "self",
-      marked_by: principal.userId,
-      marked_at: new Date().toISOString(),
-    }),
-    { onConflict: "session_id,enrollment_id" },
-  );
+  // Escritura atómica (4-ojos): antes esto era un SELECT seguido de un UPSERT
+  // (dos round-trips HTTP separados), lo que dejaba una ventana real donde un
+  // `markAttendance` del staff podía colarse entre medio y ser pisado por este
+  // self-mark. `write_live_attendance` es UN solo
+  // `INSERT ... ON CONFLICT ... DO UPDATE ... WHERE` (ver migración
+  // 20260717070000): Postgres serializa el conflicto vía el índice único, y la
+  // regla "manual gana" se cumple aunque las dos llamadas se disparen en
+  // simultáneo — no importa cuál gane la carrera al llegar a la BD.
+  const { data: outcome, error } = await guard.db.rpc("write_live_attendance", {
+    p_tenant_id: tenantId,
+    p_session_id: sessionId,
+    p_enrollment_id: enrollment.id,
+    p_present: true,
+    p_source: "self",
+    p_marked_by: principal.userId,
+    p_note: "",
+  });
   if (error) return { ok: false, error: "not_found" };
+  if (outcome === "kept_manual") return { ok: true, kept: "manual" };
 
   await writeAudit(guard, {
     actorUserId: principal.userId,

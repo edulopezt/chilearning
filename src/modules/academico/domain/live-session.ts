@@ -13,6 +13,54 @@
 export const LIVE_SESSION_PROVIDERS = ["zoom", "meet", "teams", "otro"] as const;
 export type LiveSessionProvider = (typeof LIVE_SESSION_PROVIDERS)[number];
 
+const LIVE_SESSION_TZ = "America/Santiago";
+/** `startsAt`/`endsAt` CON offset explícito (Z o ±HH:MM) — no ambiguo. */
+const HAS_OFFSET_RE = /(?:Z|[+-]\d{2}:?\d{2})$/;
+/** `startsAt`/`endsAt` SIN offset — el formato exacto que envía `<input type="datetime-local">`. */
+const NAIVE_DATETIME_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+/**
+ * Convierte una hora de reloj (año/mes/día/hora/min/seg) en LA ZONA `timeZone`
+ * a epoch ms UTC, sin asumir un offset fijo (Chile ha cambiado sus reglas de
+ * horario de verano/invierno más de una vez). Técnica: se toma el primer
+ * intento como si fuera UTC, se formatea ESE instante en la zona destino y se
+ * corrige por la diferencia — igual que hacen las librerías de zonas horarias,
+ * sin depender de ninguna.
+ */
+function zonedWallClockToEpochMs(y: number, month: number, d: number, h: number, min: number, s: number, timeZone: string): number {
+  const guessMs = Date.UTC(y, month - 1, d, h, min, s);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(guessMs));
+  const get = (type: string): number => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const hour = get("hour") % 24; // Intl con h23 puede emitir "24" a medianoche.
+  const zonedAsUtcMs = Date.UTC(get("year"), get("month") - 1, get("day"), hour, get("minute"), get("second"));
+  return guessMs - (zonedAsUtcMs - guessMs);
+}
+
+/**
+ * Parsea `startsAt`/`endsAt`: si trae offset explícito, `Date.parse` normal
+ * (sin ambigüedad). Si NO trae offset (el caso real de `datetime-local`, que
+ * NUNCA incluye zona), se interpreta como hora de reloj de Chile — NO como
+ * hora local del proceso que ejecuta este código (el contenedor corre en UTC
+ * por defecto, lo que desfasaría la sesión 3-4 horas respecto de lo que el
+ * staff chileno tecleó).
+ */
+function parseSessionDateTime(raw: string): number {
+  if (HAS_OFFSET_RE.test(raw)) return Date.parse(raw);
+  const m = NAIVE_DATETIME_RE.exec(raw);
+  if (!m) return Date.parse(raw);
+  const [, y, month, d, h, min, s] = m;
+  return zonedWallClockToEpochMs(Number(y), Number(month), Number(d), Number(h), Number(min), s ? Number(s) : 0, LIVE_SESSION_TZ);
+}
+
 export interface LiveSessionInput {
   readonly title: string;
   readonly provider: LiveSessionProvider;
@@ -58,8 +106,8 @@ export function parseLiveSessionInput(raw: {
 
   const startsRaw = String(raw.startsAt ?? "").trim();
   const endsRaw = String(raw.endsAt ?? "").trim();
-  const startsMs = Date.parse(startsRaw);
-  const endsMs = Date.parse(endsRaw);
+  const startsMs = startsRaw ? parseSessionDateTime(startsRaw) : NaN;
+  const endsMs = endsRaw ? parseSessionDateTime(endsRaw) : NaN;
   if (!startsRaw || Number.isNaN(startsMs)) {
     errors.push({ field: "dates", message: "La fecha y hora de inicio es inválida." });
   }
@@ -160,8 +208,6 @@ export function attendanceCsv(rows: readonly AttendanceCsvRow[]): string {
   return `﻿${lines.join("\r\n")}\r\n`;
 }
 
-const SANTIAGO_TZ = "America/Santiago";
-
 /**
  * dd-mm-aaaa HH:mm en América/Santiago, para la columna MARCADO del export.
  * Duplica A PROPÓSITO el formateador equivalente de
@@ -171,7 +217,7 @@ const SANTIAGO_TZ = "America/Santiago";
  */
 export function formatMarkedAt(epochMs: number): string {
   const parts = new Intl.DateTimeFormat("es-CL", {
-    timeZone: SANTIAGO_TZ,
+    timeZone: LIVE_SESSION_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
