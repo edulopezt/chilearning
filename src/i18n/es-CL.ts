@@ -769,7 +769,10 @@ export const esCL = {
     // publicar el borrador por descuido.
     legalEntityTitle: "Identificación del prestador",
     legalNameLabel: "Razón social",
-    taxIdLabel: "RUT",
+    // La sociedad prestadora está en Alemania (confirmado 2026-07-17): sus
+    // identificadores son los del registro alemán, no un RUT chileno.
+    registryLabel: "Registro mercantil",
+    taxIdLabel: "N.º de IVA (USt-IdNr)",
     addressLabel: "Domicilio",
     legalContactLabel: "Correo de contacto",
   },

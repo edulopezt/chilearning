@@ -3,8 +3,35 @@
 > **Qué hay acá:** los borradores legales de la tarea **5.6**. Ninguno es válido todavía.
 > Este README es la lista de lo que **solo Edu puede decidir** y de lo que necesita a un abogado.
 >
-> **Regla:** nada de esta carpeta se publica como definitivo, ni se manda a un cliente, sin la
-> revisión de un abogado chileno. La tarea 5.6 no se marca ✅ hasta que eso ocurra.
+> **Regla:** nada de esta carpeta se publica como definitivo, ni se manda a un cliente, sin
+> revisión de abogado. La tarea 5.6 no se marca ✅ hasta que eso ocurra.
+
+## 🚨 Lo primero: la prestadora está en Alemania, y eso cambia el régimen
+
+Edu confirmó (2026-07-17) que **la sociedad que presta el servicio está en Frankfurt**, no en Chile.
+Todos estos borradores se escribieron asumiendo un prestador chileno. Consecuencias que **hay que
+validar con asesoría que cubra el lado alemán** (no basta un abogado chileno):
+
+1. **Aplican DOS regímenes sobre los mismos datos.** El RGPD aplica por el **establecimiento** del
+   responsable/encargado en la UE (art. 3.1), sin importar que los titulares estén en Chile. O sea:
+   RGPD **+** Ley 21.719, a la vez. El contrato de encargo debe satisfacer el **art. 28 del RGPD**
+   (contenido mínimo tasado), no solo el estándar chileno; y probablemente haga falta el **registro
+   de actividades de tratamiento del art. 30**.
+2. **La BD en São Paulo deja de ser solo el riesgo S2 chileno.** Pasa a ser **transferencia a un
+   tercer país sin decisión de adecuación de la UE** → exige instrumento del RGPD (cláusulas
+   contractuales tipo + evaluación de la transferencia). Si esto no cuadra, el impacto es de
+   **arquitectura** (mover la BD a una región de la UE), no de redacción: **decidirlo ANTES de firmar
+   clientes**, porque migrar después es caro.
+   *(Nota técnica: Supabase ofrece regiones en la UE — Frankfurt incluida. Cambiar de región implica
+   migrar el proyecto, no un flag.)*
+3. **Sitio web alemán ⇒ Impressum.** Un prestador alemán debe publicar pie de imprenta (§5 DDG) con
+   sus datos registrales. Hoy no existe esa página.
+4. **Identificadores**: no hay RUT. `LEGAL_ENTITY` (`src/app/privacidad/content.ts`) ya pide los
+   campos correctos: razón social **con forma jurídica** (GmbH/UG/…), **Handelsregister + nº HRB**,
+   **USt-IdNr** y domicilio en Frankfurt.
+5. **Quién factura y contrata a las OTECs chilenas**: si es la sociedad alemana, revisar también IVA
+   y retenciones en la venta transfronteriza a Chile. (Fuera del alcance del código; lo anoto para
+   que no se pase por alto.)
 
 ## Documentos
 
@@ -18,19 +45,16 @@
 
 ## 🔴 Bloqueantes — antes de que esto sea público de verdad
 
-1. **Identidad legal del prestador.** No existe en ningún documento del repo: falta **razón social,
-   RUT y domicilio**. Sin eso el contrato no se firma y la política de privacidad no puede publicarse
-   como vigente (la Ley 21.719 exige identificar al responsable/encargado). Están como
-   `[POR DEFINIR]` en `LEGAL_ENTITY` de `src/app/privacidad/content.ts` y en los comparecientes del
-   contrato. La constante **se renderiza** en la §11 de `/privacidad`: rellenarla cambia de verdad el
-   documento publicado, y mientras no se rellene el `[POR DEFINIR]` se ve en la página (a propósito:
-   así no se publica por descuido).
+1. **Datos registrales de la sociedad alemana.** Faltan **razón social con forma jurídica,
+   Handelsregister + nº HRB, USt-IdNr y domicilio en Frankfurt**. Sin eso el contrato no se firma y
+   la política no puede publicarse como vigente (identificar al responsable/encargado es exigible por
+   la Ley 21.719 **y** por el RGPD). Están como `[POR DEFINIR]` en `LEGAL_ENTITY` de
+   `src/app/privacidad/content.ts` y en los comparecientes del contrato. La constante **se renderiza**
+   en la §11 de `/privacidad`: rellenarla cambia de verdad el documento publicado, y mientras no se
+   rellene el `[POR DEFINIR]` se ve en la página (a propósito: así no se publica por descuido).
 
-2. **Correo de contacto comercial.** La landing apunta hoy a **`soporte@chilearning.cl`**
-   (`CONTACT_EMAIL` en `src/app/page.tsx`), el único buzón de entrada versionado en el repo — antes
-   apuntaba a `hola@chilearning.cl`, que no está confirmado en ninguna parte. **Falta confirmar que
-   la casilla existe y que alguien la lee**; si se prefiere un `hola@`, hay que crearla y cambiar la
-   constante (una línea). Un CTA que cae al vacío pierde leads en silencio.
+2. ~~**Correo de contacto comercial.**~~ ✅ **RESUELTO (2026-07-17):** Edu confirmó
+   **`hola@edulopezt.com`**. Está en `CONTACT_EMAIL` (`src/app/page.tsx`) y en `LEGAL_ENTITY`.
 
 3. **Marca definitiva.** "Chilearning" es marca de trabajo; el dominio `chilearning.cl` está decidido
    (**D-009**), la identidad no. Si cambia: `esCL.common.appName` + `esCL.landing.*`. Ningún

@@ -33,17 +33,32 @@ export const POLICY_UPDATED = "17 de julio de 2026";
 export { PROCESSING_ACTIVITIES, RETENTION_POLICIES };
 
 /**
- * ⚠ PENDIENTE DE EDU: la identidad legal del prestador no está definida en
- * ningún documento del repo. Sin razón social, RUT y domicilio, la política no
- * puede publicarse como vigente (la Ley 21.719 exige identificar al
- * responsable/encargado).
+ * ⚠ PENDIENTE DE EDU: faltan los datos registrales de la entidad.
+ *
+ * Edu confirmó (2026-07-17) que la sociedad que presta el servicio está en
+ * FRANKFURT (Alemania), no en Chile. Por eso los campos son los del registro
+ * alemán (Handelsregister / USt-IdNr), no un RUT. Sin ellos la política no
+ * puede publicarse como vigente: identificar al responsable/encargado es
+ * exigible tanto por la Ley 21.719 chilena como por el RGPD, y el sitio
+ * alemán exige además pie de imprenta (Impressum, §5 DDG).
+ *
+ * ⚠ CONSECUENCIA MAYOR, PARA EL ABOGADO (ver docs/legal/README.md): con la
+ * prestadora establecida en la UE, el tratamiento cae ADEMÁS bajo el RGPD
+ * (art. 3.1: aplica por el establecimiento del responsable/encargado, sin
+ * importar dónde estén los titulares). Dos regímenes a la vez sobre los
+ * mismos datos, y la BD en São Paulo pasa a ser transferencia a un tercer
+ * país SIN decisión de adecuación de la UE → necesita instrumento del RGPD
+ * (cláusulas tipo + evaluación), no solo el análisis chileno del riesgo S2.
+ * Esto NO lo decide el código: hay que validarlo con asesoría que cubra el
+ * lado alemán.
  */
 export const LEGAL_ENTITY = {
   tradeName: "Chilearning",
-  legalName: "[RAZÓN SOCIAL — POR DEFINIR]",
-  taxId: "[RUT — POR DEFINIR]",
-  address: "[DOMICILIO — POR DEFINIR]",
-  contactEmail: "[CORREO DE CONTACTO — POR CONFIRMAR]",
+  legalName: "[RAZÓN SOCIAL + FORMA JURÍDICA (p. ej. GmbH/UG) — POR DEFINIR]",
+  registry: "[HANDELSREGISTER + Nº HRB — POR DEFINIR]",
+  taxId: "[USt-IdNr — POR DEFINIR]",
+  address: "[DOMICILIO EN FRANKFURT — POR DEFINIR]",
+  contactEmail: "hola@edulopezt.com",
 } as const;
 
 export interface PolicySection {
@@ -104,7 +119,8 @@ export const POLICY_SECTIONS: readonly PolicySection[] = [
       "⚠ Importante y explícito: la base de datos de la plataforma está alojada en la región de São Paulo, Brasil (Supabase). Esto significa que tus datos personales —incluido el RUN— se almacenan fuera de Chile.",
       "Otros proveedores (correo, video, monitoreo de errores, respaldos) también operan infraestructura fuera de Chile.",
       "Nos apoyamos en salvaguardas contractuales con cada proveedor y aplicamos medidas técnicas adicionales: cifrado en tránsito, cifrado en reposo, cifrado a nivel de aplicación para los secretos más sensibles (como el token SENCE de la OTEC) y respaldos cifrados con clave que solo controlamos nosotros.",
-      "Este punto está identificado como un riesgo abierto del proyecto (riesgo S2 de la especificación) y es uno de los motivos por los que este documento está pendiente de revisión legal: la admisibilidad y las garantías exigibles bajo la Ley 21.719 deben confirmarse con un abogado antes del lanzamiento comercial.",
+      "La sociedad que presta el servicio está establecida en Alemania (Unión Europea). Por eso, además de la Ley 21.719 chilena, al tratamiento le resulta aplicable el Reglamento General de Protección de Datos (RGPD) europeo, y el alojamiento en Brasil constituye una transferencia a un tercer país que exige las garantías previstas en ese reglamento.",
+      "Este punto está identificado como un riesgo abierto del proyecto (riesgo S2 de la especificación) y es uno de los motivos por los que este documento está pendiente de revisión legal: la admisibilidad y las garantías exigibles —bajo la Ley 21.719 y bajo el RGPD— deben confirmarse con asesoría legal antes del lanzamiento comercial.",
     ],
   },
   {

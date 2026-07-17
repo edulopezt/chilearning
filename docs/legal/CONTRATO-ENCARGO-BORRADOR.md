@@ -26,15 +26,33 @@
 **RESPONSABLE DEL TRATAMIENTO:** `[RAZÓN SOCIAL DE LA OTEC]`, RUT `[RUT]`, domicilio `[DOMICILIO]`,
 representada por `[NOMBRE]` (en adelante, la **OTEC**).
 
-**ENCARGADO DEL TRATAMIENTO:** `[RAZÓN SOCIAL — POR DEFINIR]`, RUT `[RUT — POR DEFINIR]`, domicilio
-`[DOMICILIO — POR DEFINIR]`, nombre de fantasía **Chilearning** (en adelante, el **Encargado**).
+**ENCARGADO DEL TRATAMIENTO:** `[RAZÓN SOCIAL + FORMA JURÍDICA — POR DEFINIR]`, inscrita en el
+`[HANDELSREGISTER — POR DEFINIR]` bajo el `[Nº HRB — POR DEFINIR]`, `[USt-IdNr — POR DEFINIR]`,
+domicilio `[DIRECCIÓN EN FRANKFURT — POR DEFINIR]`, Alemania, nombre de fantasía **Chilearning**
+(en adelante, el **Encargado**).
 
-> ⚠ **Decisión pendiente de Edu:** la identidad legal del prestador no existe en ningún documento
-> del repo. Sin razón social y RUT, este contrato no puede firmarse.
+> ⚠ **Pendiente de Edu:** faltan los datos registrales de la sociedad. Sin ellos no se firma.
+>
+> ⚠ **Para el abogado — el Encargado está establecido en la UE (Frankfurt).** Este borrador se
+> redactó contra la Ley 21.719 chilena. Con un encargado alemán, al tratamiento le resulta aplicable
+> **además el RGPD** (art. 3.1, por el establecimiento del encargado, con independencia de que los
+> titulares estén en Chile). Consecuencias sobre ESTE contrato:
+> - Debe cumplir el **contenido mínimo tasado del art. 28.3 del RGPD** (instrucciones documentadas,
+>   confidencialidad, art. 32, subencargados con autorización, asistencia arts. 32-36, supresión o
+>   devolución, auditorías). Revisar cláusula por cláusula contra esa lista.
+> - El alojamiento en **Brasil (São Paulo)** pasa a ser transferencia a un tercer país **sin decisión
+>   de adecuación de la UE** → exige instrumento del RGPD (cláusulas contractuales tipo + evaluación
+>   de la transferencia), no solo salvaguardas contractuales genéricas. **Si esto no cuadra, la salida
+>   es mover la BD a una región de la UE: es una decisión de ARQUITECTURA y conviene tomarla antes de
+>   firmar clientes.**
+> - Verificar si hace falta **registro de actividades de tratamiento (art. 30)**.
+> Se recomienda asesoría que cubra el lado alemán, no solo el chileno.
 
 Ambas partes reconocen que, conforme a la **Ley 21.719** sobre protección y tratamiento de datos
-personales, la OTEC determina los fines y medios del tratamiento de los datos de sus alumnos y
-trabajadores capacitados, y el Encargado los trata **exclusivamente por cuenta de la OTEC**.
+personales —y, en lo que resulte aplicable por el establecimiento del Encargado en la Unión Europea,
+al **Reglamento (UE) 2016/679 (RGPD)**—, la OTEC determina los fines y medios del tratamiento de los
+datos de sus alumnos y trabajadores capacitados, y el Encargado los trata **exclusivamente por cuenta
+de la OTEC**.
 
 ---
 
