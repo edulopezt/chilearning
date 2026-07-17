@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { requireFeature } from "@/lib/feature-flags";
 import { tenantGuard } from "@/lib/tenant-guard";
-import { listScormPackages } from "@/modules/contenido/scorm-service";
+import { listScormPackages, type ScormPackageRow } from "@/modules/contenido/scorm-service";
+import { listScormResults, type ScormResultRow } from "@/modules/contenido/scorm-runtime-service";
 import { getPrincipal } from "@/modules/core/auth/session";
-import { authorize } from "@/modules/core/domain/rbac";
+import { authorize, type Principal } from "@/modules/core/domain/rbac";
 import { PackageRowActions } from "./package-row-actions";
 import { UploadForm } from "./upload-form";
 
@@ -138,9 +139,77 @@ export default async function ScormPage({ params }: { params: Promise<{ courseId
         <UploadForm courseId={courseId} />
       </section>
 
+      {/* Resultados por paquete (task 5.1b): solo tiene sentido para paquetes
+          ya `ready` — los demás nunca acumularon intentos de alumnos. */}
+      {packages.filter((p) => p.status === "ready").length > 0 ? (
+        <section className="flex flex-col gap-6 border-t pt-6">
+          <h2 className="text-lg font-semibold">{t.resultsTitle}</h2>
+          {packages
+            .filter((p) => p.status === "ready")
+            .map((p) => (
+              <PackageResults key={p.id} principal={principal} pkg={p} />
+            ))}
+        </section>
+      ) : null}
+
       <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline">
         ← {esCL.lessons.title}
       </Link>
     </main>
+  );
+}
+
+async function PackageResults({ principal, pkg }: { principal: Principal; pkg: ScormPackageRow }) {
+  const results = await listScormResults(principal, pkg.id);
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="font-medium">{pkg.title}</h3>
+      {results.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{t.resultsEmpty}</p>
+      ) : (
+        <>
+          {/* Tabla ≥sm, tarjetas <sm (RNF-6) */}
+          <div className="hidden overflow-x-auto sm:block">
+            <table className="w-full min-w-[32rem] border-collapse text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2 pr-3">{t.studentCol}</th>
+                  <th className="py-2 pr-3">{t.statusCol}</th>
+                  <th className="py-2 pr-3">{t.scoreCol}</th>
+                  <th className="py-2">{t.updatedCol}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r) => (
+                  <ResultRow key={r.enrollmentId} r={r} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ul className="flex flex-col gap-2 sm:hidden">
+            {results.map((r) => (
+              <li key={r.enrollmentId} className="flex flex-col gap-1 rounded-lg border p-3 text-sm">
+                <span className="font-medium">{r.studentName}</span>
+                <span className="text-muted-foreground text-xs">
+                  {r.lessonStatus ?? "—"} · {t.scoreCol}: {r.scoreRaw ?? "—"} ·{" "}
+                  {new Date(r.updatedAt).toLocaleString("es-CL")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ResultRow({ r }: { r: ScormResultRow }) {
+  return (
+    <tr className="border-b last:border-0">
+      <td className="py-2 pr-3">{r.studentName}</td>
+      <td className="py-2 pr-3">{r.lessonStatus ?? "—"}</td>
+      <td className="py-2 pr-3">{r.scoreRaw ?? "—"}</td>
+      <td className="py-2">{new Date(r.updatedAt).toLocaleString("es-CL")}</td>
+    </tr>
   );
 }

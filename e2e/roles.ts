@@ -32,3 +32,12 @@ export const CERT = {
   runFull: "5126663-3", // NO debe aparecer en la página pública
   courseName: "Curso E2E de Verificación",
 } as const;
+
+/** Paquete/lección SCORM sembrados para el flujo del reproductor (task 5.1b). */
+export const SCORM = {
+  packageId: "5c0000a0-0000-4000-8000-000000000001",
+  lessonId: "5c0000b0-0000-4000-8000-000000000001",
+  courseId: "5c0000c0-0000-4000-8000-000000000001",
+  actionId: "5c0000d0-0000-4000-8000-000000000001",
+  enrollmentId: "5c0000e0-0000-4000-8000-000000000001",
+} as const;

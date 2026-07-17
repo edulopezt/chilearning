@@ -262,10 +262,32 @@ export default async function MiCursoPage() {
                   >
                     📎 {esCL.course.openFile}
                   </a>
+                ) : lesson.kind === "scorm" ? (
+                  // El reproductor SCORM vive en su PROPIA página (el iframe
+                  // necesita bastante alto): aquí solo un enlace de entrada.
+                  <Link
+                    href={`/mi-curso/scorm/${lesson.id}`}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+                  >
+                    {esCL.scorm.openLesson}
+                  </Link>
                 ) : (
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{lesson.content}</p>
                 )}
-                <LessonComplete lessonId={lesson.id} completed={completedSet.has(lesson.id)} />
+                {lesson.kind === "scorm" ? (
+                  // Completitud/nota SCORM las fija el reproductor (CMI), no
+                  // un botón manual: badge puramente informativo.
+                  completedSet.has(lesson.id) ? (
+                    <p className="mt-3 text-sm text-green-700 dark:text-green-400">
+                      ✓ {esCL.scorm.completedBadge}
+                      {view.scormScoreByLesson[lesson.id] != null
+                        ? ` · ${esCL.scorm.scoreLabel}: ${view.scormScoreByLesson[lesson.id]}`
+                        : ""}
+                    </p>
+                  ) : null
+                ) : (
+                  <LessonComplete lessonId={lesson.id} completed={completedSet.has(lesson.id)} />
+                )}
               </li>
             ))}
           </ol>
