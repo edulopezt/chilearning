@@ -370,7 +370,6 @@ export const esCL = {
     colUpdated: "Última edición",
     sourceScratch: "Desde cero",
     sourceDescriptor: "Desde descriptor",
-    statusInProgress: "En progreso",
     statusProcessing: "Procesando descriptor…",
     statusFailed: "Error al procesar",
 

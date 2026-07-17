@@ -19,6 +19,7 @@ import {
 } from "@/modules/academico/testing/descriptor-fixture";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
+const TENANT_B = "22222222-2222-4222-8222-222222222222";
 const ADMIN_A = "aaaaaaaa-0000-4000-8000-000000000001";
 const BUCKET = "course_descriptors";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -199,6 +200,23 @@ describe("runDescriptorExtract (fix de seguridad post-5.10)", () => {
 
     const { data: row } = await svc.from("course_drafts").select("state").eq("id", id).maybeSingle();
     expect(row?.state.estructura.modules[0]?.title).toBe("Editado a mano");
+  });
+
+  it("draft sembrado bajo TENANT_A invocado con tenantId de TENANT_B → not_found, sin tocar el status/state (aislamiento cross-tenant)", async () => {
+    const id = await seedDraft({ status: "processing", state: {} });
+    await uploadDescriptor(id, await buildDescriptorFixtureDocx(DESCRIPTOR_FIXTURE_LINES));
+
+    const result = await runDescriptorExtract(svc, { draftId: id, tenantId: TENANT_B });
+    expect(result).toEqual({ ok: false, errorCode: "not_found" });
+
+    const { data: row } = await svc
+      .from("course_drafts")
+      .select("status, descriptor_error, state")
+      .eq("id", id)
+      .maybeSingle();
+    expect(row?.status).toBe("processing");
+    expect(row?.descriptor_error).toBeNull();
+    expect(row?.state).toEqual({});
   });
 });
 

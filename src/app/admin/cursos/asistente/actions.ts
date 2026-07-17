@@ -26,7 +26,14 @@ export async function createDraftScratchAction(
   redirect(`/admin/cursos/asistente/${result.draftId}`);
 }
 
-/** Sube un descriptor SENCE (.docx), lo analiza y va directo al primer paso con lo detectado precargado. */
+/**
+ * Sube un descriptor SENCE (.docx) y encola su análisis (fix de seguridad
+ * post-5.10, ADR-006): `createDraft` solo archiva el archivo y despacha
+ * `descriptor-extract` al worker, que corre `mammoth` AISLADO del proceso web.
+ * El draft nace `status = "processing"` y esta acción redirige a su página
+ * ([draftId]/page.tsx), que renderiza el estado "procesando" / "falló" /
+ * editable según corresponda — no llega precargado de forma síncrona.
+ */
 export async function createDraftDescriptorAction(
   _prev: CreateDraftState,
   formData: FormData,
