@@ -1032,6 +1032,56 @@ export const esCL = {
         "Hubo un problema técnico al cerrar tu sesión SENCE. Ya avisamos al equipo; intenta cerrar nuevamente.",
     },
   },
+  superadmin: {
+    title: "Administración de la plataforma",
+    intro: "Crea y administra las OTECs (tenants) de Chilearning.",
+    forbidden: "No tienes permiso para administrar la plataforma.",
+    tenantsHeading: "OTECs registradas",
+    empty: "Aún no hay OTECs creadas.",
+    newTenantHeading: "Nueva OTEC",
+    nameLabel: "Nombre de la OTEC",
+    slugLabel: "Subdominio (slug)",
+    slugHint: "Minúsculas, números y guiones; entre 3 y 30 caracteres. Queda operativo al instante.",
+    rutLabel: "RUT (opcional)",
+    planLabel: "Plan",
+    planStandard: "Standard",
+    planPro: "Pro",
+    planEnterprise: "Enterprise",
+    adminEmailLabel: "Correo del administrador inicial",
+    create: "Crear OTEC",
+    creating: "Creando…",
+    createdOk: "OTEC creada. El subdominio ya está operativo.",
+    emailSentInfo: "Enviamos la invitación al administrador por correo.",
+    emailNotSent:
+      "No hay correo configurado: copia este enlace de activación y envíaselo al administrador.",
+    inviteLinkFailed:
+      "La OTEC quedó creada, pero no pudimos generar el enlace de invitación. Pide al administrador ingresar con el acceso por enlace al correo desde la página de inicio de sesión, o contacta soporte.",
+    copy: "Copiar",
+    copied: "Copiado",
+    errorInvalid: "Revisa los datos: hay campos inválidos.",
+    errorSlugTaken: "Ese subdominio ya está ocupado o reservado. Elige otro.",
+    errorAdminEmailTaken:
+      "Ese correo ya pertenece a otra OTEC. Usa un correo distinto para el administrador inicial.",
+    errorFailed: "No pudimos crear la OTEC. Intenta nuevamente.",
+    statusActive: "Activa",
+    statusSuspended: "Suspendida",
+    suspend: "Suspender",
+    reactivate: "Reactivar",
+    flagsHeading: "Funciones",
+    flagScorm: "SCORM",
+    flagAiTutor: "Tutor IA",
+    flagWhatsapp: "WhatsApp",
+    flagOn: "Activada",
+    flagOff: "Desactivada",
+    planLabelShort: "Plan",
+  },
+  suspended: {
+    title: "OTEC suspendida",
+    message:
+      "El acceso a esta plataforma está temporalmente suspendido. Tus datos están intactos y volverán a estar disponibles cuando se reactive el servicio.",
+    contact:
+      "Si eres alumno(a) o parte del equipo de la OTEC, contacta a tu administrador. Administradores: escriban a soporte@chilearning.cl.",
+  },
 } as const;
 
 export type Messages = typeof esCL;
