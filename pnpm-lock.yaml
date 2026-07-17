@@ -59,6 +59,9 @@ importers:
       react-dom:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
+      scorm-again:
+        specifier: ^3.1.1
+        version: 3.1.1
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -3953,6 +3956,10 @@ packages:
   schema-utils@4.3.3:
     resolution: {integrity: sha512-eflK8wEtyOE6+hsaRVPxvUKYCpRgzLqDTb8krvAsRIwOGlHoSgYLgBXoubGgLd2fT41/OUYdb48v4k4WWHQurA==}
     engines: {node: '>= 10.13.0'}
+
+  scorm-again@3.1.1:
+    resolution: {integrity: sha512-WoZkssQoMJnZE5jzTXgxOeAAlgp5P9kjeT0ha506poljdfJ+t9vhQwQjmGTWEiHwDFVxNI3lpDuFrXA90/QcVw==}
+    engines: {node: '>=20.19.0'}
 
   semifies@1.0.0:
     resolution: {integrity: sha512-xXR3KGeoxTNWPD4aBvL5NUpMTT7WMANr3EWnaS190QVkY52lqqcVRD7Q05UVbBhiWDGWMlJEUam9m7uFFGVScw==}
@@ -8465,6 +8472,8 @@ snapshots:
       ajv: 8.20.0
       ajv-formats: 2.1.1(ajv@8.20.0)
       ajv-keywords: 5.1.0(ajv@8.20.0)
+
+  scorm-again@3.1.1: {}
 
   semifies@1.0.0: {}
 

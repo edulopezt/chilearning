@@ -35,6 +35,43 @@ export function buildCsp(isProd: boolean): string {
   return directives.join("; ");
 }
 
+/**
+ * CSP ENFORCED (no Report-Only) para las respuestas del proxy de assets SCORM
+ * (`src/app/api/scorm/[packageId]/[...path]/route.ts`; mitigación del
+ * hallazgo 4-ojos HIGH "autorizacion-proxy"/"spec-ux", task 5.1b). El SCO
+ * corre en un iframe `allow-scripts allow-same-origin` porque necesita
+ * alcanzar `window.parent.API` (SCORM RTE) — ADR-006. Esa combinación NO
+ * queda cerrada por esta CSP: un script del paquete todavía puede leer/
+ * escribir el DOM de `window.parent` y el localStorage del origen real (eso
+ * exige sacar `allow-same-origin`, lo que a su vez rompe el discovery de
+ * `window.API` y requiere el puente `postMessage` (`CrossFrameAPI`/
+ * `CrossFrameLMS` que ya trae `scorm-again`) — rediseño pendiente, requiere
+ * validación en navegador real antes de tocar el sandbox del iframe.
+ * Esta CSP SÍ acota el daño mientras tanto: `connect-src 'none'` impide que
+ * ese script haga fetch/XHR/beacon/WebSocket — ni para exfiltrar datos ni
+ * para "actuar como el alumno" contra cualquier otra ruta de `/api/**` con su
+ * sesión — y `frame-src`/`object-src`/`form-action` cierran las vías de
+ * embeber o navegar hacia contenido de terceros.
+ */
+export function buildScormContentCsp(): string {
+  const directives = [
+    `default-src 'none'`,
+    // El propio SCO (mismo origen vía el proxy) necesita ejecutar su JS.
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob:`,
+    `media-src 'self' data: blob:`,
+    `font-src 'self' data:`,
+    `frame-src 'self'`,
+    `connect-src 'none'`,
+    `object-src 'none'`,
+    `base-uri 'none'`,
+    `form-action 'none'`,
+    `worker-src 'none'`,
+  ];
+  return directives.join("; ");
+}
+
 /** Todas las cabeceras de seguridad a aplicar a `/(.*)`. */
 export function buildSecurityHeaders(env: Record<string, string | undefined>): HeaderEntry[] {
   const isProd = env.APP_ENV === "production";

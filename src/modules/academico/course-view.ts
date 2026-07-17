@@ -12,7 +12,7 @@ import type { SenceSessionStatus } from "@/modules/academico/domain/attendance-l
 export interface Lesson {
   id: string;
   title: string;
-  kind: "text" | "video" | "file" | "embed";
+  kind: "text" | "video" | "file" | "embed" | "scorm";
   content: string;
   position: number;
 }
@@ -28,6 +28,8 @@ export interface CourseView {
   lessons: Lesson[];
   /** ids de lecciones que el alumno ya completó (task 1.5). */
   completedLessonIds: string[];
+  /** Nota (score_raw) del último intento SCORM por lección, si existe (task 5.1b, informativo). */
+  scormScoreByLesson: Record<string, number | null>;
   session: {
     id: string;
     status: SenceSessionStatus;
@@ -87,6 +89,17 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
     .eq("enrollment_id", enrollment.id)
     .eq("completed", true);
 
+  // Nota SCORM por lección (task 5.1b, informativo): RLS ya acota a las filas
+  // de la propia inscripción (`scorm_cmi_select`).
+  const { data: scormResults } = await supabase
+    .from("scorm_cmi")
+    .select("lesson_id, score_raw")
+    .eq("enrollment_id", enrollment.id);
+  const scormScoreByLesson: Record<string, number | null> = {};
+  for (const r of scormResults ?? []) {
+    scormScoreByLesson[r.lesson_id as string] = r.score_raw === null || r.score_raw === undefined ? null : Number(r.score_raw);
+  }
+
   return {
     enrollmentId: enrollment.id,
     courseId: course.id,
@@ -96,6 +109,7 @@ export async function getStudentCourseView(): Promise<CourseView | null> {
     attendanceLock: action.attendance_lock,
     lessons: (lessons ?? []) as Lesson[],
     completedLessonIds: (progress ?? []).map((r) => r.lesson_id as string),
+    scormScoreByLesson,
     session: session
       ? {
           id: session.id,
