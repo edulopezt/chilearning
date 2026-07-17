@@ -22,6 +22,34 @@ test.describe("smoke — landing por rol", () => {
     expect(res?.status()).toBeLessThan(500);
   });
 
+  /**
+   * Landing comercial (task 5.6). Blinda el punto frágil: "/" y "/privacidad"
+   * son PÚBLICAS. Si alguien saca la raíz de `isPublicPath`, el middleware
+   * manda al visitante a /login y el dominio deja de vender — un fallo mudo
+   * que ni el build ni los unit tests cazan. Sin `storageState` = sin sesión.
+   * Los textos no se afirman literales (viven en esCL y son marca provisional):
+   * se usan roles y landmarks, que son justamente el contrato de accesibilidad.
+   */
+  test("público: la landing carga sin sesión y lleva a /privacidad", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).not.toHaveURL(/\/login/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+
+    await page.getByRole("contentinfo").getByRole("link", { name: /privacidad/i }).click();
+    await expect(page).toHaveURL(/\/privacidad/);
+  });
+
+  test("público: /privacidad carga sin sesión y avisa que es un borrador", async ({ page }) => {
+    const res = await page.goto("/privacidad");
+    expect(res?.status()).toBeLessThan(400);
+    await expect(page).not.toHaveURL(/\/login/);
+    // El banner de borrador no es decorativo: sin él, el texto legal se leería
+    // como la política vigente.
+    await expect(page.getByRole("alert")).toContainText(/BORRADOR/);
+    await expectNoHorizontalScroll(page);
+  });
+
   test("alumno entra a /mi-curso", async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: AUTH.student });
     const page = await ctx.newPage();

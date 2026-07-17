@@ -5,10 +5,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 import { resolveTenantFromHost, suspendedRequestAction } from "@/modules/core/domain/tenant";
 
-/** Rutas accesibles sin sesión. El resto de la app exige login. */
-const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar", "/api/health", "/suspendido"];
+/**
+ * Rutas accesibles sin sesión. El resto de la app exige login.
+ * Cada entrada abre la ruta EXACTA y todo su subárbol (`/verificar/<token>`).
+ */
+const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/sence", "/verificar", "/api/health", "/suspendido", "/privacidad"];
 
 function isPublicPath(pathname: string): boolean {
+  // La raíz exacta = landing comercial (task 5.6): pública, o el dominio no
+  // vende nada. Va como caso aparte y NO como entrada de PUBLIC_PATHS: con el
+  // prefijo "/" la comparación `startsWith("/" + "/")` dependería de que Next
+  // normalice siempre las barras duplicadas, y una ruta tipo "//admin" pasaría
+  // a leerse como pública. Igualdad estricta = sin superficie de bypass.
+  if (pathname === "/") return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 

@@ -6,11 +6,88 @@ export const esCL = {
   common: {
     appName: "Chilearning",
   },
+  /**
+   * Landing comercial PROVISIONAL (task 5.6). La marca definitiva es decisión
+   * pendiente de Edu (Plan §13.3): si cambia, cambia aquí y en `common.appName`.
+   * REGLA DE HONESTIDAD: cada feature de abajo describe algo YA CONSTRUIDO y
+   * verificado en `specs/ESTADO-PROYECTO.md`. No se anuncia lo que no existe
+   * (el portal de la empresa cliente, el tutor IA y SCORM son del backlog del
+   * Hito 5 y por eso NO aparecen).
+   */
   landing: {
     title: "Chilearning",
     tagline:
       "La plataforma e-learning para OTECs chilenas, con asistencia SENCE integrada.",
-    status: "Plataforma en construcción — Hito 0: fundación.",
+    skipToContent: "Ir al contenido",
+    navLogin: "Ingresar",
+    heroLead:
+      "Dicta tus cursos e-learning y valida la asistencia ante SENCE en la misma plataforma: sin planillas paralelas, sin pegar sistemas con alambre.",
+    heroCtaContact: "Conversemos",
+    heroCtaFeatures: "Ver qué incluye hoy",
+    differentiatorEyebrow: "El diferenciador",
+    differentiatorTitle: "La asistencia SENCE viene integrada, no pegada por fuera",
+    differentiatorBody:
+      "Un LMS genérico te deja solo justo donde duele: el registro de asistencia del RCE. Acá el alumno marca su asistencia con Clave Única desde la misma lección, y cada evento queda registrado y auditable. Es el módulo más probado de la plataforma y está aislado del resto por diseño.",
+    featuresTitle: "Qué incluye hoy",
+    featuresIntro:
+      "Todo lo de esta lista está construido y en uso. Lo que aún no existe, no lo vas a encontrar prometido acá.",
+    features: {
+      sence: {
+        title: "Asistencia SENCE línea 3, nativa",
+        body: "Protocolo RCE con Clave Única para franquicia tributaria: inicio y cierre de sesión, reintentos y errores traducidos a lenguaje humano para el alumno.",
+      },
+      dj: {
+        title: "Checklist DJ/GCA con plazo a la vista",
+        body: "La declaración jurada y la acreditación con máquina de estados, plazo de liquidación calculado y nómina exportable. Deja de perseguir la fecha en un cuaderno.",
+      },
+      certificates: {
+        title: "Certificados con folio y QR verificable",
+        body: "Cada certificado lleva folio único y QR: quien lo reciba verifica su validez en una página pública, sin cuenta y sin exponer el RUN completo.",
+      },
+      supervisor: {
+        title: "Portal para el fiscalizador",
+        body: "SENCE, la OTIC o un auditor entran a un portal de solo lectura, con alcance y vigencia que tú defines. Cada consulta queda auditada.",
+      },
+      evaluation: {
+        title: "Evaluaciones y libro de notas",
+        body: "Cuestionarios, tareas con entrega de archivos y libro de notas por acción, con exportación para tus reportes.",
+      },
+      dossier: {
+        title: "Expediente de fiscalización",
+        body: "Los documentos de cada acción con su checklist, inmutables una vez definitivos y descargables en un ZIP cuando llega la fiscalización.",
+      },
+      privacy: {
+        title: "Ley 21.719 por diseño",
+        body: "Consentimiento registrado, exportación de datos del alumno y supresión que respeta lo que SENCE obliga a conservar. No es un PDF: son botones que funcionan.",
+      },
+      tenancy: {
+        title: "Tu OTEC, aislada de verdad",
+        body: "Subdominio y marca propios, con aislamiento por organización aplicado en la base de datos y cubierto por una suite de tests dedicada.",
+      },
+    },
+    otecsTitle: "Hecho para OTECs chilenas",
+    otecsIntro:
+      "No es un LMS internacional al que después le agregas Chile. Nace de la operación real de una OTEC.",
+    otecs: {
+      franchise: {
+        title: "Habla el idioma de la franquicia",
+        body: "Códigos SENCE y de acción, líneas de capacitación, grupos de planilla y becarios exentos: el modelo de datos ya conoce estas reglas.",
+      },
+      evidence: {
+        title: "La evidencia queda lista sola",
+        body: "Asistencia, notas, certificados y bitácora de auditoría se guardan mientras dictas el curso, no la noche antes de la fiscalización.",
+      },
+      solo: {
+        title: "Operable por un equipo chico",
+        body: "Pensado para que una OTEC pequeña administre sus cursos sin un área de TI detrás.",
+      },
+    },
+    contactTitle: "¿Conversamos?",
+    contactBody:
+      "Cuéntanos de tu OTEC y de los cursos que dictas. Respondemos por correo; no hay formularios ni vendedores llamándote.",
+    contactCta: "Escríbenos",
+    footerPrivacy: "Política de privacidad",
+    footerTagline: "Plataforma en desarrollo activo. Los detalles comerciales se conversan caso a caso.",
   },
   auth: {
     loginTitle: "Ingresar a Chilearning",
@@ -574,6 +651,28 @@ export const esCL = {
     colRetention: "Retención",
     retainedBadge: "Se conserva (legal)",
     erasableBadge: "Suprimible",
+  },
+  /**
+   * Rótulos de UI de la página pública /privacidad (task 5.6). El TEXTO LEGAL
+   * no vive acá: está en `src/app/privacidad/content.ts` (ver la excepción
+   * documentada ahí). Las tablas de tratamientos y retención reutilizan los
+   * rótulos de `privacy.*` de arriba, que ya usa /mis-datos — una sola fuente.
+   */
+  privacyPolicy: {
+    title: "Política de privacidad",
+    draftBadge: "BORRADOR",
+    draftTitle: "BORRADOR — pendiente de revisión legal",
+    draftBody:
+      "Este documento es un borrador de trabajo y NO es todavía la política de privacidad vigente de Chilearning. Está pendiente de revisión por un abogado antes del lanzamiento comercial. Describe cómo está construida la plataforma hoy; los plazos y las bases de licitud pueden cambiar tras esa revisión.",
+    versionLabel: "Versión del documento:",
+    updatedLabel: "Última actualización:",
+    tocTitle: "Contenido",
+    backHome: "Volver al inicio",
+    rightsCtaTitle: "Ejerce tus derechos ahora",
+    rightsCtaBody:
+      "Si ya tienes cuenta en la plataforma, no necesitas escribir un correo: descarga tus datos o presenta una solicitud desde tu portal del titular.",
+    rightsCtaLink: "Ir a “Mis datos”",
+    pendingLabel: "Por confirmar",
   },
   dataRights: {
     title: "Mis datos",
