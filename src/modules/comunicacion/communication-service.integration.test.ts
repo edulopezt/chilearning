@@ -120,4 +120,47 @@ describe("calendario", () => {
     expect(cal!.some((c) => c.title === "Inicio" && c.source === "manual")).toBe(true);
     expect(cal!.some((c) => c.title === "Entrega" && c.source === "instrument")).toBe(true);
   });
+
+  // 4-ojos (HIGH): `live_sessions` es a nivel de ACCIÓN, no de curso — un curso
+  // puede tener varias acciones (cohortes) concurrentes. El calendario del
+  // alumno debe filtrar por SU acción, nunca mostrar sesiones de otra acción
+  // del mismo curso (mismo alcance que la policy RLS `live_sessions_select`).
+  it("el alumno de la Acción A NO ve la sesión en vivo de la Acción B del MISMO curso (el staff sí ve ambas)", async () => {
+    const { courseId, actionId: actionA } = await freshCourse();
+    const actionB = randomUUID();
+    const sessionA = randomUUID();
+    const sessionB = randomUUID();
+    try {
+      const actionIns = await svc.from("actions").insert({
+        id: actionB,
+        tenant_id: TENANT_A,
+        course_id: courseId,
+        codigo_accion: `COM-B-${actionB.slice(0, 6)}`,
+        training_line: 3,
+        environment: "rcetest",
+      });
+      if (actionIns.error) throw new Error(`seed actionB: ${actionIns.error.message}`);
+
+      const sessionsIns = await svc.from("live_sessions").insert([
+        { id: sessionA, tenant_id: TENANT_A, action_id: actionA, title: "Clase Acción A", provider: "zoom", meeting_url: "https://zoom.us/j/aaa", starts_at: "2026-08-01T15:00:00Z", ends_at: "2026-08-01T16:00:00Z", created_by: admin.userId },
+        { id: sessionB, tenant_id: TENANT_A, action_id: actionB, title: "Clase Acción B", provider: "zoom", meeting_url: "https://zoom.us/j/bbb", starts_at: "2026-08-02T15:00:00Z", ends_at: "2026-08-02T16:00:00Z", created_by: admin.userId },
+      ]);
+      if (sessionsIns.error) throw new Error(`seed live_sessions: ${sessionsIns.error.message}`);
+
+      // El alumno (inscrito SOLO en la Acción A) ve su propia sesión, no la ajena.
+      const studentCal = await listCalendar(student, courseId);
+      expect(studentCal).not.toBeNull();
+      expect(studentCal!.some((c) => c.title === "Clase Acción A")).toBe(true);
+      expect(studentCal!.some((c) => c.title === "Clase Acción B")).toBe(false);
+
+      // El staff (visión de curso completo) ve las sesiones de AMBAS acciones.
+      const staffCal = await listCalendar(admin, courseId);
+      expect(staffCal).not.toBeNull();
+      expect(staffCal!.some((c) => c.title === "Clase Acción A")).toBe(true);
+      expect(staffCal!.some((c) => c.title === "Clase Acción B")).toBe(true);
+    } finally {
+      await svc.from("live_sessions").delete().in("id", [sessionA, sessionB]);
+      await svc.from("actions").delete().eq("id", actionB);
+    }
+  });
 });

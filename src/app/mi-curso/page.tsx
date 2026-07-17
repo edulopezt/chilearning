@@ -6,14 +6,17 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getStudentCourseView } from "@/modules/academico/course-view";
 import { computeLock } from "@/modules/academico/domain/attendance-lock";
+import { canSelfMark } from "@/modules/academico/domain/live-session";
 import { enrollmentGroupLabel } from "@/modules/academico/domain/enrollment-group";
 import { studentMessageForCodes } from "@/modules/sence/errors";
+import { listMySessions } from "@/modules/academico/live-session-service";
 import { summarizeProgress } from "@/modules/academico/domain/progress";
 import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
 import { listStudentAssignments } from "@/modules/evaluacion/assignment-service";
 import { listStudentSurveys } from "@/modules/evaluacion/survey-service";
 import { hasCurrentConsent } from "@/modules/core/privacy-service";
 import { LessonComplete } from "./lesson-complete";
+import { LiveSessionMark } from "./live-session-mark";
 import { SessionCountdown } from "./session-countdown";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +66,10 @@ export default async function MiCursoPage() {
   const quizzes = lock.unlocked ? await listStudentQuizzes(principal) : [];
   const assignments = lock.unlocked ? await listStudentAssignments(principal) : [];
   const surveys = lock.unlocked ? await listStudentSurveys(principal) : [];
+
+  // Sesiones en vivo (task 5.4, spec §7-R3): asistencia INTERNA, independiente
+  // del candado SENCE — se muestran SIEMPRE, nunca detrás de `lock.unlocked`.
+  const upcomingSessions = (await listMySessions(principal)).filter((s) => s.endsAtMs >= serverNowMs);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
@@ -162,6 +169,39 @@ export default async function MiCursoPage() {
           ) : null}
         </section>
       ) : null}
+
+      {/* Sesiones en vivo (task 5.4, spec §7-R3): asistencia INTERNA, no SENCE.
+          Se muestra SIEMPRE (no depende del candado), disclaimer incluido. */}
+      <section className="flex flex-col gap-3 rounded-lg border p-4">
+        <h2 className="text-lg font-semibold">{esCL.liveSessions.sectionTitleStudent}</h2>
+        <p className="text-xs text-amber-700 dark:text-amber-400">{esCL.liveSessions.disclaimer}</p>
+        {upcomingSessions.length === 0 ? (
+          <p className="text-muted-foreground text-sm">{esCL.liveSessions.emptyStudent}</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {upcomingSessions.map((s) => (
+              <li key={s.id} className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex-1">
+                  <p className="font-medium">{s.title}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {esCL.liveSessions.providers[s.provider]} · {new Date(s.startsAtMs).toLocaleString("es-CL")} →{" "}
+                    {new Date(s.endsAtMs).toLocaleString("es-CL")}
+                  </p>
+                </div>
+                <a
+                  href={s.meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+                >
+                  {esCL.liveSessions.join}
+                </a>
+                <LiveSessionMark sessionId={s.id} canMark={canSelfMark(s.startsAtMs, s.endsAtMs, serverNowMs)} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* Progreso del alumno (task 1.5) */}
       {lock.unlocked && view.lessons.length > 0 ? (() => {
