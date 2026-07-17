@@ -14,6 +14,9 @@ import { SignJWT } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
+// Semilla de la task 5.2: la empresa del usuario `company` y su única trabajadora.
+const SEED_COMPANY_LOS_AROMOS = "c1000000-0000-4000-8000-000000000001";
+const SEED_ENROLLMENT_LOS_AROMOS = "e0000000-0000-4000-8000-000000000001";
 
 /** Rol → índice del usuario semilla en tenant A (aaaaaaaa-…-00000000000N). */
 const ROLE_BY_INDEX = {
@@ -38,6 +41,11 @@ const EXPECTED: Record<string, Record<string, Access>> = {
   instructor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some", assignments: "some", submissions: "some", notifications: "none" }, // ve su propia membership
   tutor:       { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "some", quiz_attempts: "some", grades: "some", assignments: "some", submissions: "some", notifications: "none" },
   student:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "none", quiz_attempts: "some", grades: "some", assignments: "some", submissions: "some", notifications: "none" }, // publicado/lo suyo; questions JAMÁS (pauta); notifications: solo si tiene alguna
+  // ⚠ `company` es el único rol cuyo acceso NO se describe por completo con
+  // some/none: desde la task 5.2 está ESCOPADO a su empresa (H4-R-008). Aquí
+  // "some" solo dice "ve algo" — que vea SOLO lo suyo lo fija el test dedicado de
+  // más abajo y, exhaustivamente, company.rls.test.ts. No relajar a "some" sin
+  // leer eso: con el hueco abierto esta fila también pasaba en verde.
   company:     { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "none", sence_sessions: "some", sence_events: "none", alerts: "none", quizzes: "some", questions: "none", quiz_attempts: "none", grades: "none", assignments: "some", submissions: "none", notifications: "none" },
   supervisor:  { courses: "some", actions: "some", lessons: "some", enrollments: "some", sence_otec_config: "none", audit_log: "none", memberships: "some", lesson_progress: "some", sence_sessions: "some", sence_events: "some", alerts: "some", quizzes: "some", questions: "none", quiz_attempts: "none", grades: "some", assignments: "some", submissions: "none", notifications: "none" },
 };
@@ -94,6 +102,24 @@ describe("matriz de permisos de los 8 roles (task 1.7, spec §3)", () => {
       });
     }
   }
+
+  it("el 'some' de company es ESCOPADO a su empresa, no plano (H4-R-008)", async () => {
+    // La matriz es de grano grueso (some/none) y por eso NO habría detectado el
+    // hueco: con `has_role('company')` plano el rol veía a los 3 inscritos del
+    // tenant — y esta suite igual pasaba. Se fija el conteo contra el seed
+    // (Los Aromos: 1 trabajadora; Vulcano: 1; particular: 1).
+    const db = await clientForRole(6, "company");
+
+    const enr = await db.from("enrollments").select("id, company_id");
+    expect(enr.error).toBeNull();
+    expect(enr.data ?? [], "company debe ver SOLO a su trabajadora, no a los 3 del tenant").toHaveLength(1);
+    expect(enr.data?.[0]?.company_id).toBe(SEED_COMPANY_LOS_AROMOS);
+
+    const sessions = await db.from("sence_sessions").select("enrollment_id");
+    expect(sessions.error).toBeNull();
+    expect(sessions.data ?? [], "company debe ver SOLO la asistencia SENCE de su empresa").toHaveLength(1);
+    expect(sessions.data?.[0]?.enrollment_id).toBe(SEED_ENROLLMENT_LOS_AROMOS);
+  });
 
   it("platform_admins es invisible para TODOS los roles del tenant", async () => {
     for (const [indexStr, role] of Object.entries(ROLE_BY_INDEX)) {

@@ -67,6 +67,13 @@ function serviceClient(): SupabaseClient {
 
 const DEMO_COURSE = "c0000000-0000-4000-8000-000000000001";
 const STUDENT_A = "aaaaaaaa-0000-4000-8000-000000000005";
+// `sub` DEBE ser un uuid real: GoTrue jamás emite otra cosa, y `auth.uid()` castea
+// el claim a uuid. Un sub de fantasía ("u") revienta con 22P02 en cuanto la policy
+// de la tabla dereferencia auth.uid() — que es justo lo que pasó al escopar el rol
+// `company` en sence_sessions (task 5.2). Los usuarios semilla mantienen los tests
+// realistas y a salvo de ese falso rojo; las aserciones no cambian.
+const ADMIN_A = "aaaaaaaa-0000-4000-8000-000000000001";
+const ADMIN_B = "bbbbbbbb-0000-4000-8000-000000000001";
 
 /** Crea una inscripción REAL (acción + enrollment) para satisfacer el FK
  *  enrollment_id → enrollments; devuelve el id de la inscripción. */
@@ -121,7 +128,7 @@ beforeAll(() => {
 describe("sence_sessions — aislamiento y no-escritura desde el cliente", () => {
   it("otec_admin@A no lee sesiones del tenant B", async () => {
     await seedSession();
-    const db = client(await jwt({ sub: "u", tenant_id: TENANT_A, roles: ["otec_admin"] }));
+    const db = client(await jwt({ sub: ADMIN_A, tenant_id: TENANT_A, roles: ["otec_admin"] }));
     const { data, error } = await db.from("sence_sessions").select("tenant_id");
     expect(error).toBeNull();
     expect(data?.every((r) => r.tenant_id === TENANT_A)).toBe(true);
@@ -130,7 +137,7 @@ describe("sence_sessions — aislamiento y no-escritura desde el cliente", () =>
 
   it("H4-R-002: el cliente NO puede leer callback_nonce (secreto anti-falsificación H-2)", async () => {
     await seedSession();
-    const db = client(await jwt({ sub: "u", tenant_id: TENANT_A, roles: ["otec_admin"] }));
+    const db = client(await jwt({ sub: ADMIN_A, tenant_id: TENANT_A, roles: ["otec_admin"] }));
     // El nonce es el ÚNICO autenticador del callback público: si un insider del
     // tenant lo lee, puede forjar callbacks y alterar la asistencia de otro alumno.
     // El grant de columna lo excluye → PostgREST rechaza el SELECT de esa columna.
@@ -145,14 +152,14 @@ describe("sence_sessions — aislamiento y no-escritura desde el cliente", () =>
     // Aislamiento, no vacío: otros tests pueden sembrar sesiones legítimas del
     // tenant B (la suite es re-ejecutable sin `db reset`); lo que JAMÁS puede
     // aparecer es una fila del tenant A.
-    const db = client(await jwt({ sub: "u", tenant_id: TENANT_B, roles: ["otec_admin"] }));
+    const db = client(await jwt({ sub: ADMIN_B, tenant_id: TENANT_B, roles: ["otec_admin"] }));
     const { data, error } = await db.from("sence_sessions").select("tenant_id");
     expect(error).toBeNull();
     expect(data?.every((r) => r.tenant_id === TENANT_B)).toBe(true);
   });
 
   it("el cliente NO puede insertar sesiones (solo el servidor)", async () => {
-    const db = client(await jwt({ sub: "u", tenant_id: TENANT_A, roles: ["otec_admin"] }));
+    const db = client(await jwt({ sub: ADMIN_A, tenant_id: TENANT_A, roles: ["otec_admin"] }));
     const { error } = await db.from("sence_sessions").insert({
       tenant_id: TENANT_A,
       // El insert falla por falta de grant (cliente) antes de tocar el FK.
@@ -240,7 +247,7 @@ describe("sence_events — INSERT-only y sin token (I-2, I-7)", () => {
   });
 
   it("student@A no puede leer la bitácora de eventos (solo admin/supervisor)", async () => {
-    const db = client(await jwt({ sub: "u", tenant_id: TENANT_A, roles: ["student"] }));
+    const db = client(await jwt({ sub: STUDENT_A, tenant_id: TENANT_A, roles: ["student"] }));
     const { data, error } = await db.from("sence_events").select("id");
     expect(error).toBeNull();
     expect(data).toEqual([]);

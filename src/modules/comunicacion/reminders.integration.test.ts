@@ -12,7 +12,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import type { EmailSender, OutgoingEmail } from "@/modules/comunicacion/email-sender";
 import type { N8nEmitter } from "@/modules/comunicacion/n8n-webhook";
-import type { N8nReminderEvent } from "@/modules/comunicacion/domain/automation";
+import { pseudonymize, type N8nReminderEvent } from "@/modules/comunicacion/domain/automation";
 import { runRemindersTick } from "@/modules/comunicacion/reminders";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
@@ -97,7 +97,14 @@ describe("recordatorios — RNF-10, correo PII, opt-out, dedup", () => {
     expect(sent[0]!.html).toContain("https://test.example/mi-curso");
 
     // El evento a n8n: 1 destinatario (A), sin B (asistió) ni C (opt-out), y SIN PII.
-    const noAtt = events.find((e) => e.kind === "no_attendance");
+    // El tick procesa TODA acción con config habilitada (reminders.ts:132), no solo
+    // la de este test: otras suites dejan `no_attendance` habilitado en la acción
+    // demo (automation.rls.test.ts) y sus inscritos sin asistencia emiten su propio
+    // evento. Buscar "el primer no_attendance" hacía que la aserción cayera sobre el
+    // evento de OTRA acción según el orden de archivos/estado de la BD; se ancla al
+    // seudónimo de NUESTRA acción (mismo cómputo que el emisor, sin PII).
+    const myAction = pseudonymize(SECRET, TENANT_A, actionId);
+    const noAtt = events.find((e) => e.kind === "no_attendance" && e.action === myAction);
     expect(noAtt).toBeTruthy();
     expect(noAtt!.count).toBe(1);
     const json = JSON.stringify(noAtt);

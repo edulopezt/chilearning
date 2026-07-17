@@ -36,6 +36,12 @@ from (values
   ('aaaaaaaa-0000-4000-8000-000000000005', 'alumno@seminarea.test'),
   ('aaaaaaaa-0000-4000-8000-000000000006', 'empresa@seminarea.test'),
   ('aaaaaaaa-0000-4000-8000-000000000007', 'supervision@seminarea.test'),
+  -- Alumnos extra del tenant A que dan SUSTANCIA al escopado de la task 5.2:
+  -- uno PARTICULAR (sin empresa) y uno de OTRA empresa del MISMO tenant. La
+  -- empresa demo no debe ver a ninguno de los dos, aunque compartan acción con
+  -- su trabajadora (CA HU-8.1: "jamás ve alumnos de otras empresas").
+  ('aaaaaaaa-0000-4000-8000-000000000008', 'alumno-particular@seminarea.test'),
+  ('aaaaaaaa-0000-4000-8000-000000000009', 'alumno-vulcano@seminarea.test'),
   -- Tenant B: OTEC Demo Pacífico
   ('bbbbbbbb-0000-4000-8000-000000000001', 'admin@otec-pacifico.test'),
   ('bbbbbbbb-0000-4000-8000-000000000002', 'coordinacion@otec-pacifico.test'),
@@ -57,6 +63,8 @@ from (values
   ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000005', '{student}'),
   ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000006', '{company}'),
   ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000007', '{supervisor}'),
+  ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000008', '{student}'),
+  ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-0000-4000-8000-000000000009', '{student}'),
   ('22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000001', '{otec_admin}'),
   ('22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000002', '{coordinator}'),
   ('22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000003', '{instructor}'),
@@ -94,11 +102,42 @@ insert into public.actions (id, tenant_id, course_id, codigo_accion, training_li
    'c0000000-0000-4000-8000-000000000001', 'ACC-DEMO-0001', 3, 'rcetest', true,
    '2026-07-01', '2026-12-31', 'active');
 
+-- ---------- Empresas cliente demo (task 5.2, HU-8.1) — 100% FICTICIAS ----------
+-- Dos empresas en el MISMO tenant: es lo que hace verificable la CA "jamás ve
+-- alumnos de otras empresas". `empresa@seminarea.test` pertenece SOLO a Los Aromos;
+-- Vulcano existe para que el cruce dentro del tenant sea posible de intentar.
+insert into public.companies (id, tenant_id, rut, razon_social) values
+  ('c1000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   '77123456-9', 'Constructora Los Aromos Ltda'),
+  ('c1000000-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111',
+   '78654321-5', 'Servicios Industriales Vulcano SpA');
+
+-- El usuario `company` semilla queda vinculado a UNA empresa (Los Aromos). Sin esta
+-- fila vería 0 inscripciones: tras la migración 20260717030000 el rol `company`
+-- entra CERRADO y solo abre por vinculación explícita.
+insert into public.company_members (tenant_id, company_id, user_id, email) values
+  ('11111111-1111-4111-8111-111111111111', 'c1000000-0000-4000-8000-000000000001',
+   'aaaaaaaa-0000-4000-8000-000000000006', 'empresa@seminarea.test');
+
 -- Inscribe al alumno demo (alumno@seminarea.test) con un RUN ficticio válido.
-insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento, first_names, last_names) values
+-- Es TRABAJADORA de Los Aromos: la única fila que la empresa demo debe ver.
+insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento, first_names, last_names, company_id) values
   ('e0000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
    'ac000000-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000005',
-   '5126663-3', false, 'María José', 'Pérez Soto');
+   '5126663-3', false, 'María José', 'Pérez Soto', 'c1000000-0000-4000-8000-000000000001');
+
+-- Los otros dos inscritos de la MISMA acción, que la empresa demo NO debe ver:
+--   · Rodrigo  → PARTICULAR (company_id NULL): no lo manda ninguna empresa.
+--   · Carolina → trabajadora de VULCANO (la otra empresa del mismo tenant).
+-- RUNs ficticios elegidos fuera de los que usan las suites (no colisionan con los
+-- filtros por RUN de enrollment-service).
+insert into public.enrollments (id, tenant_id, action_id, user_id, run, exento, first_names, last_names, company_id) values
+  ('e0000000-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111',
+   'ac000000-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000008',
+   '11222333-9', false, 'Rodrigo', 'Fuentes Lagos', null),
+  ('e0000000-0000-4000-8000-000000000003', '11111111-1111-4111-8111-111111111111',
+   'ac000000-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000009',
+   '18456321-5', false, 'Carolina', 'Márquez Tapia', 'c1000000-0000-4000-8000-000000000002');
 
 -- Dos lecciones del curso demo (texto + video embed).
 insert into public.lessons (tenant_id, course_id, title, kind, content, position, status) values
@@ -122,7 +161,14 @@ insert into public.sence_sessions (id, tenant_id, enrollment_id, sence_course_co
   ('50000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
    'e0000000-0000-4000-8000-000000000001', '1234567890', 'ACC-DEMO-0001', 3,
    '5126663-3', 'seed-session-0001', '424242', 'cerrada', 'rcetest',
-   now() - interval '2 hours', now() - interval '1 hour');
+   now() - interval '2 hours', now() - interval '1 hour'),
+  -- Sesión de la trabajadora de la OTRA empresa (Vulcano). Existe para que el
+  -- escopado de `sence_sessions_select_staff` (task 5.2) sea VERIFICABLE: la
+  -- asistencia SENCE de Carolina es dato de Vulcano, y Los Aromos jamás la ve.
+  ('50000000-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111',
+   'e0000000-0000-4000-8000-000000000003', '1234567890', 'ACC-DEMO-0001', 3,
+   '18456321-5', 'seed-session-0002', '424243', 'cerrada', 'rcetest',
+   now() - interval '3 hours', now() - interval '2 hours');
 
 insert into public.sence_events (tenant_id, session_id, kind, payload, error_codes, dedupe_hash) values
   ('11111111-1111-4111-8111-111111111111', '50000000-0000-4000-8000-000000000001',
