@@ -1,8 +1,7 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import { getPublicEnv } from "@/lib/env";
-import { buildHealthPayload, type HealthChecks, type HealthPayload } from "@/lib/observability/health";
+import { probeDb } from "@/lib/observability/db-probe";
+import { appVersion, buildHealthPayload, type HealthChecks, type HealthPayload } from "@/lib/observability/health";
 
 export const dynamic = "force-dynamic";
 
@@ -11,19 +10,16 @@ export const dynamic = "force-dynamic";
  * HEALTHCHECK del contenedor. 200 {status:"ok"} o 503 {status:"degraded"}.
  * Chequeo barato con el cliente ANÓNIMO (RLS lo acota, sin PII). Cachea 5 s y
  * reutiliza el cliente → una ráfaga pública no amplifica carga a la BD (4-ojos F3).
+ *
+ * La sonda vive en `@/lib/observability/db-probe` desde la task 5.5: el tablero
+ * superadmin (HU-10.3) reporta la MISMA salud sin duplicar lógica. El contrato de
+ * este endpoint (payload, códigos, caché de 5 s) no cambia; sí se CORRIGIÓ la
+ * sonda, que dependía de un GRANT que solo existe por drift del cloud (daba 503
+ * en local/CI con la BD sana) — ver la nota en db-probe.ts.
  */
 
 const CACHE_MS = 5_000;
 let cache: { payload: HealthPayload; expiresAt: number } | null = null;
-let anon: SupabaseClient | null = null;
-
-function anonClient(): SupabaseClient {
-  if (!anon) {
-    const env = getPublicEnv();
-    anon = createClient(env.supabaseUrl, env.supabaseAnonKey, { auth: { persistSession: false } });
-  }
-  return anon;
-}
 
 export async function GET(): Promise<Response> {
   const now = Date.now();
@@ -31,24 +27,9 @@ export async function GET(): Promise<Response> {
     return NextResponse.json(cache.payload, { status: cache.payload.status === "ok" ? 200 : 503, headers: { "cache-control": "no-store" } });
   }
 
-  const version = process.env.SENTRY_RELEASE ?? process.env.APP_VERSION ?? "dev";
-  let db: HealthChecks["db"] = "fail";
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const probe = anonClient().from("tenants").select("id").limit(1);
-    const timeout = new Promise<{ error: unknown }>((resolve) => {
-      timer = setTimeout(() => resolve({ error: new Error("timeout") }), 800);
-      timer.unref?.();
-    });
-    const { error } = (await Promise.race([probe, timeout])) as { error: unknown };
-    db = error ? "fail" : "ok";
-  } catch {
-    db = "fail";
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  const db: HealthChecks["db"] = await probeDb();
 
-  const payload = buildHealthPayload({ db }, version, new Date(now).toISOString());
+  const payload = buildHealthPayload({ db }, appVersion(), new Date(now).toISOString());
   cache = { payload, expiresAt: now + CACHE_MS };
   return NextResponse.json(payload, { status: payload.status === "ok" ? 200 : 503, headers: { "cache-control": "no-store" } });
 }
