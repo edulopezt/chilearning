@@ -71,8 +71,9 @@ test.describe("smoke — landing por rol", () => {
       expect(res?.status()).toBeLessThan(400);
       await expect(page).not.toHaveURL(/\/login/);
       // El banner de borrador no es decorativo: sin él, el texto legal se leería
-      // como la política vigente.
-      await expect(page.getByRole("alert")).toContainText(/BORRADOR/);
+      // como la política vigente. Se acota a <main> porque Next monta su propio
+      // role="alert" (el anunciador de rutas) fuera del contenido.
+      await expect(page.getByRole("main").getByRole("alert")).toContainText(/BORRADOR/);
       await expectNoHorizontalScroll(page);
     });
   });
