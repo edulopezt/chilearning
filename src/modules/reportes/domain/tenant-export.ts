@@ -348,12 +348,22 @@ export class FileBudget {
   }
 
   tryAdd(name: string, size: number): boolean {
-    if (this.usedBytes + size > this.maxBytes) {
+    if (!this.wouldFit(size)) {
       this.omittedList.push({ name, reason: `excede el presupuesto del export (${this.maxBytes} bytes)` });
       return false;
     }
     this.usedBytes += size;
     return true;
+  }
+
+  /**
+   * Chequeo de solo-lectura (no reserva espacio): permite decidir SI CONVIENE
+   * siquiera descargar un archivo de Storage cuando su tamaño ya se conoce de
+   * antemano (`file_size` de la fila), en vez de traerlo entero y recién ahí
+   * enterarse de que no cabía (hallazgo MED de la revisión de 4 ojos).
+   */
+  wouldFit(size: number): boolean {
+    return this.usedBytes + size <= this.maxBytes;
   }
 
   recordOmitted(name: string, reason: string): void {
@@ -387,14 +397,32 @@ export interface ManifestInput {
     readonly included: readonly ManifestFile[];
     readonly omitted: readonly OmittedFile[];
   };
+  /**
+   * Conteo GLOBAL (no de este tenant — no se puede filtrar por tenant lo que
+   * no tiene tenant) de `sence_events` con `tenant_id` NULL, es decir, eventos
+   * cuya correlación con la sesión falló y que I-1 obliga a persistir igual.
+   * A diferencia de `alerts`/`audit_log` (NULL = plataforma, sin tenant), acá
+   * NULL significa "podría ser de cualquier tenant, no se pudo saber cuál" —
+   * ningún export de tenant los incluye jamás, así que el manifiesto deja
+   * constancia explícita de que existen (hallazgo MED de la revisión de 4
+   * ojos), en vez de una omisión silenciosa e indistinguible de "no hay".
+   * Default 0 si no se provee (compatibilidad con manifiestos previos).
+   */
+  readonly unattributedSenceEvents?: number;
 }
 
 export interface Manifest extends ManifestInput {
   readonly schemaVersion: number;
   readonly totalBytes: number;
+  readonly unattributedSenceEvents: number;
 }
 
 export function buildManifest(input: ManifestInput): Manifest {
   const totalBytes = input.files.included.reduce((sum, f) => sum + f.bytes, 0);
-  return { schemaVersion: MANIFEST_SCHEMA_VERSION, totalBytes, ...input };
+  return {
+    schemaVersion: MANIFEST_SCHEMA_VERSION,
+    totalBytes,
+    ...input,
+    unattributedSenceEvents: input.unattributedSenceEvents ?? 0,
+  };
 }

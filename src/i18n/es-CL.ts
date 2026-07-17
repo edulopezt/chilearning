@@ -788,7 +788,6 @@ export const esCL = {
       "Genera un archivo ZIP con TODOS los datos de tu OTEC (cursos, alumnos, registros SENCE, notas, certificados y documentos) en CSV y JSON, listo para respaldo o migración.",
     forbidden: "No tienes permiso para exportar los datos de la OTEC.",
     request: "Solicitar export",
-    requesting: "Solicitando…",
     notice: "El export se genera en segundo plano. Te avisaremos aquí y por correo cuando esté listo.",
     empty: "Aún no has solicitado ningún export.",
     colRequestedAt: "Solicitado",

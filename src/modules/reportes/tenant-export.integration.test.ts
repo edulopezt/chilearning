@@ -68,11 +68,24 @@ async function tick(overrides?: Partial<TenantExportRunnerDeps>): Promise<{ summ
   return { summary, sent };
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   const e = env();
   process.env.NEXT_PUBLIC_SUPABASE_URL = e.apiUrl;
   process.env.SUPABASE_SERVICE_ROLE_KEY = e.serviceRoleKey;
   svc = createClient(e.apiUrl, e.serviceRoleKey, { auth: { persistSession: false } });
+
+  // Fixture del hallazgo MED "sence_events sin atribuir nunca aparecen en
+  // ningún export": un evento con tenant_id NULL (correlación fallida, I-1) es
+  // INSERT-only por diseño (no se puede borrar ni con service_role — trigger
+  // `sence_events_no_update`/no_truncate — así que este residuo queda para
+  // siempre, mismo criterio que el resto de la bitácora SENCE).
+  await svc.from("sence_events").insert({
+    tenant_id: null,
+    session_id: null,
+    kind: "unmatched",
+    dedupe_hash: `export-test-unattributed-${randomUUID()}`,
+    received_at: new Date().toISOString(),
+  });
 });
 
 afterAll(async () => {
@@ -142,11 +155,16 @@ describe("tenant-export-service — encolar (task 5.13)", () => {
     expect(enrollmentsCsv, "fuga: el CSV trae el tenant_id de B").not.toContain(TENANT_B);
 
     const manifest = JSON.parse(await zip.file("manifest.json")!.async("string")) as {
-      schemaVersion: number; tenantSlug: string; datasets: Record<string, number>;
+      schemaVersion: number; tenantSlug: string; datasets: Record<string, number>; unattributedSenceEvents: number;
     };
     expect(manifest.schemaVersion).toBe(1);
     expect(manifest.tenantSlug).toBe("seminarea");
     expect(manifest.datasets.enrollments).toBe(enrollmentsJson.length);
+    // Hallazgo MED: el evento sence_events sin atribuir (tenant_id NULL, seed
+    // del beforeAll) nunca puede aparecer en un export de tenant (no tiene
+    // ninguno), pero el manifiesto SÍ debe dejar constancia de que existe —
+    // nunca una omisión silenciosa e indistinguible de "no hay".
+    expect(manifest.unattributedSenceEvents, "el manifiesto debe declarar los sence_events sin atribuir").toBeGreaterThanOrEqual(1);
 
     // Descarga vía el servicio (signed URL firmada tras verificar tenant + done).
     const url = await getExportDownloadUrl(admin, firstExportId);
@@ -189,5 +207,76 @@ describe("tenant-export-service — encolar (task 5.13)", () => {
     } finally {
       await svc.storage.createBucket("exports", EXPORTS_BUCKET_CONFIG);
     }
+  });
+});
+
+describe("tenant-export-runner — reclamo de filas 'running' huérfanas (hallazgo MED de 4-ojos: worker caído a medio proceso bloqueaba el tenant para siempre)", () => {
+  // Tenants FICTICIOS propios y dedicados (con `upsert`, no crecen entre
+  // corridas): así el reclamo de `running` estancada no compite con las filas
+  // pending/running que manejan los tests de arriba sobre TENANT_A/TENANT_B.
+  // `tenant_exports` no tiene DELETE (ni para service_role, es historial), así
+  // que las filas que este bloque crea (con `randomUUID` para no chocar con
+  // el índice único parcial entre corridas) quedan, inertes, como el resto.
+  const STALE_TENANT = "44444444-4444-4444-8444-444444444444";
+  const FRESH_TENANT = "55555555-5555-4555-8555-555555555555";
+
+  beforeAll(async () => {
+    await svc.from("tenants").upsert([
+      { id: STALE_TENANT, slug: "export-stale-huerfana-test", name: "OTEC export huérfano (test)" },
+      { id: FRESH_TENANT, slug: "export-fresca-test", name: "OTEC export fresco (test)" },
+    ]);
+    // Idempotencia entre corridas LOCALES repetidas (sin `db reset` de por
+    // medio): si una corrida anterior dejó una fila pending/running de estos
+    // tenants de test (p.ej. la fresca, que a propósito queda intacta), libera
+    // el índice único parcial antes de sembrar la fixture de esta corrida.
+    await svc.from("tenant_exports").update({ status: "done", finished_at: new Date().toISOString() })
+      .in("tenant_id", [STALE_TENANT, FRESH_TENANT]).in("status", ["pending", "running"]);
+  });
+
+  it("una fila 'running' de hace más de 1h se reclama y se procesa igual que un pending", async () => {
+    const staleExportId = randomUUID();
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const seed = await svc.from("tenant_exports").insert({
+      id: staleExportId, tenant_id: STALE_TENANT, requested_by: admin.userId, status: "running", started_at: twoHoursAgo,
+    });
+    expect(seed.error).toBeNull();
+
+    // Puede haber pending/running de OTRO tenant en vuelo (BD compartida entre
+    // worktrees): se insiste hasta llegar a la fila propia, o falla con una
+    // señal clara si nunca aparece (en vez de un falso positivo silencioso).
+    let reached = false;
+    for (let i = 0; i < 25 && !reached; i++) {
+      const { summary } = await tick();
+      expect(summary.claimed, "nada que reclamar antes de llegar a la fila huérfana propia").toBe(true);
+      if (summary.exportId === staleExportId) reached = true;
+    }
+    expect(reached, "la fila running huérfana nunca se reclamó tras 25 intentos").toBe(true);
+
+    const { data } = await svc.from("tenant_exports").select("status, started_at").eq("id", staleExportId).single();
+    expect(data!.status, "una fila running huérfana reclamada nunca debe quedar de nuevo en running para siempre").not.toBe("running");
+    expect(["done", "failed"]).toContain(data!.status as string);
+  });
+
+  it("una fila 'running' FRESCA (recién iniciada) NO se reclama: sigue running con el mismo started_at", async () => {
+    const freshExportId = randomUUID();
+    const justNow = new Date().toISOString();
+    const seed = await svc.from("tenant_exports").insert({
+      id: freshExportId, tenant_id: FRESH_TENANT, requested_by: admin.userId, status: "running", started_at: justNow,
+    });
+    expect(seed.error).toBeNull();
+
+    // Unas cuantas vueltas del worker (drenando lo que haya pending/stale de
+    // otros tenants) no deben tocar jamás esta fila reciente.
+    for (let i = 0; i < 5; i++) {
+      const { summary } = await tick();
+      if (!summary.claimed) break;
+      expect(summary.exportId, "una fila running reciente no debe ser reclamada por otra corrida").not.toBe(freshExportId);
+    }
+
+    const { data } = await svc.from("tenant_exports").select("status, started_at").eq("id", freshExportId).single();
+    expect(data!.status).toBe("running");
+    // Postgres devuelve el timestamptz con offset `+00:00` (no `Z`): se compara
+    // por VALOR, no por string exacto.
+    expect(new Date(data!.started_at as string).getTime()).toBe(new Date(justNow).getTime());
   });
 });

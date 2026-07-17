@@ -97,6 +97,22 @@ describe("FileBudget", () => {
     const budget = new FileBudget();
     expect(budget.maxBytes).toBe(DEFAULT_MAX_EXPORT_BYTES);
   });
+
+  describe("wouldFit — chequeo de solo-lectura (no reserva espacio)", () => {
+    it("true si cabe, y NO consume el presupuesto (a diferencia de tryAdd)", () => {
+      const budget = new FileBudget(100);
+      expect(budget.wouldFit(60)).toBe(true);
+      expect(budget.used).toBe(0); // solo consultó, no reservó
+      expect(budget.tryAdd("a.pdf", 60)).toBe(true); // sigue cabiendo tras la consulta
+    });
+
+    it("false si NO cabe, sin registrar nada en omitted (eso es responsabilidad del llamador)", () => {
+      const budget = new FileBudget(100);
+      budget.tryAdd("a.csv", 90);
+      expect(budget.wouldFit(20)).toBe(false);
+      expect(budget.omitted).toEqual([]); // wouldFit no omite por sí solo
+    });
+  });
 });
 
 describe("buildManifest", () => {
@@ -115,5 +131,17 @@ describe("buildManifest", () => {
     expect(manifest.tenantSlug).toBe("seminarea");
     expect(manifest.datasets).toEqual({ courses: 3, enrollments: 0 });
     expect(manifest.files.omitted).toHaveLength(1);
+    expect(manifest.unattributedSenceEvents, "sin dato explícito, default 0 (compat)").toBe(0);
+  });
+
+  it("deja constancia de los sence_events sin atribuir (tenant_id NULL, I-1) — nunca una omisión silenciosa", () => {
+    const manifest = buildManifest({
+      tenantSlug: "seminarea",
+      generatedAt: "2026-07-17T12:00:00.000Z",
+      datasets: { sence_events: 5 },
+      files: { included: [], omitted: [] },
+      unattributedSenceEvents: 3,
+    });
+    expect(manifest.unattributedSenceEvents).toBe(3);
   });
 });
