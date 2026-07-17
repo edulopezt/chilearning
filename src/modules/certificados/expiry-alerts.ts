@@ -279,14 +279,19 @@ export async function runExpiryAlertsTick(
       // Aviso in-app (outbox `notifications`). Insert directo, no `notifyInApp`:
       // ese helper importa `server-only` y este módulo corre en el worker.
       // `created_at` con el `now` del tick (determinismo, igual que reminders).
-      await db.from("notifications").insert({
+      // Se CONDICIONA el contador al éxito y se loguea el fallo SIN PII (igual que
+      // el correo dos líneas abajo, con `if (sent.ok)`): con LEDGER-FIRST el aviso
+      // ya está quemado, así que un insert que falle en silencio reportaría
+      // `notified` de más y escondería, p.ej., un CHECK de `kind` aplicado a medias.
+      const { error: notifyError } = await db.from("notifications").insert({
         tenant_id: tenantId,
         user_id: userId,
         kind: "certificate.expiring",
         payload: { certificateId: cert.id, courseId: cert.course_id, expiresAt: cert.expires_at, daysLeft, offsetDays: due },
         created_at: nowIso,
-      }).then(() => undefined, () => undefined);
-      notified++;
+      });
+      if (notifyError) console.error("[cert-expiry] aviso in-app falló", { certificateId: cert.id, code: notifyError.code });
+      else notified++;
 
       // Correo best-effort al destinatario REAL (única salida con PII), honrando
       // el opt-out del canal email (Ley 21.719: el alumno decide).

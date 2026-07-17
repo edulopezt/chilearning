@@ -219,3 +219,77 @@ end;
 $$;
 revoke all on function public.issue_certificate(uuid, uuid, uuid, uuid, uuid, boolean, text, jsonb, text, uuid, timestamptz) from public;
 grant execute on function public.issue_certificate(uuid, uuid, uuid, uuid, uuid, boolean, text, jsonb, text, uuid, timestamptz) to service_role;
+
+-- ---------- clone_course: arrastrar también `validity_months` (4-ojos MED) ----------
+-- La vigencia es propiedad del CURSO y clonar es el camino canónico para versionar
+-- un curso normativo (D-025): sin esto la copia nacía con `validity_months = NULL`
+-- y todo certificado emitido desde el clon quedaba SIN vencimiento en silencio
+-- (recertificación apagada justo para los cursos que la necesitan). Se recrea con
+-- la lista de columnas EXPLÍCITA extendida; el cuerpo es idéntico al de
+-- 20260716101000 salvo la columna nueva. `v_src public.courses%rowtype` ya la trae.
+create or replace function public.clone_course(p_tenant_id uuid, p_course_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_src public.courses%rowtype;
+  v_new_course uuid;
+  q record;
+  v_new_quiz uuid;
+begin
+  if p_tenant_id is null then
+    raise exception 'tenant_id es obligatorio';
+  end if;
+
+  select * into v_src from public.courses
+    where id = p_course_id and tenant_id = p_tenant_id;
+  if not found then
+    raise exception 'curso no encontrado en el tenant';
+  end if;
+
+  insert into public.courses (tenant_id, name, sence, cod_sence, modality, hours, completion_rules, status, validity_months)
+    values (p_tenant_id, left(v_src.name || ' (copia)', 200), v_src.sence, v_src.cod_sence,
+            v_src.modality, v_src.hours, v_src.completion_rules, 'draft', v_src.validity_months)
+    returning id into v_new_course;
+
+  insert into public.lessons (tenant_id, course_id, title, kind, content, position, status)
+    select p_tenant_id, v_new_course, title, kind, content, position, status
+    from public.lessons
+    where course_id = p_course_id and tenant_id = p_tenant_id;
+
+  for q in
+    select * from public.quizzes where course_id = p_course_id and tenant_id = p_tenant_id
+  loop
+    insert into public.quizzes (tenant_id, course_id, title, description, time_limit_minutes,
+      max_attempts, attempt_scoring, passing_pct, pool_size, shuffle_questions, shuffle_choices,
+      review_policy, opens_at, closes_at, weight, status)
+      values (p_tenant_id, v_new_course, q.title, q.description, q.time_limit_minutes,
+        q.max_attempts, q.attempt_scoring, q.passing_pct, q.pool_size, q.shuffle_questions,
+        q.shuffle_choices, q.review_policy, q.opens_at, q.closes_at, q.weight, q.status)
+      returning id into v_new_quiz;
+
+    insert into public.questions (tenant_id, quiz_id, kind, prompt, body, points, position)
+      select p_tenant_id, v_new_quiz, kind, prompt, body, points, position
+      from public.questions where quiz_id = q.id;
+  end loop;
+
+  insert into public.assignments (tenant_id, course_id, title, instructions, status, due_at,
+    grace_hours, rubric, passing_pct, weight)
+    select p_tenant_id, v_new_course, title, instructions, status, due_at, grace_hours, rubric,
+      passing_pct, weight
+    from public.assignments
+    where course_id = p_course_id and tenant_id = p_tenant_id;
+
+  insert into public.surveys (tenant_id, course_id, title, intro, anonymous, questions, status)
+    select p_tenant_id, v_new_course, title, intro, anonymous, questions, 'draft'
+    from public.surveys
+    where course_id = p_course_id and tenant_id = p_tenant_id;
+
+  return v_new_course;
+end;
+$$;
+
+revoke all on function public.clone_course(uuid, uuid) from public;
+grant execute on function public.clone_course(uuid, uuid) to service_role;

@@ -20,6 +20,8 @@ export const DEFAULT_EXPIRY_OFFSETS: readonly number[] = [90, 60, 30];
 
 const MIN_OFFSET = 1;
 const MAX_OFFSET = 365;
+/** Tope de cardinalidad, espejo del CHECK `certificate_expiry_config_offsets_len`. */
+const MAX_OFFSETS = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -110,6 +112,34 @@ export function sanitizeOffsets(raw: unknown): number[] {
       .filter((n): n is number => Number.isInteger(n) && n >= MIN_OFFSET && n <= MAX_OFFSET),
   )].sort((a, b) => b - a);
   return clean.length > 0 ? clean : [...DEFAULT_EXPIRY_OFFSETS];
+}
+
+export type OffsetsParse =
+  | { readonly ok: true; readonly value: number[] }
+  | { readonly ok: false };
+
+/**
+ * Parser de ESCRITURA de la config (4-ojos MED). A diferencia de
+ * `sanitizeOffsets` —fail-open, correcto para la LECTURA del worker: una config
+ * rota nunca debe apagar los avisos— este RECHAZA la entrada inválida en vez de
+ * coercionarla al default, para no guardar en silencio algo distinto de lo que
+ * el coordinador tecleó. Reglas: cada token entero en 1..365; el conjunto único,
+ * de 1..10 elementos (espejo de los CHECK de BD). Devuelve el conjunto
+ * normalizado (único, DESCENDENTE, como espera `dueOffset`).
+ */
+export function parseOffsetsInput(raw: unknown): OffsetsParse {
+  if (!Array.isArray(raw) || raw.length === 0) return { ok: false };
+  const nums: number[] = [];
+  for (const v of raw) {
+    const n = typeof v === "number" ? v : Number(v);
+    // Token inválido ⇒ se RECHAZA todo (no se descarta callado): el usuario debe
+    // corregirlo, no recibir un "guardado" con una config que no eligió.
+    if (!Number.isInteger(n) || n < MIN_OFFSET || n > MAX_OFFSET) return { ok: false };
+    nums.push(n);
+  }
+  const unique = [...new Set(nums)].sort((a, b) => b - a);
+  if (unique.length < 1 || unique.length > MAX_OFFSETS) return { ok: false };
+  return { ok: true, value: unique };
 }
 
 /**

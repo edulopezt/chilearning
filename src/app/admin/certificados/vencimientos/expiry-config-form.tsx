@@ -54,7 +54,7 @@ export function ExpiryConfigForm({
       ) : null}
       {state && !state.ok ? (
         <p role="alert" className="text-sm text-red-600">
-          {t.configError}
+          {state.error === "invalid_offsets" ? t.configOffsetsError : t.configError}
         </p>
       ) : null}
 

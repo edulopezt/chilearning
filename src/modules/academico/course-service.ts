@@ -3,7 +3,7 @@ import "server-only";
 import { writeAudit } from "@/lib/audit";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
-import { parseCourseInput, type CourseInput, type FieldError } from "@/modules/academico/domain/course";
+import { parseCourseInput, parseValidityMonths, type CourseInput, type FieldError } from "@/modules/academico/domain/course";
 
 /**
  * CRUD de cursos (task 1.1, HU-3.1/4.4). Escrituras vía service-role bajo
@@ -117,6 +117,50 @@ export async function createCourse(
     .select("id")
     .single();
   if (error || !data) return { ok: false, error: "not_found" };
+  return { ok: true, id: data.id as string };
+}
+
+/**
+ * Edición ACOTADA de la vigencia del certificado (task 5.12, HU-7.3, 4-ojos MED).
+ *
+ * Sin esto, `validity_months` solo podía fijarse al CREAR el curso: todo catálogo
+ * ya cargado quedaba con vigencia NULL y la CA "vigencia configurable en cursos
+ * normativos" no se cumplía sobre los cursos reales.
+ *
+ * Es un PATCH de UNA columna a propósito (no reusa `updateCourse`/`toRow`, que
+ * hacen UPDATE de TODAS las columnas y borrarían el resto del curso si no se
+ * reenvía): así la vigencia se edita sin arrastrar el formulario completo del
+ * curso ni arriesgar sobrescribir otros campos.
+ */
+export async function updateCourseValidity(
+  principal: Principal,
+  courseId: string,
+  rawMonths: unknown,
+): Promise<MutationResult> {
+  if (!principal.tenantId) return { ok: false, error: "no_tenant" };
+  if (!canManage(principal)) return { ok: false, error: "forbidden" };
+
+  const parsed = parseValidityMonths(rawMonths);
+  if (!parsed.ok) return { ok: false, validation: [parsed.error] };
+
+  const guard = tenantGuard(principal.tenantId);
+  // El filtro por tenant_id impide editar cursos de otro tenant (aislamiento).
+  const { data, error } = await guard.db
+    .from("courses")
+    .update({ validity_months: parsed.value })
+    .eq("id", courseId)
+    .eq("tenant_id", principal.tenantId)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: "not_found" };
+
+  await writeAudit(guard, {
+    actorUserId: principal.userId,
+    action: "course.validity_updated",
+    entity: "courses",
+    entityId: courseId,
+    details: { validityMonths: parsed.value },
+  });
   return { ok: true, id: data.id as string };
 }
 

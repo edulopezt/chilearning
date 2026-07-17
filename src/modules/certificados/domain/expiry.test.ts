@@ -7,6 +7,7 @@ import {
   daysUntil,
   dueOffset,
   offsetsToMark,
+  parseOffsetsInput,
   sanitizeOffsets,
 } from "@/modules/certificados/domain/expiry";
 
@@ -148,6 +149,38 @@ describe("sanitizeOffsets", () => {
   });
   it("respeta el borde 1..365", () => {
     expect(sanitizeOffsets([1, 365])).toEqual([365, 1]);
+  });
+});
+
+describe("parseOffsetsInput — VALIDA la escritura (no coerciona al default)", () => {
+  it("acepta enteros en rango, deduplica y ordena descendente", () => {
+    expect(parseOffsetsInput([30, 90, 60, 30])).toEqual({ ok: true, value: [90, 60, 30] });
+    expect(parseOffsetsInput(["45", "30"])).toEqual({ ok: true, value: [45, 30] });
+    expect(parseOffsetsInput([1, 365])).toEqual({ ok: true, value: [365, 1] });
+  });
+
+  it("★ RECHAZA un token inválido en vez de descartarlo (no guarda 90/60/30 en silencio)", () => {
+    // El caso "45, 3O" (letra O): con `sanitizeOffsets` se guardaba [45] y se
+    // reportaba éxito; aquí falla y el coordinador corrige.
+    expect(parseOffsetsInput([45, "3O"])).toEqual({ ok: false });
+    expect(parseOffsetsInput(["abc"])).toEqual({ ok: false });
+    expect(parseOffsetsInput([90, 60, 400])).toEqual({ ok: false }); // fuera de rango
+    expect(parseOffsetsInput([0])).toEqual({ ok: false });
+    expect(parseOffsetsInput([12.5])).toEqual({ ok: false });
+  });
+
+  it("★ rechaza vacío / no-array (usa el toggle enabled para apagar, no offsets vacíos)", () => {
+    expect(parseOffsetsInput([])).toEqual({ ok: false });
+    expect(parseOffsetsInput(null)).toEqual({ ok: false });
+    expect(parseOffsetsInput("90,60")).toEqual({ ok: false });
+  });
+
+  it("★ rechaza más de 10 offsets (espejo del CHECK de cardinalidad de BD)", () => {
+    const eleven = [11, 22, 33, 44, 55, 66, 77, 88, 99, 110, 121];
+    expect(parseOffsetsInput(eleven)).toEqual({ ok: false });
+    // Exactamente 10 sí pasa.
+    const ten = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    expect(parseOffsetsInput(ten).ok).toBe(true);
   });
 });
 

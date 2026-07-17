@@ -280,6 +280,9 @@ export const esCL = {
     colModality: "Modalidad",
     colHours: "Horas",
     colStatus: "Estado",
+    colValidity: "Vigencia (meses)",
+    validitySave: "Guardar",
+    validitySaved: "Vigencia guardada.",
     clone: "Clonar",
     cloning: "Clonando…",
     cloned: "Curso clonado (borrador).",
@@ -549,7 +552,6 @@ export const esCL = {
     colWorker: "Trabajador(a)",
     colRun: "RUN",
     colCourse: "Curso",
-    colAction: "Acción",
     colFolio: "Folio",
     colExpiresOn: "Vence el",
     colDaysLeft: "Días restantes",
@@ -574,6 +576,8 @@ export const esCL = {
     configSave: "Guardar",
     configSaved: "Configuración guardada.",
     configError: "No se pudo guardar la configuración.",
+    configOffsetsError:
+      "Revisa los días de aviso: usa entre 1 y 10 números enteros entre 1 y 365, separados por coma (por ejemplo: 90, 60, 30).",
     configDefaultNote: "Usando la configuración por defecto (90, 60 y 30 días).",
     // Vigencia del curso (form de curso)
     validityLabel: "Vigencia del certificado (meses)",
@@ -714,7 +718,6 @@ export const esCL = {
     expiryIntro: "Trabajadores tuyos que deben recertificarse. Conversa con el OTEC para reinscribirlos.",
     expiryEmpty: "Ninguno de tus trabajadores tiene certificados próximos a vencer.",
     expiryColExpiresOn: "Vence el",
-    expiryColDaysLeft: "Días restantes",
     expiryExpired: "VENCIDO",
   },
   dj: {

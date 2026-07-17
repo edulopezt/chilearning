@@ -68,20 +68,30 @@ export function normalizeCompletionRules(raw: unknown): CompletionRules {
  * Valida la entrada del formulario de curso. Devuelve el valor normalizado o la
  * lista de errores de campo (para reporte en UI).
  */
+export type ValidityMonthsParse =
+  | { ok: true; value: number | null }
+  | { ok: false; error: FieldError };
+
 /**
  * Vigencia en meses desde entrada desconocida (task 5.12, HU-7.3).
  * Vacío/null/0 ⇒ `null` = no vence (un `<input type="number">` vacío manda "").
  * Fuera de 1..120 o no entero ⇒ error de campo: mejor que el coordinador lo
  * corrija a que se emita un certificado con una vigencia que él no quiso.
+ *
+ * Público y con resultado discriminado para que la edición ACOTADA de la vigencia
+ * (`updateCourseValidity`, sin re-enviar el resto del curso) lo reuse igual que
+ * `parseCourseInput` (4-ojos MED: la vigencia debe poder fijarse tras el alta).
  */
-function parseValidityMonths(raw: unknown, errors: FieldError[]): number | null {
-  if (raw === null || raw === undefined || String(raw).trim() === "") return null;
+export function parseValidityMonths(raw: unknown): ValidityMonthsParse {
+  if (raw === null || raw === undefined || String(raw).trim() === "") return { ok: true, value: null };
   const months = Number(raw);
   if (!Number.isInteger(months) || months < 0 || months > 120) {
-    errors.push({ field: "validityMonths", message: "La vigencia debe ser un número entero de meses entre 1 y 120 (vacío = no vence)." });
-    return null;
+    return {
+      ok: false,
+      error: { field: "validityMonths", message: "La vigencia debe ser un número entero de meses entre 1 y 120 (vacío = no vence)." },
+    };
   }
-  return months === 0 ? null : months;
+  return { ok: true, value: months === 0 ? null : months };
 }
 
 export function parseCourseInput(raw: {
@@ -130,7 +140,9 @@ export function parseCourseInput(raw: {
   }
 
   const completionRules = normalizeCompletionRules(raw.completionRules);
-  const validityMonths = parseValidityMonths(raw.validityMonths, errors);
+  const validityParse = parseValidityMonths(raw.validityMonths);
+  if (!validityParse.ok) errors.push(validityParse.error);
+  const validityMonths = validityParse.ok ? validityParse.value : null;
 
   if (errors.length > 0) return { ok: false, errors };
   return {

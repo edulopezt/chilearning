@@ -7,7 +7,7 @@ import { execSync } from "node:child_process";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { createCourse, listCourses, updateCourse } from "@/modules/academico/course-service";
+import { createCourse, listCourses, updateCourse, updateCourseValidity } from "@/modules/academico/course-service";
 import type { Principal } from "@/modules/core/domain/rbac";
 
 const TENANT_A = "11111111-1111-4111-8111-111111111111";
@@ -82,5 +82,56 @@ describe("CRUD de cursos (task 1.1, HU-3.1/4.4)", () => {
   it("el admin del tenant B no ve los cursos del tenant A", async () => {
     const coursesB = await listCourses(adminB);
     expect(coursesB.every((c) => c.name !== "Trabajo en altura")).toBe(true);
+  });
+});
+
+describe("updateCourseValidity — edición acotada de la vigencia (task 5.12, 4-ojos MED)", () => {
+  it("fija la vigencia de un curso YA existente y la deja consultable", async () => {
+    const created = await createCourse(adminA, { ...validInput, name: "Curso normativo sin vigencia" });
+    if (!created.ok) throw new Error("no se creó");
+    // Nace sin vigencia (el default: no vence).
+    let course = (await listCourses(adminA)).find((c) => c.id === created.id);
+    expect(course?.validity_months).toBeNull();
+
+    const r = await updateCourseValidity(adminA, created.id, "24");
+    expect(r).toEqual({ ok: true, id: created.id });
+
+    course = (await listCourses(adminA)).find((c) => c.id === created.id);
+    expect(course?.validity_months).toBe(24);
+
+    // Vacío ⇒ vuelve a "no vence" (null), sin error.
+    expect((await updateCourseValidity(adminA, created.id, "")).ok).toBe(true);
+    course = (await listCourses(adminA)).find((c) => c.id === created.id);
+    expect(course?.validity_months).toBeNull();
+  });
+
+  it("PATCH acotado: cambiar la vigencia NO altera el resto del curso", async () => {
+    const created = await createCourse(adminA, { ...validInput, name: "Curso intacto", hours: "40" });
+    if (!created.ok) throw new Error("no se creó");
+    await updateCourseValidity(adminA, created.id, "12");
+    const course = (await listCourses(adminA)).find((c) => c.id === created.id);
+    expect(course).toMatchObject({ name: "Curso intacto", hours: 40, cod_sence: "1234567890", validity_months: 12 });
+  });
+
+  it("rechaza una vigencia fuera de rango con error de campo", async () => {
+    const created = await createCourse(adminA, { ...validInput, name: "Curso rango" });
+    if (!created.ok) throw new Error("no se creó");
+    const r = await updateCourseValidity(adminA, created.id, "999");
+    expect("validation" in r).toBe(true);
+    if ("validation" in r) expect(r.validation[0]?.field).toBe("validityMonths");
+  });
+
+  it("un student no puede editar la vigencia (deny-by-default)", async () => {
+    const created = await createCourse(adminA, { ...validInput, name: "Curso denegado" });
+    if (!created.ok) throw new Error("no se creó");
+    expect(await updateCourseValidity(studentA, created.id, "12")).toEqual({ ok: false, error: "forbidden" });
+  });
+
+  it("no edita la vigencia de un curso de OTRO tenant (aislamiento)", async () => {
+    const created = await createCourse(adminA, { ...validInput, name: "Solo de A vigencia" });
+    if (!created.ok) throw new Error("no se creó");
+    expect(await updateCourseValidity(adminB, created.id, "12")).toEqual({ ok: false, error: "not_found" });
+    const course = (await listCourses(adminA)).find((c) => c.id === created.id);
+    expect(course?.validity_months).toBeNull();
   });
 });

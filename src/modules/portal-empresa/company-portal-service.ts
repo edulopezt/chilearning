@@ -419,7 +419,20 @@ export async function listCompanyExpirations(principal: Principal): Promise<Expi
         .order("id", { ascending: true })
         .range(offset, offset + PAGE - 1),
   );
-  if (enrollments.length === 0) return [];
+  if (enrollments.length === 0) {
+    // Igual que el early-return de `certs.length === 0`: TODA consulta del portal
+    // queda en la bitácora, incluso "empresa sin trabajadores" (invariante de la
+    // cabecera de este archivo, gate de la task 5.2). Sin esto, RRHH podía sondear
+    // /empresa repetidamente sin dejar rastro.
+    await writeAudit(guard, {
+      actorUserId: principal.userId,
+      action: "company.expiries_viewed",
+      entity: "companies",
+      entityId: mine.companyId,
+      details: { count: 0 },
+    });
+    return [];
+  }
   const enrollmentById = new Map(enrollments.map((e) => [e.id, e]));
 
   const certs = await fetchChunked<{

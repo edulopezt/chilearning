@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getMyCertificates } from "@/modules/certificados/certificates-service";
+import { formatExpiryDate } from "@/modules/certificados/domain/expiry-report";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,18 @@ export default async function MisCertificadosPage() {
                 <span className="text-xs text-muted-foreground">
                   {esCL.certificates.folio}: {c.folio} · {new Date(c.issuedAt).toLocaleDateString("es-CL")}
                 </span>
+                {/* Vencimiento del propio certificado (task 5.12, HU-7.3): el
+                    titular debe verlo en la app, no solo enterarse por correo. */}
+                {c.expiresAt ? (
+                  <span className="text-xs">
+                    {esCL.certExpiry.colExpiresOn} {formatExpiryDate(c.expiresAt)}
+                    {c.expired ? (
+                      <span className="ml-2 rounded bg-red-100 px-2 py-0.5 font-medium text-red-800 dark:bg-red-900 dark:text-red-200">
+                        {esCL.certExpiry.expired}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
               </div>
               {c.status === "revoked" ? (
                 <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900 dark:text-red-200">

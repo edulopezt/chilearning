@@ -502,6 +502,10 @@ export interface MyCertificate {
   readonly status: string;
   readonly courseName: string;
   readonly issuedAt: string;
+  /** Vencimiento del certificado (task 5.12, HU-7.3); null = no vence. */
+  readonly expiresAt: string | null;
+  /** true = ya venció (precalculado en el servidor; la vista es un RSC puro). */
+  readonly expired: boolean;
 }
 
 export async function getMyCertificates(principal: Principal): Promise<MyCertificate[]> {
@@ -513,10 +517,19 @@ export async function getMyCertificates(principal: Principal): Promise<MyCertifi
     guard.db.from("enrollments").select("id").eq("tenant_id", tenantId).eq("user_id", principal.userId).order("id").range(offset, offset + PAGE - 1),
   );
   if (enrollments.length === 0) return [];
-  const rows = await fetchAll<{ id: string; folio: string; status: string; issued_at: string; snapshot: { courseName?: string } }>((offset) =>
-    guard.db.from("certificates").select("id, folio, status, issued_at, snapshot").eq("tenant_id", tenantId).in("enrollment_id", enrollments.map((e) => e.id)).order("issued_at", { ascending: false }).order("id").range(offset, offset + PAGE - 1),
+  const rows = await fetchAll<{ id: string; folio: string; status: string; issued_at: string; expires_at: string | null; snapshot: { courseName?: string } }>((offset) =>
+    guard.db.from("certificates").select("id, folio, status, issued_at, expires_at, snapshot").eq("tenant_id", tenantId).in("enrollment_id", enrollments.map((e) => e.id)).order("issued_at", { ascending: false }).order("id").range(offset, offset + PAGE - 1),
   );
-  return rows.map((r) => ({ id: r.id, folio: r.folio, status: r.status, courseName: r.snapshot?.courseName ?? "—", issuedAt: r.issued_at }));
+  const now = Date.now();
+  return rows.map((r) => ({
+    id: r.id,
+    folio: r.folio,
+    status: r.status,
+    courseName: r.snapshot?.courseName ?? "—",
+    issuedAt: r.issued_at,
+    expiresAt: r.expires_at ?? null,
+    expired: r.expires_at ? new Date(r.expires_at).getTime() < now : false,
+  }));
 }
 
 /** URL firmada de descarga del PDF (dueño o staff). Regenera si falta el objeto. */

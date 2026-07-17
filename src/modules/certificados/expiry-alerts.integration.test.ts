@@ -148,8 +148,15 @@ async function alertsOf(certId: string): Promise<number[]> {
   return (data ?? []).map((r) => r.offset_days as number).sort((a, b) => b - a);
 }
 async function notificationsOf(certId: string): Promise<number> {
-  const { data } = await svc.from("notifications").select("id, payload").eq("kind", "certificate.expiring");
-  return (data ?? []).filter((n) => (n.payload as { certificateId?: string })?.certificateId === certId).length;
+  // Filtra por `certificate_id` en el SERVIDOR (no en cliente tras traer todo):
+  // `notifications` no tiene DELETE para service_role (es outbox), así que su
+  // residuo crece entre corridas; un select global sin acotar es frágil.
+  const { data } = await svc
+    .from("notifications")
+    .select("id")
+    .eq("kind", "certificate.expiring")
+    .eq("payload->>certificateId", certId);
+  return (data ?? []).length;
 }
 
 beforeAll(async () => {

@@ -166,4 +166,20 @@ describe("gate de elegibilidad", () => {
     const mine = await getMyCertificates(student);
     expect(mine.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("★ getMyCertificates expone la fecha de vencimiento al TITULAR (task 5.12, 4-ojos MED)", async () => {
+    const { courseId, actionId, enrollmentId } = await makeAction({
+      rules: { requireAllLessons: false, requireSurvey: false, minAttendancePct: 0 }, sence: false,
+    });
+    // Curso normativo con vigencia ⇒ el certificado vence.
+    await svc.from("courses").update({ validity_months: 12 }).eq("id", courseId);
+    await getActionEligibility(admin, actionId);
+    const issued = await issueCertificate(admin, enrollmentId);
+    if (!issued.ok) throw new Error("no se emitió");
+
+    const { getMyCertificates } = await import("@/modules/certificados/certificates-service");
+    const cert = (await getMyCertificates(student)).find((c) => c.id === issued.certificateId);
+    // El titular ve su vencimiento en la app, no solo por correo.
+    expect(cert?.expiresAt).toBeTruthy();
+  });
 });

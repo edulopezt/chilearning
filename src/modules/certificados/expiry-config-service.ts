@@ -3,7 +3,7 @@ import "server-only";
 import { writeAudit } from "@/lib/audit";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
-import { DEFAULT_EXPIRY_OFFSETS, sanitizeOffsets } from "@/modules/certificados/domain/expiry";
+import { DEFAULT_EXPIRY_OFFSETS, parseOffsetsInput, sanitizeOffsets } from "@/modules/certificados/domain/expiry";
 
 /**
  * Configuración de alertas de recertificación (task 5.12, HU-7.3): cuántos días
@@ -27,7 +27,7 @@ export interface ExpiryConfig {
 
 export type ExpiryConfigResult =
   | { readonly ok: true; readonly config: ExpiryConfig }
-  | { readonly ok: false; readonly error: "forbidden" | "failed" };
+  | { readonly ok: false; readonly error: "forbidden" | "failed" | "invalid_offsets" };
 
 export const DEFAULT_EXPIRY_CONFIG: ExpiryConfig = {
   offsetsDays: DEFAULT_EXPIRY_OFFSETS,
@@ -68,7 +68,13 @@ export async function updateExpiryConfig(
   const tenantId = principal.tenantId!;
   const guard = tenantGuard(tenantId);
 
-  const offsetsDays = sanitizeOffsets(raw.offsetsDays);
+  // ESCRITURA: se VALIDA, no se coerciona. Guardar en silencio 90/60/30 cuando el
+  // coordinador tecleó otra cosa (o un token inválido) le hace creer que configuró
+  // un aviso que nunca se manda (4-ojos MED). El fail-open de `sanitizeOffsets`
+  // queda SOLO para la lectura (getExpiryConfig) y el worker.
+  const parsed = parseOffsetsInput(raw.offsetsDays);
+  if (!parsed.ok) return { ok: false, error: "invalid_offsets" };
+  const offsetsDays = parsed.value;
   const enabled = raw.enabled === true || raw.enabled === "true" || raw.enabled === "on";
 
   const { error } = await guard.db
