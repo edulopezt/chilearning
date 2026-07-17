@@ -7,6 +7,7 @@ import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { CourseForm } from "./course-form";
 import { CloneButton } from "./clone-button";
+import { ValidityForm } from "./validity-form";
 
 export const dynamic = "force-dynamic";
 
@@ -47,13 +48,14 @@ export default async function CoursesPage() {
           <p className="text-muted-foreground text-sm">{esCL.courses.empty}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[28rem] border-collapse text-sm">
+            <table className="w-full min-w-[44rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b text-left">
                   <th className="py-2 pr-3">{esCL.courses.colName}</th>
                   <th className="py-2 pr-3">{esCL.courses.colModality}</th>
                   <th className="py-2 pr-3">{esCL.courses.colHours}</th>
                   <th className="py-2 pr-3">{esCL.courses.colStatus}</th>
+                  <th className="py-2 pr-3">{esCL.courses.colValidity}</th>
                   <th className="py-2" />
                 </tr>
               </thead>
@@ -67,6 +69,9 @@ export default async function CoursesPage() {
                     <td className="py-2 pr-3">{MODALITY_LABEL[c.modality] ?? c.modality}</td>
                     <td className="py-2 pr-3">{c.hours}</td>
                     <td className="py-2 pr-3">{STATUS_LABEL[c.status] ?? c.status}</td>
+                    <td className="py-2 pr-3">
+                      <ValidityForm courseId={c.id} validityMonths={c.validity_months} />
+                    </td>
                     <td className="py-2">
                       <span className="flex flex-wrap items-center gap-3">
                         <Link href={`/admin/cursos/${c.id}/lecciones`} className="text-sm underline">

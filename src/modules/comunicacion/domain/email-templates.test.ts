@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { escapeHtml, renderInvitationEmail, renderWelcomeEmail } from "./email-templates";
+import {
+  escapeHtml,
+  renderCertificateExpiringEmail,
+  renderInvitationEmail,
+  renderWelcomeEmail,
+} from "./email-templates";
 
 const brand = { orgName: "Seminarea", primaryColor: "#1e3a8a" };
 
@@ -49,5 +54,43 @@ describe("renderWelcomeEmail", () => {
 
   it("menciona que hay que registrar cada vez", () => {
     expect(email.html.toLowerCase()).toContain("cada vez");
+  });
+});
+
+describe("renderCertificateExpiringEmail (task 5.12, HU-7.3)", () => {
+  const base = {
+    brand,
+    recipientName: "Ana",
+    courseName: "Trabajo en altura física",
+    expiresOn: "15-10-2026",
+    certificatesUrl: "https://seminarea.chilearning.cl/mi-curso/certificados",
+  };
+
+  it("dice el curso, la fecha y lleva el enlace absoluto a mis certificados", () => {
+    const email = renderCertificateExpiringEmail({ ...base, daysLeft: 30 });
+    expect(email.subject).toContain("Trabajo en altura física");
+    expect(email.html).toContain("Trabajo en altura física");
+    expect(email.html).toContain("15-10-2026");
+    expect(email.html).toContain("https://seminarea.chilearning.cl/mi-curso/certificados");
+    expect(email.text).toContain("https://seminarea.chilearning.cl/mi-curso/certificados");
+  });
+
+  it("conjuga bien el plazo: 30 días / 1 día / hoy", () => {
+    expect(renderCertificateExpiringEmail({ ...base, daysLeft: 30 }).subject).toContain("en 30 días");
+    expect(renderCertificateExpiringEmail({ ...base, daysLeft: 1 }).subject).toContain("en 1 día");
+    expect(renderCertificateExpiringEmail({ ...base, daysLeft: 0 }).subject).toContain("hoy");
+  });
+
+  it("★ NO lleva folio ni RUN: el dato vive tras el login, no en la bandeja (Ley 21.719)", () => {
+    const email = renderCertificateExpiringEmail({ ...base, daysLeft: 60 });
+    const all = email.html + email.text;
+    expect(all).not.toContain("CERT-");
+    expect(all).not.toMatch(/\d{7,8}-[\dkK]/);
+  });
+
+  it("escapa un nombre de curso malicioso (anti-inyección)", () => {
+    const evil = renderCertificateExpiringEmail({ ...base, courseName: "<script>alert(1)</script>", daysLeft: 10 });
+    expect(evil.html).not.toContain("<script>alert(1)</script>");
+    expect(evil.html).toContain("&lt;script&gt;");
   });
 });

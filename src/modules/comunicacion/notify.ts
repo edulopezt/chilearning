@@ -43,7 +43,10 @@ export function guardFor(tenantId: string): TenantGuard {
 export async function notifyInApp(
   guard: TenantGuard,
   userId: string,
-  kind: "announcement.published" | "forum.reply" | "message.received",
+  // Los `reminder.*` y `certificate.expiring` los inserta el WORKER directo (no
+  // puede importar este helper: lleva `server-only`); se listan igual para que
+  // el tipo espeje el CHECK de `notifications.kind`.
+  kind: "announcement.published" | "forum.reply" | "message.received" | "certificate.expiring",
   payload: Record<string, unknown>,
 ): Promise<void> {
   await guard.db.from("notifications").insert(guard.withTenant({ user_id: userId, kind, payload })).then(

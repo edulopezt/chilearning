@@ -3,6 +3,9 @@ import "server-only";
 import { writeAudit } from "@/lib/audit";
 import { tenantGuard, type TenantGuard } from "@/lib/tenant-guard";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
+import { maskRun } from "@/modules/certificados/domain/folio";
+import { daysUntil } from "@/modules/certificados/domain/expiry";
+import { sortByUrgency, type ExpirationRowBase } from "@/modules/certificados/domain/expiry-report";
 import { gradebookUnchecked } from "@/modules/evaluacion/gradebook-service";
 import {
   companyExportRowValues,
@@ -385,6 +388,119 @@ export async function getCompanyActionPanel(
     details: { companyId: mine.companyId, workers: panel.rows.length },
   });
   return panel;
+}
+
+/**
+ * Certificados de MIS trabajadores por vencer (task 5.12, HU-7.3). La CA dice
+ * que el sistema alerta "a la OTEC y a la EMPRESA": esta es la mitad de la
+ * empresa, y por eso vive AQUÍ y no en `expiry-report-service` — para heredar el
+ * gate del rol `company`, el filtro por empresa y la auditoría de este portal.
+ *
+ * Mismo invariante que el resto del archivo: RUN enmascarado y TODA consulta de
+ * inscripciones acotada a `company_id = mi empresa`. Incluye los ya vencidos
+ * (daysLeft < 0): es justo lo que RRHH necesita accionar primero.
+ */
+export async function listCompanyExpirations(principal: Principal): Promise<ExpirationRowBase[]> {
+  if (!gate(principal)) return [];
+  const tenantId = principal.tenantId!;
+  const guard = tenantGuard(tenantId);
+  const mine = await activeCompany(guard, principal.userId);
+  if (!mine) return [];
+
+  // ⚠ INVARIANTE del portal: `.eq("company_id", …)` — sin esto, RRHH vería los
+  // vencimientos de los trabajadores de las OTRAS empresas del mismo OTEC.
+  const enrollments = await fetchAll<{ id: string; first_names: string | null; last_names: string | null; run: string }>(
+    (offset) =>
+      guard.db
+        .from("enrollments")
+        .select("id, first_names, last_names, run")
+        .eq("tenant_id", tenantId)
+        .eq("company_id", mine.companyId)
+        .order("id", { ascending: true })
+        .range(offset, offset + PAGE - 1),
+  );
+  if (enrollments.length === 0) {
+    // Igual que el early-return de `certs.length === 0`: TODA consulta del portal
+    // queda en la bitácora, incluso "empresa sin trabajadores" (invariante de la
+    // cabecera de este archivo, gate de la task 5.2). Sin esto, RRHH podía sondear
+    // /empresa repetidamente sin dejar rastro.
+    await writeAudit(guard, {
+      actorUserId: principal.userId,
+      action: "company.expiries_viewed",
+      entity: "companies",
+      entityId: mine.companyId,
+      details: { count: 0 },
+    });
+    return [];
+  }
+  const enrollmentById = new Map(enrollments.map((e) => [e.id, e]));
+
+  const certs = await fetchChunked<{
+    id: string; folio: string; enrollment_id: string; action_id: string; course_id: string; expires_at: string;
+  }>(enrollments.map((e) => e.id), (chunk, offset) =>
+    guard.db
+      .from("certificates")
+      // Sin `snapshot` (lleva el RUN completo, D-030).
+      .select("id, folio, enrollment_id, action_id, course_id, expires_at")
+      .eq("tenant_id", tenantId)
+      .eq("status", "issued")
+      .not("expires_at", "is", null)
+      .in("enrollment_id", chunk)
+      .order("expires_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + PAGE - 1),
+  );
+  if (certs.length === 0) {
+    await writeAudit(guard, {
+      actorUserId: principal.userId,
+      action: "company.expiries_viewed",
+      entity: "companies",
+      entityId: mine.companyId,
+      details: { count: 0 },
+    });
+    return [];
+  }
+
+  const [courses, actions] = await Promise.all([
+    fetchChunked<{ id: string; name: string }>([...new Set(certs.map((c) => c.course_id))], (chunk, offset) =>
+      guard.db.from("courses").select("id, name").eq("tenant_id", tenantId).in("id", chunk).order("id").range(offset, offset + PAGE - 1),
+    ),
+    fetchChunked<{ id: string; codigo_accion: string }>([...new Set(certs.map((c) => c.action_id))], (chunk, offset) =>
+      guard.db.from("actions").select("id, codigo_accion").eq("tenant_id", tenantId).in("id", chunk).order("id").range(offset, offset + PAGE - 1),
+    ),
+  ]);
+  const courseName = new Map(courses.map((c) => [c.id, c.name]));
+  const actionCode = new Map(actions.map((a) => [a.id, a.codigo_accion]));
+
+  const now = Date.now();
+  const rows: ExpirationRowBase[] = [];
+  for (const c of certs) {
+    const enr = enrollmentById.get(c.enrollment_id);
+    if (!enr) continue;
+    const daysLeft = daysUntil(c.expires_at, now);
+    if (daysLeft === null) continue;
+    const first = (enr.first_names ?? "").trim();
+    const last = (enr.last_names ?? "").trim();
+    rows.push({
+      certificateId: c.id,
+      folio: c.folio,
+      studentName: last ? (first ? `${last}, ${first}` : last) : first || "—",
+      runMasked: maskRun(enr.run),
+      courseName: courseName.get(c.course_id) ?? "—",
+      codigoAccion: actionCode.get(c.action_id) ?? "—",
+      expiresAt: c.expires_at,
+      daysLeft,
+    });
+  }
+
+  await writeAudit(guard, {
+    actorUserId: principal.userId,
+    action: "company.expiries_viewed",
+    entity: "companies",
+    entityId: mine.companyId,
+    details: { count: rows.length },
+  });
+  return sortByUrgency(rows);
 }
 
 /** Export XLSX de las MISMAS filas. Audita `company.report_downloaded`. */

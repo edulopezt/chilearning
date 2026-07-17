@@ -42,7 +42,9 @@ function env(): { apiUrl: string; serviceRoleKey: string; anonKey: string; jwtSe
 /** Crea un curso con 2 lecciones + 1 quiz(+pregunta) + 1 tarea. Devuelve el id. */
 async function seedCourseWithContent(): Promise<string> {
   const courseId = randomUUID();
-  await svc.from("courses").insert({ id: courseId, tenant_id: TENANT_A, name: "Curso origen", sence: false, status: "published" });
+  // `validity_months = 24`: la clonación es el camino canónico para versionar un
+  // curso NORMATIVO, y la vigencia debe sobrevivir a la copia (4-ojos MED).
+  await svc.from("courses").insert({ id: courseId, tenant_id: TENANT_A, name: "Curso origen", sence: false, status: "published", validity_months: 24 });
   await svc.from("lessons").insert([
     { tenant_id: TENANT_A, course_id: courseId, title: "L1", kind: "text", content: "a", position: 1, status: "published" },
     { tenant_id: TENANT_A, course_id: courseId, title: "L2", kind: "text", content: "b", position: 2, status: "draft" },
@@ -83,8 +85,10 @@ describe("cloneCourse — copia contenido + instrumentos, NUNCA runtime", () => 
     if (!cloned.ok) throw new Error(JSON.stringify(cloned));
     const newCourseId = cloned.id;
 
-    const { data: course } = await svc.from("courses").select("name, status").eq("id", newCourseId).single();
-    expect(course).toMatchObject({ name: "Curso origen (copia)", status: "draft" });
+    const { data: course } = await svc.from("courses").select("name, status, validity_months").eq("id", newCourseId).single();
+    // ★ La vigencia (propiedad del curso normativo) sobrevive al clonado: sin esto
+    // el certificado emitido desde la copia nacía sin vencimiento (4-ojos MED).
+    expect(course).toMatchObject({ name: "Curso origen (copia)", status: "draft", validity_months: 24 });
 
     const { data: lessons } = await svc.from("lessons").select("title, status").eq("course_id", newCourseId).order("position");
     expect(lessons).toEqual([

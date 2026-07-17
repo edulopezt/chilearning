@@ -20,6 +20,7 @@ import IORedis from "ioredis";
 
 import { senceTimingFromEnv } from "../modules/sence/domain/timing";
 import { runDay1Check, runErrorRateCheck, runExpiryTick } from "../modules/sence/expiry";
+import { runExpiryAlertsTick } from "../modules/certificados/expiry-alerts";
 import { emailSenderFromEnv } from "../modules/comunicacion/email-sender";
 import { n8nEmitterFromEnv } from "../modules/comunicacion/n8n-webhook";
 import { runRemindersTick } from "../modules/comunicacion/reminders";
@@ -27,10 +28,16 @@ import { runRemindersTick } from "../modules/comunicacion/reminders";
 const QUEUE_NAME = "sence";
 const TICK_JOB = "sence-tick";
 const REMINDERS_JOB = "reminders-tick";
+const EXPIRY_JOB = "expiry-alerts-tick";
 
 function remindersEveryMs(): number {
   const raw = Number(process.env.REMINDERS_EVERY_MS);
   return Number.isInteger(raw) && raw >= 60_000 ? raw : 60 * 60 * 1000; // default 1 h
+}
+
+function certExpiryEveryMs(): number {
+  const raw = Number(process.env.CERT_EXPIRY_EVERY_MS);
+  return Number.isInteger(raw) && raw >= 60_000 ? raw : 6 * 60 * 60 * 1000; // default 6 h
 }
 
 /** Índice user_id → {email, name} recorriendo el admin API (para el correo PII). */
@@ -66,6 +73,20 @@ async function remindersTick(db: SupabaseClient): Promise<void> {
     appBaseUrl: process.env.APP_BASE_URL,
   });
   console.log("[worker][reminders] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
+}
+
+/** Alertas de recertificación (task 5.12, HU-7.3): 90/60/30 días por defecto. */
+async function expiryAlertsTick(db: SupabaseClient): Promise<void> {
+  const startedAt = Date.now();
+  const summary = await runExpiryAlertsTick(db, {
+    now: startedAt,
+    secret: process.env.N8N_WEBHOOK_SECRET ?? "unconfigured",
+    emailSender: emailSenderFromEnv(process.env),
+    n8n: n8nEmitterFromEnv(process.env),
+    resolveRecipients: await resolveRecipientsFactory(db),
+    appBaseUrl: process.env.APP_BASE_URL,
+  });
+  console.log("[worker][cert-expiry] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
 }
 
 function requiredEnv(name: string): string {
@@ -160,11 +181,20 @@ async function main(): Promise<void> {
     { every: remindersEveryMs() },
     { name: REMINDERS_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
   );
+  // Vencimientos de certificados (task 5.12): cadencia de HORAS, no de minutos —
+  // la ventana es de días y el ledger `(certificate_id, offset_days)` deduplica,
+  // así que correr seguido no reenvía; solo gastaría consultas.
+  await queue.upsertJobScheduler(
+    EXPIRY_JOB,
+    { every: certExpiryEveryMs() },
+    { name: EXPIRY_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
     async (job) => {
       if (job.name === REMINDERS_JOB) await remindersTick(db);
+      else if (job.name === EXPIRY_JOB) await expiryAlertsTick(db);
       else await tick(db);
     },
     { connection, concurrency: 1 },

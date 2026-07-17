@@ -15,6 +15,7 @@ import {
   PASSING_GRADE,
   type EligibilityReason,
 } from "@/modules/certificados/domain/eligibility";
+import { computeExpiresAt } from "@/modules/certificados/domain/expiry";
 import { buildCertificateSnapshot, type CertificateSnapshot } from "@/modules/certificados/domain/snapshot";
 import { getCompliancePanel } from "@/modules/reportes/cumplimiento-service";
 import { getGradebook } from "@/modules/evaluacion/gradebook-service";
@@ -105,18 +106,23 @@ interface ActionContext {
   endsOn: string | null;
   rules: CompletionRules;
   effectiveThreshold: number;
+  /** Vigencia del certificado en meses; null = no vence (task 5.12, HU-7.3). */
+  validityMonths: number | null;
 }
 
 async function loadActionContext(guard: TenantGuard, tenantId: string, actionId: string): Promise<ActionContext | null> {
   const { data: action } = await guard.db
     .from("actions")
-    .select("id, course_id, codigo_accion, starts_on, ends_on, min_attendance_pct_override, courses!inner(name, hours, sence, cod_sence, completion_rules)")
+    .select("id, course_id, codigo_accion, starts_on, ends_on, min_attendance_pct_override, courses!inner(name, hours, sence, cod_sence, completion_rules, validity_months)")
     .eq("tenant_id", tenantId)
     .eq("id", actionId)
     .maybeSingle();
   if (!action) return null;
   const course = (action as unknown as {
-    courses: { name: string; hours: number; sence: boolean; cod_sence: string | null; completion_rules: unknown };
+    courses: {
+      name: string; hours: number; sence: boolean; cod_sence: string | null;
+      completion_rules: unknown; validity_months: number | null;
+    };
   }).courses;
   const rules = parseCompletionRules(course.completion_rules);
   const override = action.min_attendance_pct_override as number | null;
@@ -135,6 +141,7 @@ async function loadActionContext(guard: TenantGuard, tenantId: string, actionId:
     endsOn: (action.ends_on as string | null) ?? null,
     rules,
     effectiveThreshold,
+    validityMonths: course.validity_months ?? null,
   };
 }
 
@@ -319,6 +326,10 @@ export async function issueCertificate(principal: Principal, enrollmentId: strin
   const { data: tenant } = await guard.db.from("tenants").select("name, rut, branding").eq("id", tenantId).maybeSingle();
   const branding = (tenant?.branding ?? {}) as { primaryColor?: string; accentColor?: string; logoUrl?: string };
 
+  // UN solo instante de emisión para el snapshot y para la vigencia: si cada uno
+  // llamara a `new Date()`, el vencimiento podría quedar milisegundos corrido
+  // respecto del `issuedAt` que muestra el PDF.
+  const issuedAtISO = new Date().toISOString();
   const snapshot: CertificateSnapshot = buildCertificateSnapshot({
     studentName: studentName(enr.first_names as string | null, enr.last_names as string | null),
     run: enr.run as string,
@@ -336,12 +347,17 @@ export async function issueCertificate(principal: Principal, enrollmentId: strin
     brandAccent: branding.accentColor ?? "#0ea5e9",
     logoUrl: branding.logoUrl ?? null,
     isSence: ctx.isSence,
-    issuedAtISO: new Date().toISOString(),
+    issuedAtISO,
   });
 
   const certId = randomUUID();
   const token = randomBytes(16).toString("hex");
   const pdfPath = `${tenantId}/${certId}.pdf`;
+  // Vigencia (task 5.12, HU-7.3): va como COLUMNA, no dentro del snapshot — el
+  // snapshot es el documento legal congelado (D-112) y esto es metadato
+  // operativo para las alertas de recertificación. Curso sin `validity_months`
+  // ⇒ null = no vence (el default).
+  const expiresAt = computeExpiresAt(issuedAtISO, ctx.validityMonths);
 
   const { data: folio, error } = await guard.db.rpc("issue_certificate", {
     p_id: certId,
@@ -354,6 +370,7 @@ export async function issueCertificate(principal: Principal, enrollmentId: strin
     p_snapshot: snapshot,
     p_pdf_path: pdfPath,
     p_actor: principal.userId,
+    p_expires_at: expiresAt,
   });
   if (error) {
     if (error.code === "23505") return { ok: false, error: "already_issued" };
@@ -485,6 +502,10 @@ export interface MyCertificate {
   readonly status: string;
   readonly courseName: string;
   readonly issuedAt: string;
+  /** Vencimiento del certificado (task 5.12, HU-7.3); null = no vence. */
+  readonly expiresAt: string | null;
+  /** true = ya venció (precalculado en el servidor; la vista es un RSC puro). */
+  readonly expired: boolean;
 }
 
 export async function getMyCertificates(principal: Principal): Promise<MyCertificate[]> {
@@ -496,10 +517,19 @@ export async function getMyCertificates(principal: Principal): Promise<MyCertifi
     guard.db.from("enrollments").select("id").eq("tenant_id", tenantId).eq("user_id", principal.userId).order("id").range(offset, offset + PAGE - 1),
   );
   if (enrollments.length === 0) return [];
-  const rows = await fetchAll<{ id: string; folio: string; status: string; issued_at: string; snapshot: { courseName?: string } }>((offset) =>
-    guard.db.from("certificates").select("id, folio, status, issued_at, snapshot").eq("tenant_id", tenantId).in("enrollment_id", enrollments.map((e) => e.id)).order("issued_at", { ascending: false }).order("id").range(offset, offset + PAGE - 1),
+  const rows = await fetchAll<{ id: string; folio: string; status: string; issued_at: string; expires_at: string | null; snapshot: { courseName?: string } }>((offset) =>
+    guard.db.from("certificates").select("id, folio, status, issued_at, expires_at, snapshot").eq("tenant_id", tenantId).in("enrollment_id", enrollments.map((e) => e.id)).order("issued_at", { ascending: false }).order("id").range(offset, offset + PAGE - 1),
   );
-  return rows.map((r) => ({ id: r.id, folio: r.folio, status: r.status, courseName: r.snapshot?.courseName ?? "—", issuedAt: r.issued_at }));
+  const now = Date.now();
+  return rows.map((r) => ({
+    id: r.id,
+    folio: r.folio,
+    status: r.status,
+    courseName: r.snapshot?.courseName ?? "—",
+    issuedAt: r.issued_at,
+    expiresAt: r.expires_at ?? null,
+    expired: r.expires_at ? new Date(r.expires_at).getTime() < now : false,
+  }));
 }
 
 /** URL firmada de descarga del PDF (dueño o staff). Regenera si falta el objeto. */

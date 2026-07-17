@@ -1,4 +1,4 @@
-import { signWebhook, type N8nReminderEvent } from "./domain/automation";
+import { signWebhook, type N8nEventBase } from "./domain/automation";
 
 /**
  * Emisor de eventos a n8n (task 3.9). Worker-safe (sin `@/`, sin `server-only`).
@@ -9,7 +9,8 @@ import { signWebhook, type N8nReminderEvent } from "./domain/automation";
 
 export interface N8nEmitter {
   readonly configured: boolean;
-  emit(event: N8nReminderEvent): Promise<{ ok: boolean }>;
+  /** Acepta cualquier evento que cumpla el contrato sin PII (`N8nEventBase`). */
+  emit(event: N8nEventBase): Promise<{ ok: boolean }>;
 }
 
 export function noopN8nEmitter(): N8nEmitter {
@@ -20,7 +21,7 @@ export function n8nEmitter(cfg: { url: string; secret: string; fetchImpl?: typeo
   const fetchImpl = cfg.fetchImpl ?? fetch;
   return {
     configured: true,
-    async emit(event: N8nReminderEvent): Promise<{ ok: boolean }> {
+    async emit(event: N8nEventBase): Promise<{ ok: boolean }> {
       const body = JSON.stringify(event);
       try {
         const res = await fetchImpl(cfg.url, {

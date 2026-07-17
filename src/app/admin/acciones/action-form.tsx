@@ -15,18 +15,28 @@ function fieldErrors(state: ActionMutationResult | null): Record<string, string>
   return {};
 }
 
-export function ActionForm({ courses }: { courses: { id: string; name: string }[] }) {
+export function ActionForm({
+  courses,
+  initialCourseId,
+}: {
+  courses: { id: string; name: string }[];
+  /** Curso preseleccionado (task 5.12: enlace "crear acción" de vencimientos).
+   *  Un id que no sea del tenant se ignora: no se confía en el searchParam. */
+  initialCourseId?: string;
+}) {
   const [state, formAction, pending] = useActionState<ActionMutationResult | null, FormData>(
     createActionAction,
     null,
   );
   const errors = fieldErrors(state);
+  const defaultCourseId =
+    initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0]?.id;
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
       <label className="flex flex-col gap-1 text-sm">
         {t.courseLabel}
-        <select name="courseId" required className="min-h-11 rounded-md border px-3 text-base">
+        <select name="courseId" required defaultValue={defaultCourseId} className="min-h-11 rounded-md border px-3 text-base">
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}

@@ -87,3 +87,36 @@ describe("normalizeCompletionRules", () => {
     });
   });
 });
+
+describe("validityMonths — vigencia del certificado (task 5.12, HU-7.3)", () => {
+  it("★ vacío / ausente ⇒ null: el default es que el certificado NO vence", () => {
+    // Un `<input type="number">` vacío llega como "": no puede significar 0 meses.
+    for (const raw of ["", "   ", null, undefined]) {
+      const r = parseCourseInput({ ...base, validityMonths: raw });
+      expect(r.ok, `validityMonths=${JSON.stringify(raw)} debería ser válido`).toBe(true);
+      if (r.ok) expect(r.value.validityMonths).toBeNull();
+    }
+    const sinCampo = parseCourseInput(base);
+    expect(sinCampo.ok && sinCampo.value.validityMonths).toBeNull();
+  });
+
+  it("acepta meses en rango y los normaliza a número", () => {
+    const r = parseCourseInput({ ...base, validityMonths: "12" });
+    expect(r.ok && r.value.validityMonths).toBe(12);
+    const max = parseCourseInput({ ...base, validityMonths: 120 });
+    expect(max.ok && max.value.validityMonths).toBe(120);
+  });
+
+  it("0 ⇒ null (no vence), no una vigencia de cero meses", () => {
+    const r = parseCourseInput({ ...base, validityMonths: "0" });
+    expect(r.ok && r.value.validityMonths).toBeNull();
+  });
+
+  it("★ fuera de rango o no entero ⇒ error de campo (no se emite con una vigencia no querida)", () => {
+    for (const raw of ["121", "-3", "abc", "12.5"]) {
+      const r = parseCourseInput({ ...base, validityMonths: raw });
+      expect(r.ok, `validityMonths=${raw} debería fallar`).toBe(false);
+      if (!r.ok) expect(r.errors.some((e) => e.field === "validityMonths")).toBe(true);
+    }
+  });
+});
