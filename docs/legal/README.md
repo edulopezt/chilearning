@@ -22,19 +22,38 @@
    RUT y domicilio**. Sin eso el contrato no se firma y la política de privacidad no puede publicarse
    como vigente (la Ley 21.719 exige identificar al responsable/encargado). Están como
    `[POR DEFINIR]` en `LEGAL_ENTITY` de `src/app/privacidad/content.ts` y en los comparecientes del
-   contrato.
+   contrato. La constante **se renderiza** en la §11 de `/privacidad`: rellenarla cambia de verdad el
+   documento publicado, y mientras no se rellene el `[POR DEFINIR]` se ve en la página (a propósito:
+   así no se publica por descuido).
 
-2. **Correo de contacto comercial.** La landing apunta a **`hola@chilearning.cl`**, que **no está
-   confirmado en ninguna parte del repo**. Los únicos correos versionados son
-   `soporte@chilearning.cl` (aviso de OTEC suspendida) y `no-responder@chilearning.cl` (remitente de
-   Resend). **Hay que crear la casilla o cambiar la constante** `CONTACT_EMAIL` en
-   `src/app/page.tsx` (una línea). Un CTA que cae al vacío pierde leads en silencio.
+2. **Correo de contacto comercial.** La landing apunta hoy a **`soporte@chilearning.cl`**
+   (`CONTACT_EMAIL` en `src/app/page.tsx`), el único buzón de entrada versionado en el repo — antes
+   apuntaba a `hola@chilearning.cl`, que no está confirmado en ninguna parte. **Falta confirmar que
+   la casilla existe y que alguien la lee**; si se prefiere un `hola@`, hay que crearla y cambiar la
+   constante (una línea). Un CTA que cae al vacío pierde leads en silencio.
 
 3. **Marca definitiva.** "Chilearning" es marca de trabajo; el dominio `chilearning.cl` está decidido
    (**D-009**), la identidad no. Si cambia: `esCL.common.appName` + `esCL.landing.*`. Ningún
    componente tiene la marca escrita a mano.
 
-4. **Riesgo S2 — transferencia internacional a Brasil.** La BD (con **RUN** de alumnos) está en
+4. **Tono de las afirmaciones de la landing (decisión de Edu).** La revisión adversarial bajó tres
+   afirmaciones que el repo no respalda, y el criterio conviene que lo confirme Edu antes de publicar:
+   - **SENCE**: se decía «asistencia SENCE integrada» + «es el módulo más probado de la plataforma».
+     El motor **nunca ha corrido contra SENCE real** (`rcetest` PARQUEADA, ver `ESTADO-PROYECTO.md`
+     §Bloqueos). Ahora la landing renderiza SIEMPRE un párrafo (`landing.differentiatorStatus`) que
+     dice que está probado contra el **simulador** y que la validación real ocurre en el primer curso
+     en producción. Se evitó a propósito «la certificación está en curso»: la certificación está
+     **parqueada** (Edu decidió no contactar a SENCE), y «en curso» insinuaría un avance que no hay.
+     Si un OTEC compra creyendo que valida franquicia desde el día 1 y el primer curso falla, pierde
+     plata real.
+   - **«en uso»**: se decía «Todo lo de esta lista está construido y en uso». No hay ningún curso
+     dictado ni ningún cliente (piloto parqueado) → ahora dice «construido y funcionando en la
+     plataforma». La versión «en marcha blanca con nuestra propia OTEC» solo será verdad cuando
+     Seminarea haya dictado un curso.
+   - **«Ley 21.719 por diseño»** → «Derechos del titular, resueltos en la app»: afirmar cumplimiento
+     es insostenible mientras S2 (abajo) esté sin validar y la política sea un borrador.
+
+5. **Riesgo S2 — transferencia internacional a Brasil.** La BD (con **RUN** de alumnos) está en
    **São Paulo**. La especificación lo registra como **supuesto no validado**. Es la **primera**
    pregunta para el abogado: si la respuesta es que no es admisible, el impacto es de **arquitectura**
    (migrar la BD a Chile), no de redacción. Conviene saberlo **antes** de firmar clientes, no después.

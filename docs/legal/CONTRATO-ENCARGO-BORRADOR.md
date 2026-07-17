@@ -8,9 +8,9 @@
 > **sin definir**. Antes de usarse con un cliente real debe ser revisado, corregido y aprobado
 > por un abogado (spec §9, riesgo **S2**; tarea 5.6 de `specs/03-tareas.md`).
 >
-> **Valor real de este borrador:** la §5 (subencargados), la §7 (transferencia internacional) y
-> la §6 (medidas de seguridad) describen la infraestructura **verificada** contra el repo. Esa
-> parte es la que un abogado no puede inventar y la que hay que mantener sincronizada.
+> **Valor real de este borrador:** la §4 (medidas de seguridad), la §5 (subencargados) y
+> la §6 (transferencia internacional) describen la infraestructura **verificada** contra el repo.
+> Esa parte es la que un abogado no puede inventar y la que hay que mantener sincronizada.
 
 - **Versión del borrador:** 2026-07 (alineada con `CURRENT_PRIVACY_POLICY_VERSION`)
 - **Estado:** borrador técnico · pendiente de revisión legal
@@ -114,18 +114,18 @@ un contrato con obligaciones de protección no menos exigentes que las de este c
 
 | Subencargado | Servicio | Datos que trata | Ubicación |
 |---|---|---|---|
-| **Supabase** | Base de datos, autenticación y almacenamiento | Todos los datos de la plataforma | **Brasil (São Paulo)** → ver §7 |
+| **Supabase** | Base de datos, autenticación y almacenamiento | Todos los datos de la plataforma | **Brasil (São Paulo)** → ver §6 |
 | **`[PROVEEDOR DE VPS — POR CONFIRMAR]`** | Ejecución de la aplicación y del worker | Datos en tránsito y en memoria | `[REGIÓN — POR CONFIRMAR]` |
 | **Cloudflare** | DNS, protección de la conexión y almacenamiento de respaldos (R2) | Datos técnicos (IP); respaldos **cifrados** con clave que Cloudflare no posee | Red global |
 | **Resend** | Correo transaccional | Nombre y correo del destinatario, contenido del mensaje | Estados Unidos |
 | **Bunny Stream** | Alojamiento y reproducción de video | Datos técnicos de reproducción | Unión Europea / red global |
 | **Sentry** | Monitoreo de errores | Datos técnicos; PII y secretos **depurados** antes del envío | Estados Unidos / Unión Europea |
-| **n8n** (autoinstalado) | Automatizaciones periféricas | **Solo agregados seudonimizados** (HMAC); sin datos personales por construcción (RNF-10) | Infraestructura del Encargado |
 
 **Subencargados condicionales** — no activos hoy; se activan solo si la OTEC habilita el módulo:
 
 | Subencargado | Servicio | Condiciones especiales |
 |---|---|---|
+| **n8n** (autoinstalado) | Automatizaciones periféricas | **Aún no desplegado** (pendiente de instalación en Coolify); el código degrada a no-op mientras tanto. Recibe **solo agregados seudonimizados** (HMAC); sin datos personales por construcción (RNF-10). Infraestructura del Encargado. |
 | **OpenRouter** | Tutor con inteligencia artificial | **Cláusula de no-entrenamiento y retención cero.** Al modelo **nunca** se envían RUN, apellidos, correo, empresa ni datos SENCE (RNF-10). |
 | **Meta Platforms** | Notificaciones por WhatsApp | Requiere activación por la OTEC y aceptación del alumno. |
 

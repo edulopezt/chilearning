@@ -17,24 +17,33 @@ export const esCL = {
   landing: {
     title: "Chilearning",
     tagline:
-      "La plataforma e-learning para OTECs chilenas, con asistencia SENCE integrada.",
+      "La plataforma e-learning para OTECs chilenas, construida alrededor de la asistencia SENCE.",
     skipToContent: "Ir al contenido",
     navLogin: "Ingresar",
     heroLead:
-      "Dicta tus cursos e-learning y valida la asistencia ante SENCE en la misma plataforma: sin planillas paralelas, sin pegar sistemas con alambre.",
+      "Dicta tus cursos e-learning y lleva la asistencia del RCE en la misma plataforma: sin planillas paralelas, sin pegar sistemas con alambre.",
     heroCtaContact: "Conversemos",
     heroCtaFeatures: "Ver qué incluye hoy",
     differentiatorEyebrow: "El diferenciador",
     differentiatorTitle: "La asistencia SENCE viene integrada, no pegada por fuera",
     differentiatorBody:
-      "Un LMS genérico te deja solo justo donde duele: el registro de asistencia del RCE. Acá el alumno marca su asistencia con Clave Única desde la misma lección, y cada evento queda registrado y auditable. Es el módulo más probado de la plataforma y está aislado del resto por diseño.",
+      "Un LMS genérico te deja solo justo donde duele: el registro de asistencia del RCE. Acá el alumno marca su asistencia con Clave Única desde la misma lección, y cada evento queda registrado y auditable. Está aislado del resto por diseño y es el módulo con más cobertura de tests de la plataforma.",
+    /**
+     * ⚠ NO BORRAR sin que cambie el hecho que describe: el motor RCE nunca ha
+     * corrido contra SENCE real (certificación `rcetest` PARQUEADA del lado de
+     * SENCE — ver `specs/ESTADO-PROYECTO.md` §Bloqueos activos). Sin este
+     * matiz, la landing le promete a un OTEC que puede validar franquicia desde
+     * el día 1, y si el primer curso falla el OTEC pierde plata real.
+     */
+    differentiatorStatus:
+      "Transparencia: el motor del RCE está construido y probado extremo a extremo contra el simulador del protocolo. Todavía no ha operado contra el ambiente real de SENCE — esa validación se completa en el primer curso en producción, y lo conversamos contigo antes de partir.",
     featuresTitle: "Qué incluye hoy",
     featuresIntro:
-      "Todo lo de esta lista está construido y en uso. Lo que aún no existe, no lo vas a encontrar prometido acá.",
+      "Todo lo de esta lista está construido y funcionando en la plataforma. Lo que aún no existe, no lo vas a encontrar prometido acá.",
     features: {
       sence: {
         title: "Asistencia SENCE línea 3, nativa",
-        body: "Protocolo RCE con Clave Única para franquicia tributaria: inicio y cierre de sesión, reintentos y errores traducidos a lenguaje humano para el alumno.",
+        body: "Protocolo RCE con Clave Única para franquicia tributaria: inicio y cierre de sesión, reintentos y errores traducidos a lenguaje humano para el alumno. Probado contra el simulador del RCE; la validación contra el ambiente real de SENCE ocurre en el primer curso en producción.",
       },
       dj: {
         title: "Checklist DJ/GCA con plazo a la vista",
@@ -57,7 +66,12 @@ export const esCL = {
         body: "Los documentos de cada acción con su checklist, inmutables una vez definitivos y descargables en un ZIP cuando llega la fiscalización.",
       },
       privacy: {
-        title: "Ley 21.719 por diseño",
+        // Título de CAPACIDAD, no de cumplimiento: la admisibilidad del
+        // tratamiento bajo la Ley 21.719 sigue sin validar (riesgo S2, BD en
+        // Brasil) y la política es un borrador sin revisión legal. Afirmar
+        // cumplimiento acá sería falso retroactivamente si S2 se resuelve en
+        // contra. El body describe mecanismos reales y sí se sostiene.
+        title: "Derechos del titular, resueltos en la app",
         body: "Consentimiento registrado, exportación de datos del alumno y supresión que respeta lo que SENCE obliga a conservar. No es un PDF: son botones que funcionan.",
       },
       tenancy: {
@@ -673,6 +687,20 @@ export const esCL = {
       "Si ya tienes cuenta en la plataforma, no necesitas escribir un correo: descarga tus datos o presenta una solicitud desde tu portal del titular.",
     rightsCtaLink: "Ir a “Mis datos”",
     pendingLabel: "Por confirmar",
+    // Rótulos de la tabla de subencargados (las otras dos tablas reusan
+    // `privacy.*`, que ya usa /mis-datos).
+    colProvider: "Proveedor",
+    colPurposeShort: "Para qué",
+    colLocation: "Dónde",
+    // Identificación del prestador (Ley 21.719: hay que identificar al
+    // responsable/encargado). Se RENDERIZA con los placeholders puestos: un
+    // "[RAZÓN SOCIAL — POR DEFINIR]" visible es justo lo que hace imposible
+    // publicar el borrador por descuido.
+    legalEntityTitle: "Identificación del prestador",
+    legalNameLabel: "Razón social",
+    taxIdLabel: "RUT",
+    addressLabel: "Domicilio",
+    legalContactLabel: "Correo de contacto",
   },
   dataRights: {
     title: "Mis datos",

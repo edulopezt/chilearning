@@ -211,10 +211,14 @@ export const SUBPROCESSORS: readonly Subprocessor[] = [
     conditional: false,
   },
   {
+    // `conditional: true`: n8n NO está desplegado todavía (sigue en el handoff
+    // a Edu: "n8n en Coolify" + N8N_WEBHOOK_URL/SECRET; el código degrada a
+    // no-op sin él). §4 presenta esta tabla como "la lista vigente", así que
+    // declararlo activo diría que hoy trata datos, y no trata ninguno.
     name: "n8n (autoinstalado)",
     purpose: "Automatizaciones periféricas; recibe solo agregados seudonimizados, sin datos personales",
     location: "Misma infraestructura del VPS",
-    conditional: false,
+    conditional: true,
   },
   {
     name: "OpenRouter",

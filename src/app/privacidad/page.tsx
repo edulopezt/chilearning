@@ -5,6 +5,7 @@ import { esCL } from "@/i18n/es-CL";
 
 import {
   DATA_RIGHTS,
+  LEGAL_ENTITY,
   POLICY_SECTIONS,
   POLICY_UPDATED,
   POLICY_VERSION,
@@ -74,7 +75,11 @@ export default function PrivacyPage() {
           className="flex flex-col gap-2 rounded-lg border-2 border-destructive bg-destructive/10 p-4 sm:p-5"
         >
           <p className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold tracking-wide text-white">
+            {/* `text-background` (no `text-white`): el token invierte con el
+                tema. `--destructive` se aclara en dark y el blanco fijo caería
+                a ~2.9:1, bajo el 4.5:1 de AA — justo en el elemento del que
+                depende todo el aviso legal. */}
+            <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold tracking-wide text-background">
               {t.draftBadge}
             </span>
             <strong className="text-sm font-bold sm:text-base">{t.draftTitle}</strong>
@@ -150,9 +155,9 @@ export default function PrivacyPage() {
                     <caption className="sr-only">{section.heading}</caption>
                     <thead>
                       <tr className="border-b">
-                        <th scope="col" className="py-2 pr-3 font-semibold">Proveedor</th>
-                        <th scope="col" className="py-2 pr-3 font-semibold">Para qué</th>
-                        <th scope="col" className="py-2 font-semibold">Dónde</th>
+                        <th scope="col" className="py-2 pr-3 font-semibold">{t.colProvider}</th>
+                        <th scope="col" className="py-2 pr-3 font-semibold">{t.colPurposeShort}</th>
+                        <th scope="col" className="py-2 font-semibold">{t.colLocation}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -203,6 +208,41 @@ export default function PrivacyPage() {
                     </tbody>
                   </table>
                 </div>
+              ) : null}
+
+              {/*
+                Identificación del prestador. Va RENDERIZADO —y no solo
+                declarado en content.ts— porque la Ley 21.719 exige identificar
+                al responsable/encargado: si la constante fuera un export
+                muerto, Edu rellenaría razón social/RUT/domicilio creyendo que
+                cerró el bloqueante #1 de `docs/legal/README.md` y la página
+                publicada seguiría sin identificar a nadie, sin error ni test
+                rojo. Con los placeholders puestos, el "[POR DEFINIR]" visible
+                es exactamente lo que impide publicarlo por descuido.
+              */}
+              {section.id === "contacto" ? (
+                <dl className="mt-2 flex flex-col gap-2 rounded-lg border p-4">
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                    <dt className="text-sm font-semibold sm:min-w-40">{t.legalEntityTitle}</dt>
+                    <dd className="text-muted-foreground text-sm">{LEGAL_ENTITY.tradeName}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                    <dt className="text-sm font-semibold sm:min-w-40">{t.legalNameLabel}</dt>
+                    <dd className="text-muted-foreground text-sm">{LEGAL_ENTITY.legalName}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                    <dt className="text-sm font-semibold sm:min-w-40">{t.taxIdLabel}</dt>
+                    <dd className="text-muted-foreground text-sm">{LEGAL_ENTITY.taxId}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                    <dt className="text-sm font-semibold sm:min-w-40">{t.addressLabel}</dt>
+                    <dd className="text-muted-foreground text-sm">{LEGAL_ENTITY.address}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                    <dt className="text-sm font-semibold sm:min-w-40">{t.legalContactLabel}</dt>
+                    <dd className="text-muted-foreground text-sm">{LEGAL_ENTITY.contactEmail}</dd>
+                  </div>
+                </dl>
               ) : null}
 
               {/* Derechos + puente al flujo real ya construido (task 3.5) */}

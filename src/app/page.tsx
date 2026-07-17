@@ -17,6 +17,14 @@ import { esCL } from "@/i18n/es-CL";
  * NO se anuncian: portal de la empresa cliente (5.2), tutor IA (5.8) ni SCORM
  * (5.1) — son backlog del Hito 5.
  *
+ * "Construido" ≠ "validado contra el mundo real", y la landing no puede
+ * confundirlos:
+ * - SENCE: probado contra el MOCK del RCE; la certificación `rcetest` está
+ *   PARQUEADA del lado de SENCE y la validación real ocurre en el primer curso
+ *   del piloto. Por eso `differentiatorStatus` se renderiza SIEMPRE.
+ * - Nada está "en uso": cero cursos dictados, cero clientes, piloto parqueado
+ *   (Hito 4). No se afirma tracción ni prueba social.
+ *
  * Server Component estático, cero JS de cliente: es la primera impresión del
  * producto y no necesita interactividad. Sin precios y sin formulario (no hay
  * backend de leads); el único CTA es un mailto.
@@ -43,13 +51,14 @@ const FEATURES = [
 const OTEC_POINTS = [t.otecs.franchise, t.otecs.evidence, t.otecs.solo] as const;
 
 /**
- * ⚠ PENDIENTE DE EDU: este buzón NO está confirmado en ningún documento del
- * repo (los únicos correos versionados son `soporte@chilearning.cl` y el
- * remitente `no-responder@chilearning.cl`). Antes de publicar la landing hay
- * que crear la casilla o cambiar esta constante: un CTA que cae en el vacío
- * pierde leads en silencio.
+ * ⚠ PENDIENTE DE EDU: apunta al ÚNICO buzón de entrada versionado en el repo
+ * (`soporte@chilearning.cl`, el mismo del aviso de OTEC suspendida). Antes
+ * apuntaba a `hola@chilearning.cl`, que no está confirmado en ninguna parte:
+ * un CTA a una casilla inexistente pierde leads en silencio, sin error ni log.
+ * Si Edu crea `hola@`, cambiar esta línea. De todos modos hay que CONFIRMAR que
+ * la casilla existe y se lee antes de publicar en el dominio real.
  */
-const CONTACT_EMAIL = "hola@chilearning.cl";
+const CONTACT_EMAIL = "soporte@chilearning.cl";
 
 /** Foco visible y touch target ≥44px en todos los CTA (RNF-6, WCAG AA). */
 const FOCUS_RING =
@@ -110,6 +119,14 @@ export default function Home() {
               {t.differentiatorTitle}
             </h2>
             <p className="text-muted-foreground mt-4 max-w-3xl text-pretty">{t.differentiatorBody}</p>
+            {/*
+              El matiz de la certificación va VISIBLE y pegado al diferenciador,
+              no escondido en un pie: es el dato que decide la compra de un OTEC
+              y el repo no permite afirmar más que esto (rcetest parqueado).
+            */}
+            <p className="mt-4 max-w-3xl rounded-lg border border-dashed bg-background/60 p-4 text-sm text-pretty">
+              {t.differentiatorStatus}
+            </p>
           </div>
         </section>
 

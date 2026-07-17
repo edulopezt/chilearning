@@ -23,31 +23,58 @@ test.describe("smoke — landing por rol", () => {
   });
 
   /**
-   * Landing comercial (task 5.6). Blinda el punto frágil: "/" y "/privacidad"
-   * son PÚBLICAS. Si alguien saca la raíz de `isPublicPath`, el middleware
-   * manda al visitante a /login y el dominio deja de vender — un fallo mudo
-   * que ni el build ni los unit tests cazan. Sin `storageState` = sin sesión.
-   * Los textos no se afirman literales (viven en esCL y son marca provisional):
-   * se usan roles y landmarks, que son justamente el contrato de accesibilidad.
+   * Landing comercial (task 5.6). El `baseURL` del proyecto es un subdominio de
+   * TENANT (`seminarea.localtest.me`), así que la landing hay que pedirla al
+   * DOMINIO RAÍZ con URL absoluta: es el único host donde "/" es pública.
    */
-  test("público: la landing carga sin sesión y lleva a /privacidad", async ({ page }) => {
-    await page.goto("/");
-    await expect(page).not.toHaveURL(/\/login/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expectNoHorizontalScroll(page);
+  const ROOT_URL = (process.env.E2E_ROOT_URL ?? "http://localtest.me:3000").replace(/\/$/, "");
 
-    await page.getByRole("contentinfo").getByRole("link", { name: /privacidad/i }).click();
-    await expect(page).toHaveURL(/\/privacidad/);
-  });
+  /**
+   * A 360px, que es el ancho que exige RNF-6 (el `mobile-chrome` del config es
+   * Pixel 5 = 393px, 33px más holgado que el contrato).
+   */
+  test.describe("landing y privacidad — público", () => {
+    test.use({ viewport: { width: 360, height: 780 } });
 
-  test("público: /privacidad carga sin sesión y avisa que es un borrador", async ({ page }) => {
-    const res = await page.goto("/privacidad");
-    expect(res?.status()).toBeLessThan(400);
-    await expect(page).not.toHaveURL(/\/login/);
-    // El banner de borrador no es decorativo: sin él, el texto legal se leería
-    // como la política vigente.
-    await expect(page.getByRole("alert")).toContainText(/BORRADOR/);
-    await expectNoHorizontalScroll(page);
+    /**
+     * Blinda el punto frágil: "/" y "/privacidad" son PÚBLICAS en el dominio
+     * raíz. Si alguien saca la raíz de `isPublicPath`, el middleware manda al
+     * visitante a /login y el dominio deja de vender — un fallo mudo que ni el
+     * build ni los unit tests cazan. Sin `storageState` = sin sesión.
+     * Los textos no se afirman literales (viven en esCL y son marca
+     * provisional): se usan roles y landmarks, que son el contrato de a11y.
+     */
+    test("dominio raíz: la landing carga sin sesión y lleva a /privacidad", async ({ page }) => {
+      await page.goto(`${ROOT_URL}/`);
+      await expect(page).not.toHaveURL(/\/login/);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expectNoHorizontalScroll(page);
+
+      await page.getByRole("contentinfo").getByRole("link", { name: /privacidad/i }).click();
+      await expect(page).toHaveURL(/\/privacidad/);
+    });
+
+    /**
+     * La cara opuesta, y la razón por la que la exención de "/" mira el host:
+     * en el subdominio de un OTEC la puerta es SU login, no el pitch comercial
+     * del proveedor (que además mostraría la marca "Chilearning" ignorando el
+     * branding del tenant, HU-1.10).
+     */
+    test("subdominio de tenant: la raíz manda al login, no a la landing", async ({ page }) => {
+      await page.goto("/");
+      await expect(page).toHaveURL(/\/login/);
+      await expect(page.locator('input[type="email"]')).toBeVisible();
+    });
+
+    test("público: /privacidad carga sin sesión y avisa que es un borrador", async ({ page }) => {
+      const res = await page.goto(`${ROOT_URL}/privacidad`);
+      expect(res?.status()).toBeLessThan(400);
+      await expect(page).not.toHaveURL(/\/login/);
+      // El banner de borrador no es decorativo: sin él, el texto legal se leería
+      // como la política vigente.
+      await expect(page.getByRole("alert")).toContainText(/BORRADOR/);
+      await expectNoHorizontalScroll(page);
+    });
   });
 
   test("alumno entra a /mi-curso", async ({ browser }) => {
