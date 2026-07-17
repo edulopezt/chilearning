@@ -6,6 +6,7 @@ import { WIZARD_STEPS, validateForGeneration, type WizardStep } from "@/modules/
 import { getDraft } from "@/modules/academico/wizard-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { DescriptorFailedStatus, DescriptorProcessingStatus } from "./descriptor-status";
 import { RevisionStep } from "./revision-step";
 import {
   AprendizajesStepForm,
@@ -88,7 +89,29 @@ export default async function CourseWizardDraftPage({
   }
 
   const draft = await getDraft(principal, draftId);
-  if (!draft || draft.status !== "in_progress") redirect("/admin/cursos/asistente");
+  if (!draft || draft.status === "generated" || draft.status === "discarded") {
+    redirect("/admin/cursos/asistente");
+  }
+
+  // Fix de seguridad post-5.10: el .docx del descriptor SENCE se analiza en
+  // el WORKER, no al subirlo — mientras eso corre (o si falló), el draft NO
+  // tiene pasos que mostrar todavía.
+  if (draft.status === "processing") {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-6 p-4 sm:p-6">
+        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
+        <DescriptorProcessingStatus />
+      </main>
+    );
+  }
+  if (draft.status === "failed") {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-6 p-4 sm:p-6">
+        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
+        <DescriptorFailedStatus draftId={draftId} errorCode={draft.descriptorError} />
+      </main>
+    );
+  }
 
   const currentIdx = WIZARD_STEPS.indexOf(draft.currentStep);
   const requestedStep = isWizardStep(sp.step) ? sp.step : draft.currentStep;

@@ -365,10 +365,31 @@ export const esCL = {
     discardConfirm: "¿Descartar este borrador? No se puede deshacer (queda registrado, pero ya no se puede editar).",
     discardError: "No se pudo descartar el borrador.",
     colSource: "Origen",
+    colStatus: "Estado",
     colStep: "Paso",
     colUpdated: "Última edición",
     sourceScratch: "Desde cero",
     sourceDescriptor: "Desde descriptor",
+    statusInProgress: "En progreso",
+    statusProcessing: "Procesando descriptor…",
+    statusFailed: "Error al procesar",
+
+    // Estados del descriptor SENCE mientras se procesa en el worker (fix de
+    // seguridad post-5.10): el .docx ya no se analiza al subirlo, así que la
+    // pantalla del draft debe cubrir "todavía no terminó" y "falló".
+    descriptorProcessingTitle: "Extrayendo el descriptor…",
+    descriptorProcessingBody:
+      "Estamos leyendo el archivo Word que subiste para prellenar el asistente. Puede tardar unos segundos — esta página se actualiza sola.",
+    refreshNow: "Refrescar ahora",
+    descriptorFailedTitle: "No se pudo procesar el descriptor",
+    descriptorErrors: {
+      invalid_zip: "El archivo no es un .docx válido o está dañado. Vuelve a exportarlo desde Word y súbelo de nuevo.",
+      too_large: "El descriptor pesa demasiado al descomprimirse (supera el límite permitido). Revisa que no traiga imágenes o archivos embebidos innecesarios.",
+      text_too_large: "El texto del descriptor es demasiado extenso para procesarlo automáticamente.",
+      storage_error: "No se pudo leer el archivo subido. Intenta subirlo de nuevo.",
+    },
+    descriptorErrorGeneric: "No se pudo procesar el descriptor. Intenta subirlo de nuevo.",
+    descriptorFailedHint: "Puedes descartar este borrador y volver a subir el archivo, o iniciar el curso desde cero.",
 
     generatedTitle: "Cursos generados con el asistente",
     viewCourse: "Ver curso →",

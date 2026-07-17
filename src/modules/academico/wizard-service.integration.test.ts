@@ -8,18 +8,16 @@
 import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { runDescriptorExtract } from "@/modules/academico/descriptor-extract";
 import { listCourses } from "@/modules/academico/course-service";
 import { listLessons } from "@/modules/academico/lesson-service";
 import type { Principal } from "@/modules/core/domain/rbac";
 import { listQuizzesByCourse } from "@/modules/evaluacion/quiz-service";
 import { listSurveysByCourse } from "@/modules/evaluacion/survey-service";
-import {
-  buildDescriptorFixtureDocx,
-  buildDescriptorZipBombFixture,
-  DESCRIPTOR_FIXTURE_LINES,
-} from "./testing/descriptor-fixture";
+import { buildDescriptorFixtureDocx, DESCRIPTOR_FIXTURE_LINES } from "./testing/descriptor-fixture";
 import {
   createDraft,
   descriptorDownloadUrl,
@@ -40,11 +38,22 @@ const adminB: Principal = { userId: "bbbbbbbb-0000-4000-8000-000000000001", tena
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
+// Cliente RAW service-role (además de `NEXT_PUBLIC_SUPABASE_URL`/
+// `SUPABASE_SERVICE_ROLE_KEY` de abajo, que usa `tenantGuard()` internamente
+// vía las funciones del servicio): lo necesita SOLO el test del flujo "desde
+// descriptor SENCE" para invocar `runDescriptorExtract` directo — el
+// procesamiento del .docx ahora corre en el WORKER (fix de seguridad
+// post-5.10), `createDraft` ya no lo hace inline.
+let svc: SupabaseClient;
+
 beforeAll(() => {
   const out = execSync("supabase status -o env", { encoding: "utf8" });
   const get = (k: string) => out.match(new RegExp(`^${k}="?([^"\\r\\n]+)"?$`, "m"))![1]!;
-  process.env.NEXT_PUBLIC_SUPABASE_URL = get("API_URL");
-  process.env.SUPABASE_SERVICE_ROLE_KEY = get("SERVICE_ROLE_KEY");
+  const apiUrl = get("API_URL");
+  const serviceRoleKey = get("SERVICE_ROLE_KEY");
+  process.env.NEXT_PUBLIC_SUPABASE_URL = apiUrl;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = serviceRoleKey;
+  svc = createClient(apiUrl, serviceRoleKey, { auth: { persistSession: false } });
 });
 
 /** Arma un draft SENCE con `moduleCount` módulos de `hoursPerModule` horas c/u, ya en el paso "datos"+"estructura". */
@@ -434,19 +443,41 @@ describe("wizard-service — descartar y aislamiento", () => {
 });
 
 describe("wizard-service — flujo 'desde descriptor SENCE'", () => {
-  it("createDraft procesa un .docx sintético y siembra el state con lo que el extractor encontró", async () => {
+  it("createDraft solo SUBE el .docx y encola su análisis (status='processing'); runDescriptorExtract (worker) es quien siembra el state con lo que el extractor encontró", async () => {
+    // Fix de seguridad post-5.10: `createDraft` YA NO analiza el .docx inline
+    // (eso corre AISLADO en el worker — ver `descriptor-extract.integration.test.ts`
+    // para el detalle del guardia anti zip-bomb). Este test cubre el flujo
+    // COMPLETO de punta a punta invocando `runDescriptorExtract` a mano, tal
+    // como lo haría el worker tras `enqueueDescriptorExtract`.
     const buffer = await buildDescriptorFixtureDocx(DESCRIPTOR_FIXTURE_LINES);
     const bytes = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     const result = await createDraft(adminA, {
       source: "descriptor",
       file: { name: "descriptor de prueba.docx", type: DOCX_MIME, size: bytes.byteLength, bytes },
     });
-    expect(result.ok).toBe(true);
+    expect(result).toEqual({ ok: true, draftId: expect.any(String), status: "processing" });
     if (!result.ok) return;
 
+    // Recién subido: el draft NO es editable todavía y el state sigue vacío
+    // (nada se extrajo aún — eso lo hace el worker, no `createDraft`).
+    const processingDraft = await getDraft(adminA, result.draftId);
+    expect(processingDraft?.status).toBe("processing");
+    expect(processingDraft?.source).toBe("descriptor");
+    expect(processingDraft?.descriptorName).toBe("descriptor de prueba.docx");
+    expect(processingDraft?.state.datosSeed.name).toBeNull();
+    expect(processingDraft?.state.estructura.modules).toEqual([]);
+
+    // El descriptor YA queda ARCHIVADO junto al draft desde la subida: se
+    // puede descargar aunque la extracción todavía no haya corrido.
+    const url = await descriptorDownloadUrl(adminA, result.draftId);
+    expect(url.ok).toBe(true);
+
+    // Simula lo que hace el worker tras `enqueueDescriptorExtract`.
+    const extractResult = await runDescriptorExtract(svc, { draftId: result.draftId, tenantId: TENANT_A });
+    expect(extractResult).toEqual({ ok: true });
+
     const draft = await getDraft(adminA, result.draftId);
-    expect(draft?.source).toBe("descriptor");
-    expect(draft?.descriptorName).toBe("descriptor de prueba.docx");
+    expect(draft?.status).toBe("in_progress");
     expect(draft?.state.datosSeed.name).toBe("Manejo seguro de extintores");
     expect(draft?.state.datosSeed.hours).toBe(8);
     expect(draft?.state.estructura.modules.map((m) => m.title)).toEqual([
@@ -460,9 +491,15 @@ describe("wizard-service — flujo 'desde descriptor SENCE'", () => {
     ]);
     expect(draft?.state.extractWarnings).toEqual([]);
 
-    // El descriptor queda ARCHIVADO junto al curso: se puede volver a descargar.
-    const url = await descriptorDownloadUrl(adminA, result.draftId);
-    expect(url.ok).toBe(true);
+    // Ya editable: `saveStep` funciona sobre el state sembrado.
+    const saved = await saveStep(adminA, result.draftId, "datos", {
+      name: draft!.state.datosSeed.name,
+      modality: "elearning",
+      hours: String(draft!.state.datosSeed.hours),
+      sence: "true",
+      codSence: "1234567890",
+    });
+    expect(saved.ok).toBe(true);
   });
 
   it("rechaza un archivo que no sea .docx", async () => {
@@ -482,19 +519,20 @@ describe("wizard-service — flujo 'desde descriptor SENCE'", () => {
     expect(result).toEqual({ ok: false, error: "file_rejected" });
   });
 
-  it("rechaza un .docx que declara un tamaño descomprimido enorme (guardia anti zip-bomb, 4-ojos HIGH/MED)", async () => {
-    // "A".repeat(60 MB) con DEFLATE comprime a apenas unos KB (pasa de sobra
-    // el límite de 10 MB COMPRIMIDOS), pero declara honestamente 60 MB
-    // descomprimidos en el directorio central del .zip — por encima del
-    // presupuesto de `MAX_DESCRIPTOR_UNCOMPRESSED_BYTES` (50 MB).
-    const buffer = await buildDescriptorZipBombFixture(60 * 1024 * 1024);
+  it("discardDraft también abandona un draft 'processing' o 'failed' (no solo 'in_progress')", async () => {
+    const buffer = await buildDescriptorFixtureDocx(DESCRIPTOR_FIXTURE_LINES);
     const bytes = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
-    expect(bytes.byteLength).toBeLessThan(10 * 1024 * 1024); // pasa el chequeo de tamaño COMPRIMIDO
-
-    const result = await createDraft(adminA, {
+    const created = await createDraft(adminA, {
       source: "descriptor",
-      file: { name: "bomba.docx", type: DOCX_MIME, size: bytes.byteLength, bytes },
+      file: { name: "descriptor de prueba.docx", type: DOCX_MIME, size: bytes.byteLength, bytes },
     });
-    expect(result).toEqual({ ok: false, error: "file_rejected" });
+    if (!created.ok) throw new Error("no se creó el draft");
+    expect(created.status).toBe("processing");
+
+    const discard = await discardDraft(adminA, created.draftId);
+    expect(discard).toEqual({ ok: true });
+
+    const draft = await getDraft(adminA, created.draftId);
+    expect(draft?.status).toBe("discarded");
   });
 });

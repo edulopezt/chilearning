@@ -1,20 +1,24 @@
 /**
- * Guardia anti zip-bomb del descriptor SENCE (.docx, task 5.10, 4-ojos
- * HIGH/MED "orquestacion-idempotencia"/"validacion-publicacion"): un .docx es
- * un .zip; sin este chequeo, `mammoth.extractRawText` (wizard-service.ts)
- * descomprimiría CUALQUIER entry declarada dentro del PROCESO WEB COMPARTIDO
- * (no el worker aislado, a diferencia de la ingesta SCORM), sin límite de
- * memoria — un .docx de pocos MB comprimidos puede inflar a varios GB.
+ * Guardia anti zip-bomb del descriptor SENCE (.docx, task 5.10 + fix de
+ * seguridad post-5.10): un .docx es un .zip; `mammoth.extractRawText`
+ * (invocado desde `descriptor-extract.ts`, en el WORKER — nunca en el
+ * proceso web compartido por todos los tenants, mismo criterio que la
+ * ingesta SCORM, ADR-006) descomprimiría CUALQUIER entry declarada sin
+ * límite de memoria si no se acota antes — un .docx de pocos MB comprimidos
+ * puede inflar a varios GB.
  *
- * Mismo patrón que `contenido/domain/scorm-zip.ts::exceedsUncompressedBudget`
- * (pre-chequeo BARATO, sin IO, contra el tamaño DECLARADO en el directorio
- * central del .zip), con un presupuesto mucho menor: un descriptor es texto
- * (Anexo 4), no debería superar unos pocos MB descomprimidos aun con logos o
- * imágenes embebidas en el Word. Igual que su contraparte SCORM, este
- * pre-chequeo NO es por sí solo una defensa completa (el campo declarado es
- * controlado por quien sube el archivo) — se combina con
- * `MAX_DESCRIPTOR_TEXT_LENGTH` (wizard-service.ts) como segunda barrera sobre
- * el texto YA extraído, acotando también lo que `extractDescriptor` procesa.
+ * `exceedsDescriptorUncompressedBudget` de abajo es SOLO el pre-chequeo
+ * BARATO (sin IO, mismo patrón que
+ * `contenido/domain/scorm-zip.ts::exceedsUncompressedBudget`) contra el
+ * tamaño DECLARADO en el directorio central del .zip — un campo 100%
+ * controlado por quien sube el archivo, que un .zip puede fácilmente MENTIR
+ * (ver `forgeDeclaredUncompressedSize` en los tests). NO es, por sí solo, una
+ * defensa contra un .docx malicioso: la defensa REAL es el streaming de
+ * bytes REALES en `descriptor-extract.ts::readEntryBytes`, que mide cada
+ * entry mientras se descomprime y aborta apenas se supera el presupuesto,
+ * sin importar lo que el directorio central haya declarado. Se combina,
+ * además, con `MAX_DESCRIPTOR_TEXT_LENGTH` (misma vara que
+ * `readEntryBytes`) como segunda barrera sobre el texto YA extraído.
  */
 
 export const MAX_DESCRIPTOR_UNCOMPRESSED_BYTES = 50 * 1024 * 1024; // 50 MB

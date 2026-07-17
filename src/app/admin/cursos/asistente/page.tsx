@@ -23,6 +23,17 @@ const STEP_LABEL: Record<string, string> = {
   completitud: t.stepCompletitud,
   revision: t.stepRevision,
 };
+// "in_progress" no lleva etiqueta (el "Paso" ya lo dice); "processing"/"failed"
+// (fix de seguridad post-5.10: el .docx del descriptor se analiza en el
+// worker, no al subirlo) sí necesitan una — sin esto desaparecían de esta
+// lista apenas dejaban de ser "in_progress" sin quedar alcanzables en
+// ninguna otra pantalla.
+const STATUS_LABEL: Record<string, string> = { processing: t.statusProcessing, failed: t.statusFailed };
+const DESCRIPTOR_ERROR_LABELS: Record<string, string> = t.descriptorErrors;
+
+function descriptorErrorMessage(errorCode: string | null): string {
+  return (errorCode && DESCRIPTOR_ERROR_LABELS[errorCode]) || t.descriptorErrorGeneric;
+}
 
 /** Punto de entrada del asistente guiado de creación de cursos (task 5.10, HU-3.5/4.5). */
 export default async function CourseWizardIndexPage() {
@@ -38,7 +49,7 @@ export default async function CourseWizardIndexPage() {
   }
 
   const allDrafts = await listDrafts(principal);
-  const drafts = allDrafts.filter((d) => d.status === "in_progress");
+  const drafts = allDrafts.filter((d) => d.status === "in_progress" || d.status === "processing" || d.status === "failed");
   // Borradores YA generados: el .docx del descriptor queda archivado y el
   // curso sigue existiendo, pero `[draftId]/page.tsx` redirige lejos de ellos
   // (ya no son editables) — sin esta sección, ni el curso ni el descriptor
@@ -73,7 +84,11 @@ export default async function CourseWizardIndexPage() {
                   {drafts.map((d) => (
                     <tr key={d.id} className="border-b last:border-0">
                       <td className="py-2 pr-3">{SOURCE_LABEL[d.source] ?? d.source}</td>
-                      <td className="py-2 pr-3">{STEP_LABEL[d.currentStep] ?? d.currentStep}</td>
+                      <td className="py-2 pr-3">
+                        <span title={d.status === "failed" ? descriptorErrorMessage(d.descriptorError) : undefined}>
+                          {STATUS_LABEL[d.status] ?? STEP_LABEL[d.currentStep] ?? d.currentStep}
+                        </span>
+                      </td>
                       <td className="py-2 pr-3">{new Date(d.updatedAt).toLocaleString("es-CL")}</td>
                       <td className="py-2">
                         <span className="flex flex-wrap items-center gap-3">
@@ -92,8 +107,11 @@ export default async function CourseWizardIndexPage() {
               {drafts.map((d) => (
                 <li key={d.id} className="flex flex-col gap-2 rounded-lg border p-3 text-sm">
                   <span className="font-medium">
-                    {SOURCE_LABEL[d.source] ?? d.source} · {STEP_LABEL[d.currentStep] ?? d.currentStep}
+                    {SOURCE_LABEL[d.source] ?? d.source} · {STATUS_LABEL[d.status] ?? STEP_LABEL[d.currentStep] ?? d.currentStep}
                   </span>
+                  {d.status === "failed" ? (
+                    <span className="text-xs text-red-600">{descriptorErrorMessage(d.descriptorError)}</span>
+                  ) : null}
                   <span className="text-muted-foreground text-xs">{new Date(d.updatedAt).toLocaleString("es-CL")}</span>
                   <span className="flex items-center gap-3">
                     <Link href={`/admin/cursos/asistente/${d.id}`} className="underline">

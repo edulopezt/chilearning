@@ -2,9 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import JSZip from "jszip";
-import mammoth from "mammoth";
-
+import { enqueueDescriptorExtract } from "@/lib/queue";
 import { writeAudit } from "@/lib/audit";
 import { tenantGuard, type TenantGuard } from "@/lib/tenant-guard";
 import { createCourse } from "@/modules/academico/course-service";
@@ -18,8 +16,6 @@ import {
   type WizardState,
   type WizardStep,
 } from "@/modules/academico/domain/course-wizard";
-import { exceedsDescriptorUncompressedBudget } from "@/modules/academico/domain/descriptor-zip";
-import { extractDescriptor } from "@/modules/academico/domain/descriptor-extract";
 import { createLesson } from "@/modules/academico/lesson-service";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
 import { safeFileSlug } from "@/modules/evaluacion/domain/assignment";
@@ -33,27 +29,20 @@ import { createSurvey } from "@/modules/evaluacion/survey-service";
  * borrador en curso+lecciones+evaluaciones REALES (siempre en estado borrador
  * — CA: "nada se publica sin revisión humana"), reusando los servicios de
  * dominio existentes (createCourse/createLesson/createQuiz/createSurvey).
+ *
+ * El origen "descriptor" (.docx SENCE) NO se analiza acá (fix de seguridad
+ * post-5.10, ADR-006): `createDraft` solo sube el archivo a Storage y encola
+ * `descriptor-extract` — el trabajo pesado (descomprimir el .zip, correr
+ * `mammoth`) corre AISLADO en el worker (`descriptor-extract.ts`), nunca en
+ * este proceso web compartido por todos los tenants. El draft nace `status =
+ * "processing"` y el propio worker lo devuelve a `"in_progress"` (con el
+ * `state` ya sembrado) o lo marca `"failed"` con un `descriptor_error`.
  */
 
 const MANAGERS = ["otec_admin", "coordinator"] as const;
 const DESCRIPTOR_BUCKET = "course_descriptors";
 const DESCRIPTOR_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_DESCRIPTOR_BYTES = 10 * 1024 * 1024;
-// Segunda barrera (además de `exceedsDescriptorUncompressedBudget`, sobre el
-// .zip crudo): acota el TEXTO ya extraído antes de pasarlo a
-// `extractDescriptor` — un descriptor real (Anexo 4) son unas pocas páginas.
-const MAX_DESCRIPTOR_TEXT_LENGTH = 2_000_000; // ~2 MB de texto plano
-
-/**
- * Campo INTERNO de jszip (no forma parte de su `.d.ts` público): igual patrón
- * y mismo aviso que `contenido/scorm-extract.ts::declaredUncompressedSize` —
- * se duplica aquí (3 líneas) en vez de importarla para no acoplar el módulo
- * `academico` a `contenido` por un detalle privado de implementación.
- */
-function declaredUncompressedSize(entry: JSZip.JSZipObject): number {
-  const raw = (entry as unknown as { _data?: { uncompressedSize?: number } })._data;
-  return typeof raw?.uncompressedSize === "number" ? raw.uncompressedSize : 0;
-}
 
 /** Limpieza best-effort del .docx subido cuando el resto del flujo aborta; loguea si falla (huérfano detectable). */
 async function removeDescriptorBestEffort(guard: TenantGuard, descriptorPath: string): Promise<void> {
@@ -100,26 +89,32 @@ export type CreateDraftInput =
       readonly file: { readonly name: string; readonly type: string; readonly size: number; readonly bytes: ArrayBuffer };
     };
 
+/** `status` que trae la RESPUESTA de `createDraft`: "processing" solo puede darse en el origen "descriptor" (extracción encolada en el worker). */
 export type DraftMutationResult =
-  | { readonly ok: true; readonly draftId: string }
+  | { readonly ok: true; readonly draftId: string; readonly status: "in_progress" | "processing" }
   | { readonly ok: false; readonly error: WizardServiceError };
+
+export type DraftStatus = "in_progress" | "processing" | "failed" | "generated" | "discarded";
 
 interface DraftRow {
   id: string;
   source: "scratch" | "descriptor";
   current_step: string;
-  status: "in_progress" | "generated" | "discarded";
+  status: DraftStatus;
   updated_at: string;
   generated_course_id: string | null;
+  descriptor_error: string | null;
 }
 
 export interface DraftListItem {
   readonly id: string;
   readonly source: "scratch" | "descriptor";
   readonly currentStep: WizardStep;
-  readonly status: "in_progress" | "generated" | "discarded";
+  readonly status: DraftStatus;
   readonly updatedAt: string;
   readonly generatedCourseId: string | null;
+  /** Código del error del worker si `status === "failed"` (null en el resto de los casos). */
+  readonly descriptorError: string | null;
 }
 
 function toListItem(row: DraftRow): DraftListItem {
@@ -130,6 +125,7 @@ function toListItem(row: DraftRow): DraftListItem {
     status: row.status,
     updatedAt: row.updated_at,
     generatedCourseId: row.generated_course_id,
+    descriptorError: row.descriptor_error,
   };
 }
 
@@ -166,7 +162,7 @@ export async function createDraft(principal: Principal, input: CreateDraftInput)
       entityId: data.id as string,
       details: { source: "scratch", templateId: input.templateId ?? null },
     });
-    return { ok: true, draftId: data.id as string };
+    return { ok: true, draftId: data.id as string, status: "in_progress" };
   }
 
   // ---------- source === "descriptor" ----------
@@ -184,66 +180,13 @@ export async function createDraft(principal: Principal, input: CreateDraftInput)
     .upload(descriptorPath, bytes, { contentType: file.type, upsert: false });
   if (uploadError) return { ok: false, error: "upload_failed" };
 
-  // Guardia anti zip-bomb (4-ojos HIGH/MED, "un .docx es un .zip"): pre-chequeo
-  // BARATO (sin descomprimir nada) contra el tamaño DECLARADO en el
-  // directorio central del .zip, ANTES de invocar `mammoth` — que corre
-  // INLINE en este proceso web compartido por todos los tenants, a
-  // diferencia de la ingesta SCORM (que hace este mismo trabajo en el
-  // worker aislado). Ver el aviso completo en `domain/descriptor-zip.ts`.
-  let zip: JSZip;
-  try {
-    zip = await JSZip.loadAsync(bytes);
-  } catch (err) {
-    console.error("[wizard] el descriptor no es un .zip/.docx válido", {
-      message: err instanceof Error ? err.message : String(err),
-    });
-    await removeDescriptorBestEffort(guard, descriptorPath);
-    return { ok: false, error: "file_rejected" };
-  }
-  const totalUncompressed = Object.values(zip.files)
-    .filter((f) => !f.dir)
-    .reduce((sum, entry) => sum + declaredUncompressedSize(entry), 0);
-  if (exceedsDescriptorUncompressedBudget(totalUncompressed)) {
-    console.error("[wizard] descriptor rechazado: excede el presupuesto de bytes descomprimidos declarados", {
-      totalUncompressed,
-    });
-    await removeDescriptorBestEffort(guard, descriptorPath);
-    return { ok: false, error: "file_rejected" };
-  }
-
-  let extract: ReturnType<typeof extractDescriptor>;
-  try {
-    const { value: text } = await mammoth.extractRawText({ buffer: bytes });
-    if (text.length > MAX_DESCRIPTOR_TEXT_LENGTH) {
-      console.error("[wizard] descriptor rechazado: el texto extraído excede el límite razonable", {
-        textLength: text.length,
-      });
-      await removeDescriptorBestEffort(guard, descriptorPath);
-      return { ok: false, error: "file_rejected" };
-    }
-    extract = extractDescriptor(text);
-  } catch (err) {
-    console.error("[wizard] no se pudo leer el contenido del descriptor .docx", {
-      message: err instanceof Error ? err.message : String(err),
-    });
-    await removeDescriptorBestEffort(guard, descriptorPath);
-    return { ok: false, error: "file_rejected" };
-  }
-
-  const state: WizardState = {
-    ...EMPTY_WIZARD_STATE,
-    estructura: {
-      modules: extract.modules.map((m, i) => ({
-        id: `m${i + 1}`,
-        title: m.title || `Módulo ${i + 1}`,
-        hours: m.hours ?? 0,
-      })),
-    },
-    datosSeed: { name: extract.name, hours: extract.totalHours },
-    outcomesSeed: extract.outcomes,
-    extractWarnings: extract.warnings,
-  };
-
+  // El .docx sube TAL CUAL a Storage; su análisis (descomprimir el .zip +
+  // `mammoth`) NO corre acá — corre AISLADO en el worker
+  // (`descriptor-extract.ts`), nunca en este proceso web compartido por
+  // todos los tenants (fix de seguridad post-5.10, mismo criterio que la
+  // ingesta SCORM, ADR-006). El draft nace `status = "processing"`; el
+  // worker lo mueve a `"in_progress"` (con el `state` ya sembrado) o a
+  // `"failed"` (con `descriptor_error`) — ver el aviso completo ahí.
   const { data, error } = await guard.db
     .from("course_drafts")
     .insert(
@@ -253,9 +196,9 @@ export async function createDraft(principal: Principal, input: CreateDraftInput)
         source: "descriptor",
         descriptor_path: descriptorPath,
         descriptor_name: file.name.slice(0, 300),
-        state,
+        state: EMPTY_WIZARD_STATE,
         current_step: "datos",
-        status: "in_progress",
+        status: "processing",
       }),
     )
     .select("id")
@@ -266,6 +209,11 @@ export async function createDraft(principal: Principal, input: CreateDraftInput)
     return { ok: false, error: "upload_failed" };
   }
 
+  // Encolado best-effort (fail-open, mismo patrón que `scorm-service.ts`): si
+  // Redis no está disponible, el draft queda `processing` — el barrido
+  // periódico `descriptor-sweep` del worker lo recoge igual.
+  await enqueueDescriptorExtract(data.id as string, tenantId);
+
   await writeAudit(guard, {
     actorUserId: principal.userId,
     action: "course_draft.created",
@@ -273,7 +221,7 @@ export async function createDraft(principal: Principal, input: CreateDraftInput)
     entityId: data.id as string,
     details: { source: "descriptor", descriptorName: file.name },
   });
-  return { ok: true, draftId: data.id as string };
+  return { ok: true, draftId: data.id as string, status: "processing" };
 }
 
 /** Borradores del tenant (para retomar), más recientes primero. */
@@ -282,7 +230,7 @@ export async function listDrafts(principal: Principal): Promise<DraftListItem[]>
   const guard = tenantGuard(principal.tenantId);
   const { data } = await guard
     .from("course_drafts")
-    .select("id, source, current_step, status, updated_at, generated_course_id")
+    .select("id, source, current_step, status, updated_at, generated_course_id, descriptor_error")
     .order("updated_at", { ascending: false });
   return ((data ?? []) as DraftRow[]).map(toListItem);
 }
@@ -297,7 +245,7 @@ export async function getDraft(principal: Principal, draftId: string): Promise<D
   const guard = tenantGuard(principal.tenantId);
   const { data } = await guard
     .from("course_drafts")
-    .select("id, source, current_step, status, updated_at, generated_course_id, state, descriptor_name")
+    .select("id, source, current_step, status, updated_at, generated_course_id, descriptor_error, state, descriptor_name")
     .eq("id", draftId)
     .maybeSingle();
   if (!data) return null;
@@ -365,7 +313,11 @@ export async function saveStep(
   return { ok: true, draftId, currentStep: newCurrentStep };
 }
 
-/** Descarta un borrador (NUNCA se borra: queda para auditoría). */
+/**
+ * Descarta un borrador (NUNCA se borra: queda para auditoría). Además de
+ * "in_progress", también se puede descartar uno `processing` o `failed`
+ * (abandonar un descriptor SENCE atascado o que falló al procesarse).
+ */
 export async function discardDraft(
   principal: Principal,
   draftId: string,
@@ -378,7 +330,7 @@ export async function discardDraft(
     .update({ status: "discarded" })
     .eq("id", draftId)
     .eq("tenant_id", principal.tenantId)
-    .eq("status", "in_progress")
+    .in("status", ["in_progress", "processing", "failed"])
     .select("id")
     .maybeSingle();
   if (error || !data) return { ok: false, error: "not_found" };

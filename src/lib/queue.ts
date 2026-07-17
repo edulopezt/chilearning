@@ -11,13 +11,15 @@ import IORedis from "ioredis";
  * `job.name` allá.
  *
  * Fail-open REAL (mismo patrón que `src/lib/redis.ts`): sin `REDIS_URL`, o si
- * la conexión falla, `enqueueScormExtract` devuelve `false` SIN lanzar — la
- * subida del paquete jamás debe abortar por esto. El job periódico
- * `scorm-sweep` del worker recoge lo que quedó `uploaded` sin encolar.
+ * la conexión falla, `enqueueScormExtract`/`enqueueDescriptorExtract`
+ * devuelven `false` SIN lanzar — la subida del paquete/descriptor jamás debe
+ * abortar por esto. Los jobs periódicos `scorm-sweep`/`descriptor-sweep` del
+ * worker recogen lo que quedó sin encolar.
  */
 
 const QUEUE_NAME = "sence";
 const SCORM_EXTRACT_JOB = "scorm-extract";
+const DESCRIPTOR_EXTRACT_JOB = "descriptor-extract";
 
 let cachedQueue: Queue | null | undefined;
 
@@ -51,6 +53,22 @@ export async function enqueueScormExtract(packageId: string, tenantId: string): 
     await queue.add(
       SCORM_EXTRACT_JOB,
       { packageId, tenantId },
+      { removeOnComplete: { count: 100 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Encola el procesamiento de un descriptor SENCE (.docx) recién subido al asistente. NUNCA lanza. */
+export async function enqueueDescriptorExtract(draftId: string, tenantId: string): Promise<boolean> {
+  const queue = getQueue();
+  if (!queue) return false;
+  try {
+    await queue.add(
+      DESCRIPTOR_EXTRACT_JOB,
+      { draftId, tenantId },
       { removeOnComplete: { count: 100 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } },
     );
     return true;
