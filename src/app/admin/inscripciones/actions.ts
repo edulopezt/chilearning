@@ -1,9 +1,11 @@
 "use server";
 
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 import { getPrincipal } from "@/modules/core/auth/session";
 import { importEnrollmentsFromCsv, type ImportOutcome, type ImportError } from "@/modules/academico/enrollment-service";
+import { assignEnrollmentCompany } from "@/modules/portal-empresa/company-service";
 
 export type ImportActionState =
   | { status: "idle" }
@@ -37,4 +39,17 @@ export async function importEnrollmentsAction(
   const result = await importEnrollmentsFromCsv(principal, actionId, csv, { courseUrl });
   if ("error" in result) return { status: "error", error: result.error };
   return { status: "done", outcome: result };
+}
+
+/**
+ * Vincula una inscripción a la empresa que manda al trabajador (task 5.2).
+ * El `select` envía "" para "particular" → `null` (nadie lo ve). El servicio
+ * verifica que inscripción y empresa sean del MISMO tenant antes de escribir.
+ */
+export async function assignEnrollmentCompanyAction(formData: FormData): Promise<void> {
+  const principal = await getPrincipal();
+  if (!principal) return;
+  const companyId = String(formData.get("companyId") ?? "");
+  await assignEnrollmentCompany(principal, String(formData.get("enrollmentId") ?? ""), companyId || null);
+  revalidatePath("/admin/inscripciones");
 }
