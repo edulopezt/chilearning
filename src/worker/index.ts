@@ -24,6 +24,7 @@ import { runExpiryAlertsTick } from "../modules/certificados/expiry-alerts";
 import { emailSenderFromEnv } from "../modules/comunicacion/email-sender";
 import { n8nEmitterFromEnv } from "../modules/comunicacion/n8n-webhook";
 import { runRemindersTick } from "../modules/comunicacion/reminders";
+import { runScormExtract, runScormSweep } from "../modules/contenido/scorm-extract";
 import { runTenantExportTick } from "../modules/reportes/tenant-export-runner";
 
 const QUEUE_NAME = "sence";
@@ -31,6 +32,8 @@ const TICK_JOB = "sence-tick";
 const REMINDERS_JOB = "reminders-tick";
 const EXPIRY_JOB = "expiry-alerts-tick";
 const TENANT_EXPORT_JOB = "tenant-export-tick";
+const SCORM_EXTRACT_JOB = "scorm-extract";
+const SCORM_SWEEP_JOB = "scorm-sweep";
 
 function remindersEveryMs(): number {
   const raw = Number(process.env.REMINDERS_EVERY_MS);
@@ -45,6 +48,11 @@ function certExpiryEveryMs(): number {
 function tenantExportEveryMs(): number {
   const raw = Number(process.env.TENANT_EXPORT_EVERY_MS);
   return Number.isInteger(raw) && raw >= 10_000 ? raw : 60 * 1000; // default 60 s: cola manual, hay que reaccionar rápido
+}
+
+function scormSweepEveryMs(): number {
+  const raw = Number(process.env.SCORM_SWEEP_EVERY_MS);
+  return Number.isInteger(raw) && raw >= 60_000 ? raw : 5 * 60 * 1000; // default 5 min
 }
 
 /** Índice user_id → {email, name} recorriendo el admin API (para el correo PII). */
@@ -108,6 +116,28 @@ async function tenantExportTick(db: SupabaseClient): Promise<void> {
   });
   if (summary.claimed) {
     console.log("[worker][tenant-export] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
+  }
+}
+
+/** Extracción/validación de UN paquete SCORM (task 5.1a, HU-4.2, ADR-006): job
+ *  one-off encolado por `src/lib/queue.ts` al subirse el .zip. */
+async function scormExtractTick(db: SupabaseClient, data: unknown): Promise<void> {
+  const { packageId, tenantId } = (data ?? {}) as { packageId?: unknown; tenantId?: unknown };
+  if (typeof packageId !== "string" || typeof tenantId !== "string") {
+    console.error("[worker][scorm-extract] job.data inválido", { data });
+    return;
+  }
+  const startedAt = Date.now();
+  const result = await runScormExtract(db, { packageId, tenantId, now: startedAt });
+  console.log("[worker][scorm-extract] " + JSON.stringify({ tookMs: Date.now() - startedAt, packageId, ...result }));
+}
+
+/** Red de seguridad periódica: paquetes `uploaded` sin encolar y `processing` huérfanos. */
+async function scormSweepTick(db: SupabaseClient): Promise<void> {
+  const startedAt = Date.now();
+  const summary = await runScormSweep(db, { now: startedAt });
+  if (summary.reprocessed > 0) {
+    console.log("[worker][scorm-sweep] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
   }
 }
 
@@ -220,6 +250,15 @@ async function main(): Promise<void> {
     { every: tenantExportEveryMs() },
     { name: TENANT_EXPORT_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
   );
+  // Red de seguridad de la ingesta SCORM (task 5.1a): recoge `uploaded` sin
+  // encolar (Redis caído al subir) y `processing` huérfanos (worker murió a
+  // medias). El job one-off `scorm-extract` lo encola `src/lib/queue.ts` al
+  // subirse cada paquete — este scheduler es SOLO el barrido periódico.
+  await queue.upsertJobScheduler(
+    SCORM_SWEEP_JOB,
+    { every: scormSweepEveryMs() },
+    { name: SCORM_SWEEP_JOB, opts: { removeOnComplete: { count: 50 }, removeOnFail: { age: 7 * 24 * 3600, count: 200 } } },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
@@ -227,6 +266,8 @@ async function main(): Promise<void> {
       if (job.name === REMINDERS_JOB) await remindersTick(db);
       else if (job.name === EXPIRY_JOB) await expiryAlertsTick(db);
       else if (job.name === TENANT_EXPORT_JOB) await tenantExportTick(db);
+      else if (job.name === SCORM_EXTRACT_JOB) await scormExtractTick(db, job.data);
+      else if (job.name === SCORM_SWEEP_JOB) await scormSweepTick(db);
       else await tick(db);
     },
     { connection, concurrency: 1 },

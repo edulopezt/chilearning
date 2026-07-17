@@ -3,7 +3,7 @@
  * constructor según el tipo. Sin IO.
  */
 
-export const LESSON_KINDS = ["text", "video", "file", "embed"] as const;
+export const LESSON_KINDS = ["text", "video", "file", "embed", "scorm"] as const;
 export type LessonKind = (typeof LESSON_KINDS)[number];
 
 export const LESSON_STATUSES = ["draft", "published"] as const;
@@ -28,6 +28,8 @@ export type LessonParseResult =
 const HTTPS_RE = /^https:\/\/[^\s]+$/;
 // ID de video Bunny/YouTube (alfa-numérico con - _) o una URL https.
 const VIDEO_ID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+// `content` de una lección `scorm` es el UUID del `scorm_packages.id`.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function parseLessonInput(raw: {
   title?: unknown;
@@ -57,6 +59,10 @@ export function parseLessonInput(raw: {
   } else if (kind === "file" || kind === "embed") {
     if (!HTTPS_RE.test(content)) {
       errors.push({ field: "content", message: "Ingresa una URL https válida." });
+    }
+  } else if (kind === "scorm") {
+    if (!UUID_RE.test(content)) {
+      errors.push({ field: "content", message: "El paquete SCORM no es válido." });
     }
   }
 
