@@ -201,13 +201,16 @@ describe("resolveStudentScormAccess — lookup por PAQUETE (proxy de assets, tas
     }
   });
 
-  it("el candado de asistencia CERRADO NO bloquea el proxy de assets (regla explícita del PR)", async () => {
+  it("el candado de asistencia CERRADO bloquea el proxy de assets (corrección 4-ojos MED, task 5.1b)", async () => {
+    // Antes de la corrección, una URL de asset ya conocida (historial,
+    // bookmark) seguía sirviendo contenido completo tras cerrarse el
+    // candado — HU-5.2 exige bloquear el CONTENIDO, no solo la navegación.
     const fx = await seedScormFixture({ attendanceLock: true }); // sin sence_sessions → candado cerrado
     const result = await resolveStudentScormAccess(studentPrincipal(STUDENT_A, TENANT_A), {
       by: "package",
       packageId: fx.packageId,
     });
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
   });
 
   it("alumno del TENANT B pidiendo un packageId del TENANT A → sin acceso (404, no fuga de existencia)", async () => {
@@ -239,7 +242,7 @@ describe("resolveStudentScormAccess — lookup por LECCIÓN (endpoint CMI, task 
     expect(result.ok).toBe(false);
   });
 
-  it("candado de asistencia CERRADO → sin acceso (a diferencia del proxy de assets)", async () => {
+  it("candado de asistencia CERRADO → sin acceso (mismo candado que el proxy de assets)", async () => {
     const fx = await seedScormFixture({ attendanceLock: true }); // sin sence_sessions → cerrado
     const result = await resolveStudentScormAccess(studentPrincipal(STUDENT_A, TENANT_A), {
       by: "lesson",

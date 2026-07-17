@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Scorm12API, Scorm2004API } from "scorm-again";
 
 import { esCL } from "@/i18n/es-CL";
+import { createSaveQueue } from "@/modules/contenido/domain/scorm-save-queue";
 
 const DEBOUNCE_MS = 2000;
 const AUTOSAVE_MS = 30_000;
@@ -37,29 +38,34 @@ function buildAssetSrc(packageId: string, entryHref: string): string {
 export function ScormPlayer({ lessonId, packageId, scormVersion, entryHref, initialCmi }: ScormPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<ScormApiInstance | null>(null);
+  // Serializa los envíos no-beacon (corrección 4-ojos MED "correctitud-cmi"):
+  // el commit del SCO, el heartbeat de 30 s y el finish/terminate disparan el
+  // mismo flush de forma independiente entre sí; sin esto, dos POST
+  // concurrentes pueden resolver fuera de orden en la red y el `upsert` del
+  // servidor (sin comparación de versión) deja ganar al ÚLTIMO EN LLEGAR, no
+  // al más reciente — ver `scorm-save-queue.ts`.
+  const saveQueueRef = useRef(createSaveQueue());
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   const iframeSrc = useMemo(() => buildAssetSrc(packageId, entryHref), [packageId, entryHref]);
   const cmiEndpoint = `/api/scorm/cmi/${lessonId}`;
 
-  /** Envía el estado CMI actual. `useBeacon`: flush final en descarga de página (no espera respuesta). */
-  const flush = useCallback(
-    (useBeacon: boolean) => {
+  // Ref con la función de envío ACTUAL ("latest ref"): se reasigna en un
+  // efecto (NUNCA durante el render, `react-hooks/refs`) para cerrar sobre el
+  // `cmiEndpoint` vigente, pero la identidad de `sendNowRef` es estable —
+  // permite el reintento coalescido (llamarse a sí misma al terminar) sin la
+  // auto-referencia dentro del mismo `useCallback` que
+  // `react-hooks/immutability` rechaza.
+  const sendNowRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    sendNowRef.current = () => {
       const api = apiRef.current;
-      if (!api) return;
-      const body = JSON.stringify({ cmi: api.renderCMIToJSONObject() });
-
-      if (useBeacon) {
-        // sendBeacon solo acepta ciertos tipos de body; un Blob con
-        // content-type json hace que el navegador mande el header correcto
-        // sin depender de que el listener de la página siga vivo.
-        if (typeof navigator.sendBeacon === "function") {
-          navigator.sendBeacon(cmiEndpoint, new Blob([body], { type: "application/json" }));
-        }
+      if (!api) {
+        saveQueueRef.current.finish();
         return;
       }
-
+      const body = JSON.stringify({ cmi: api.renderCMIToJSONObject() });
       setStatus("saving");
       fetch(cmiEndpoint, {
         method: "POST",
@@ -72,7 +78,47 @@ export function ScormPlayer({ lessonId, packageId, scormVersion, entryHref, init
           setStatus("saved");
           setSavedAt(Date.now());
         })
-        .catch(() => setStatus("error"));
+        .catch(() => setStatus("error"))
+        .finally(() => {
+          // Único envío en curso a la vez (corrección 4-ojos MED): si terminó
+          // con un pendiente coalescido en la cola, reenvía de inmediato.
+          if (saveQueueRef.current.finish() === "retry") sendNowRef.current();
+        });
+    };
+  }, [cmiEndpoint]);
+
+  /** Envía el estado CMI actual. `useBeacon`: flush final en descarga de página (no espera respuesta). */
+  const flush = useCallback(
+    (useBeacon: boolean) => {
+      const api = apiRef.current;
+      if (!api) return;
+
+      if (useBeacon) {
+        const body = JSON.stringify({ cmi: api.renderCMIToJSONObject() });
+        // sendBeacon solo acepta ciertos tipos de body; un Blob con
+        // content-type json hace que el navegador mande el header correcto
+        // sin depender de que el listener de la página siga vivo.
+        const sent =
+          typeof navigator.sendBeacon === "function" &&
+          navigator.sendBeacon(cmiEndpoint, new Blob([body], { type: "application/json" }));
+        if (!sent) {
+          // sendBeacon ausente o el payload superó la cuota del navegador
+          // (frecuente con `suspend_data` grande, cerca del tope de 256 KB):
+          // el retorno de sendBeacon se ignoraba antes, perdiendo el guardado
+          // final en silencio. Mejor esfuerzo con keepalive — no garantiza
+          // completar antes del unload, pero es preferible a no intentarlo.
+          fetch(cmiEndpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body,
+            keepalive: true,
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      if (saveQueueRef.current.request() === "queued") return;
+      sendNowRef.current();
     },
     [cmiEndpoint],
   );
@@ -163,9 +209,12 @@ export function ScormPlayer({ lessonId, packageId, scormVersion, entryHref, init
           {esCL.scorm.fullscreen}
         </button>
       </div>
-      {/* min-w evita overflow horizontal en 360 px (RNF-6); la altura usa dvh
-          para comportarse bien en móvil con barras de navegador dinámicas. */}
-      <div ref={containerRef} className="min-w-[360px] overflow-hidden rounded-md border bg-black">
+      {/* min-w-0 (NO min-w-[360px], que forzaba un ancho fijo más ancho que
+          el contenedor con padding y producía scroll horizontal a 360 px —
+          corrección 4-ojos MED): permite encogerse dentro del flex-item
+          padre sin desbordar (RNF-6); la altura usa dvh para comportarse
+          bien en móvil con barras de navegador dinámicas. */}
+      <div ref={containerRef} className="min-w-0 overflow-hidden rounded-md border bg-black">
         <iframe
           src={iframeSrc}
           title={esCL.scorm.playerTitle}

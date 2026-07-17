@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { assertSameOrigin } from "@/lib/csrf";
 import { enforce } from "@/lib/rate-limit";
+import { MAX_CMI_BYTES } from "@/modules/contenido/domain/cmi";
 import { getScormCmiState, saveScormCmiState } from "@/modules/contenido/scorm-runtime-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 
@@ -16,8 +17,19 @@ import { getPrincipal } from "@/modules/core/auth/session";
 
 const bodySchema = z.object({ cmi: z.record(z.string(), z.unknown()) });
 
+// Margen sobre MAX_CMI_BYTES para el chequeo por `content-length` (cubre el
+// envoltorio `{"cmi":...}` + espacios): NO reemplaza el guard exacto en bytes
+// de `saveScormCmiState` (que mide el objeto `cmi` ya parseado), solo evita
+// parsear el body completo y golpear la BD para payloads YA descartables por
+// tamaño (corrección 4-ojos MED, task 5.1b).
+const CONTENT_LENGTH_OVERHEAD_BYTES = 1024;
+
 function notFound(): NextResponse {
   return NextResponse.json({ error: "not_found" }, { status: 404 });
+}
+
+function tooLarge(): NextResponse {
+  return NextResponse.json({ error: "too_large" }, { status: 413 });
 }
 
 export async function GET(
@@ -51,6 +63,16 @@ export async function POST(
     { surface: "scorm_cmi", dim: "user", id: `${principal.tenantId ?? "no-tenant"}:${principal.userId}`, limit: 30, windowSec: 60 },
   ]);
   if (limited) return limited;
+
+  // Rechazo temprano por tamaño: ANTES de parsear el body completo y de la
+  // resolución de acceso (2-4 queries a Postgres en `resolveStudentScormAccess`)
+  // — sin esto, cualquier usuario autenticado (tenga o no acceso al lessonId)
+  // podía forzar ese trabajo con un body arbitrariamente grande antes de que
+  // el guard de tamaño lo rechazara.
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_CMI_BYTES + CONTENT_LENGTH_OVERHEAD_BYTES) {
+    return tooLarge();
+  }
 
   let rawBody: unknown;
   try {

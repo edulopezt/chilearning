@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { buildScormContentCsp } from "@/lib/security-headers";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { contentTypeFor, sanitizeScormPath } from "@/modules/contenido/domain/scorm-zip";
 import { resolveStaffPackageAccess, resolveStudentScormAccess } from "@/modules/contenido/scorm-runtime-service";
@@ -76,6 +77,10 @@ export async function GET(
       // el asset entre navegaciones del mismo SCO sin re-descargarlo siempre.
       "cache-control": "private, max-age=300",
       "x-content-type-options": "nosniff",
+      // Mitigación 4-ojos (HIGH): acota el radio de daño del iframe
+      // allow-same-origin mientras no exista el rediseño postMessage — ver
+      // el comentario de `buildScormContentCsp`.
+      "content-security-policy": buildScormContentCsp(),
     },
   });
 }

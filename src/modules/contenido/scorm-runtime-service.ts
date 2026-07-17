@@ -94,11 +94,14 @@ function isScormVersion(v: string | null): v is ScormVersion {
 
 /**
  * ¿Tiene el alumno actual una inscripción vigente y desbloqueada (candado
- * SENCE) para el curso de esta lección scorm? Solo se evalúa para el lookup
- * por LECCIÓN (endpoint CMI): el proxy de assets (lookup por paquete) sirve
- * bytes ya autorizados y NO depende del candado de contenido (misma regla que
- * el resto de assets estáticos de una lección publicada; ver comentario en la
- * ruta del proxy).
+ * SENCE) para el curso de esta lección scorm? Se evalúa para AMBOS lookups
+ * (paquete y lección, corrección 4-ojos MED task 5.1b): el lookup por paquete
+ * alimenta el proxy de assets, que sirve los bytes reales del SCO — si solo
+ * se revalidara en el lookup por lección (endpoint CMI), una URL de asset ya
+ * conocida por el alumno (historial del navegador, devtools, bookmark) seguiría
+ * sirviendo contenido completo del curso después de que el candado se cierre
+ * (sesión SENCE vencida/cerrada), contradiciendo HU-5.2 ("bloqueo el
+ * contenido del curso SENCE hasta que la asistencia del día esté registrada").
  */
 async function resolveUnlockedEnrollment(
   guard: ReturnType<typeof tenantGuard>,
@@ -202,25 +205,12 @@ export async function resolveStudentScormAccess(
   if (pkg.course_id !== lesson.course_id) return { ok: false };
   if (!isScormVersion(pkg.scorm_version) || !pkg.extracted_prefix || !pkg.entry_href) return { ok: false };
 
-  // El candado de asistencia SOLO aplica al lookup por lección (endpoint CMI):
+  // El candado de asistencia aplica a AMBOS lookups (corrección 4-ojos MED):
   // el reproductor ya lo evaluó para decidir si mostrar la página (mismo
   // check que `mi-curso/page.tsx`), y esta es la defensa de servidor
-  // equivalente para quien llame al endpoint directo sin pasar por la página.
-  const enrollment =
-    lookup.by === "lesson"
-      ? await resolveUnlockedEnrollment(guard, tenantId, principal.userId, lesson.course_id, nowMs)
-      : await (async () => {
-          const { data } = await guard.db
-            .from("enrollments")
-            .select("id, actions!inner(course_id)")
-            .eq("tenant_id", tenantId)
-            .eq("user_id", principal.userId)
-            .eq("actions.course_id", lesson!.course_id)
-            .order("created_at", { ascending: true })
-            .limit(1)
-            .maybeSingle();
-          return data ? { id: data.id as string } : null;
-        })();
+  // equivalente para quien llame a cualquiera de las dos rutas directo, sin
+  // pasar por la página — incluida una URL de asset ya conocida tras el cierre.
+  const enrollment = await resolveUnlockedEnrollment(guard, tenantId, principal.userId, lesson.course_id, nowMs);
   if (!enrollment) return { ok: false };
 
   return {
@@ -344,7 +334,12 @@ export async function saveScormCmiState(
 ): Promise<SaveCmiResult> {
   const resolved = await resolveStudentScormAccess(principal, { by: "lesson", lessonId });
   if (!resolved.ok) return { ok: false, error: "not_found" };
-  if (JSON.stringify(cmi).length > MAX_CMI_BYTES) return { ok: false, error: "too_large" };
+  // `Buffer.byteLength(..., "utf8")` (bytes), NO `.length` (unidades UTF-16):
+  // espeja el CHECK `pg_column_size(data) <= 262144` de la migración, que
+  // mide bytes de la codificación jsonb en disco — un CMI con tildes/ñ podía
+  // pasar un chequeo en `.length` y seguir violando el CHECK de Postgres
+  // (corrección 4-ojos LOW, task 5.1b).
+  if (Buffer.byteLength(JSON.stringify(cmi), "utf8") > MAX_CMI_BYTES) return { ok: false, error: "too_large" };
 
   const { tenantId, enrollmentId, packageId, scormVersion } = resolved.access;
   const guard = tenantGuard(tenantId);
@@ -361,7 +356,11 @@ export async function saveScormCmiState(
     }),
     { onConflict: "enrollment_id,package_id" },
   );
-  if (error) return { ok: false, error: "not_found" };
+  // "23514" = check_violation: el guard de bytes de arriba no coincide 1:1
+  // con el CHECK de Postgres (éste sí mide bytes exactos de jsonb) — si aun
+  // así lo dispara, se reporta como `too_large` (413), no como `not_found`
+  // (404), para no ocultar la causa real (corrección 4-ojos LOW, task 5.1b).
+  if (error) return { ok: false, error: error.code === "23514" ? "too_large" : "not_found" };
 
   if (signals.completed) {
     await setLessonProgress(principal, resolved.access.lessonId, true);
