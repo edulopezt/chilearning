@@ -16,6 +16,7 @@ const KIND_LABEL: Record<string, string> = {
   video: esCL.lessons.kindVideo,
   file: esCL.lessons.kindFile,
   embed: esCL.lessons.kindEmbed,
+  scorm: esCL.lessons.kindScorm,
 };
 
 export default async function LessonsPage({ params }: { params: Promise<{ courseId: string }> }) {
@@ -48,6 +49,9 @@ export default async function LessonsPage({ params }: { params: Promise<{ course
           </Link>
           <Link href={`/admin/cursos/${courseId}/tareas`} className="underline">
             {esCL.assignments.title} →
+          </Link>
+          <Link href={`/admin/cursos/${courseId}/scorm`} className="underline">
+            {esCL.scorm.title} →
           </Link>
         </span>
       </header>

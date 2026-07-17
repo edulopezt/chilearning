@@ -14,6 +14,10 @@ const CONTENT_LABEL: Record<LessonKind, string> = {
   video: t.contentVideoLabel,
   file: t.contentFileLabel,
   embed: t.contentEmbedLabel,
+  // Las lecciones `scorm` NO se crean desde este formulario (no está en el
+  // <select> de abajo): se crean desde /admin/cursos/[courseId]/scorm cuando
+  // el paquete queda `ready`. La etiqueta solo satisface la exhaustividad del Record.
+  scorm: "",
 };
 
 function fieldErrors(state: LessonMutationResult | null): Record<string, string> {

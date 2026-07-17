@@ -35,4 +35,12 @@ describe("parseLessonInput", () => {
     expect(parseLessonInput({ ...base, kind: "audio" }).ok).toBe(false);
     expect(parseLessonInput({ ...base, status: "live" }).ok).toBe(false);
   });
+
+  it("scorm exige el UUID del paquete (task 5.1a)", () => {
+    expect(
+      parseLessonInput({ ...base, kind: "scorm", content: "c0000000-0000-4000-8000-000000000001" }).ok,
+    ).toBe(true);
+    expect(parseLessonInput({ ...base, kind: "scorm", content: "no-es-un-uuid" }).ok).toBe(false);
+    expect(parseLessonInput({ ...base, kind: "scorm", content: "" }).ok).toBe(false);
+  });
 });

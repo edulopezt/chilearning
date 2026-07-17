@@ -20,7 +20,13 @@ export interface LessonRow {
   status: string;
 }
 
-export type LessonServiceError = "forbidden" | "no_tenant" | "not_found" | "course_not_found";
+export type LessonServiceError =
+  | "forbidden"
+  | "no_tenant"
+  | "not_found"
+  | "course_not_found"
+  | "package_not_found"
+  | "package_not_ready";
 export type LessonMutationResult =
   | { ok: true; id: string }
   | { ok: false; error: LessonServiceError }
@@ -48,6 +54,29 @@ async function courseInTenant(guard: ReturnType<typeof tenantGuard>, courseId: s
   return Boolean(data);
 }
 
+/**
+ * `content` de una lección `kind=scorm` es el UUID de un `scorm_packages.id`.
+ * Debe pertenecer al MISMO tenant (garantizado por `tenantGuard`) Y al MISMO
+ * curso que la lección; si se publica, el paquete debe estar `ready` (si no,
+ * SENCE mostraría un contenido roto al alumno).
+ */
+async function validateScormPackageRef(
+  guard: ReturnType<typeof tenantGuard>,
+  courseId: string,
+  packageId: string,
+  publishing: boolean,
+): Promise<LessonServiceError | null> {
+  const { data: pkg } = await guard.db
+    .from("scorm_packages")
+    .select("course_id, status")
+    .eq("id", packageId)
+    .eq("tenant_id", guard.tenantId)
+    .maybeSingle();
+  if (!pkg || pkg.course_id !== courseId) return "package_not_found";
+  if (publishing && pkg.status !== "ready") return "package_not_ready";
+  return null;
+}
+
 export async function createLesson(
   principal: Principal,
   courseId: string,
@@ -60,6 +89,11 @@ export async function createLesson(
 
   const guard = tenantGuard(principal.tenantId);
   if (!(await courseInTenant(guard, courseId))) return { ok: false, error: "course_not_found" };
+
+  if (parsed.value.kind === "scorm") {
+    const err = await validateScormPackageRef(guard, courseId, parsed.value.content, parsed.value.status === "published");
+    if (err) return { ok: false, error: err };
+  }
 
   // La nueva lección va al final (posición máxima + 1).
   const { data: last } = await guard.db
@@ -92,6 +126,19 @@ export async function updateLesson(
   if (!parsed.ok) return { ok: false, validation: parsed.errors };
 
   const guard = tenantGuard(principal.tenantId);
+
+  if (parsed.value.kind === "scorm") {
+    const { data: existing } = await guard.from("lessons").select("course_id").eq("id", lessonId).maybeSingle();
+    if (!existing) return { ok: false, error: "not_found" };
+    const err = await validateScormPackageRef(
+      guard,
+      existing.course_id as string,
+      parsed.value.content,
+      parsed.value.status === "published",
+    );
+    if (err) return { ok: false, error: err };
+  }
+
   const { data, error } = await guard.db
     .from("lessons")
     .update(toRow(parsed.value))
