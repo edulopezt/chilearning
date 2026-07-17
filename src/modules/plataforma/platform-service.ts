@@ -2,7 +2,7 @@ import "server-only";
 
 import { writeAudit } from "@/lib/audit";
 import { probeDb } from "@/lib/observability/db-probe";
-import { buildHealthPayload, type HealthPayload } from "@/lib/observability/health";
+import { appVersion, buildHealthPayload, type HealthPayload } from "@/lib/observability/health";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { isSuperadmin, type Principal } from "@/modules/core/domain/rbac";
 import {
@@ -27,6 +27,18 @@ export interface PlatformOverview {
   readonly summary: PlatformSummary;
   readonly tenants: readonly TenantStatsRow[];
   readonly health: HealthPayload;
+  /**
+   * Estado de la LECTURA de métricas, distinto de la salud de la BD.
+   *
+   * "unavailable" => `summary` y `tenants` NO son confiables (van en cero/vacío
+   * porque la RPC falló, no porque la plataforma esté vacía). El llamador DEBE
+   * distinguir los dos casos: "no pude leer" y "no hay nada" son estados
+   * distintos y colapsarlos hace que el tablero afirme que no hay nada que
+   * atender — justo lo contrario de su propósito (HU-10.3). La sonda de salud no
+   * cubre esto: corre con el cliente ANÓNIMO contra otra RPC (`db-probe.ts`), así
+   * que sigue diciendo "ok" aunque `platform_tenant_stats` esté rota.
+   */
+  readonly metrics: "ok" | "unavailable";
 }
 
 /** Fila cruda de la RPC (snake_case de Postgres). */
@@ -43,7 +55,7 @@ interface RawStatsRow {
   courses: number | string;
   certificates: number | string;
   open_alerts: number | string;
-  sence_error_alerts_7d: number | string;
+  sence_errors_7d: number | string;
   last_enrollment_at: string | null;
 }
 
@@ -71,7 +83,7 @@ function mapRow(raw: RawStatsRow): TenantStatsRow {
     courses: toCount(raw.courses),
     certificates: toCount(raw.certificates),
     openAlerts: toCount(raw.open_alerts),
-    senceErrorAlerts7d: toCount(raw.sence_error_alerts_7d),
+    senceErrors7d: toCount(raw.sence_errors_7d),
     lastEnrollmentAt: raw.last_enrollment_at,
   };
 }
@@ -108,21 +120,20 @@ export async function getPlatformOverview(
 
   // La salud se mide SIEMPRE, incluso si las métricas fallan: si la BD está
   // caída, el tablero debe poder decirlo en vez de romperse entero.
-  const health = buildHealthPayload({ db: await probeDb() }, versionLabel(), new Date().toISOString());
+  const health = buildHealthPayload({ db: await probeDb() }, appVersion(), new Date().toISOString());
 
   if (error || !Array.isArray(data)) {
-    if (error) {
-      console.error("[platform-service] platform_tenant_stats falló", { message: error.message });
-    }
-    return { summary: summarize([]), tenants: [], health };
+    // Se loguea SIEMPRE, también cuando `data` no es arreglo sin `error`: esa
+    // rama antes no dejaba ni un rastro.
+    console.error("[platform-service] platform_tenant_stats falló", {
+      message: error?.message ?? "la RPC no devolvió un arreglo",
+    });
+    // Ceros VISIBLEMENTE marcados como no confiables, nunca ceros mudos.
+    return { summary: summarize([]), tenants: [], health, metrics: "unavailable" };
   }
 
   const rows = (data as RawStatsRow[]).map(mapRow);
-  return { summary: summarize(rows), tenants: sortForBoard(rows), health };
-}
-
-function versionLabel(): string {
-  return process.env.SENTRY_RELEASE ?? process.env.APP_VERSION ?? "dev";
+  return { summary: summarize(rows), tenants: sortForBoard(rows), health, metrics: "ok" };
 }
 
 /**

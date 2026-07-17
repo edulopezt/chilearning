@@ -112,12 +112,117 @@ describe("getPlatformOverview (HU-10.3)", () => {
     expect(typeof overview!.health.version).toBe("string");
   });
 
-  it("si la RPC rechaza (JWT sin el claim), degrada a tablero vacío en vez de romper", async () => {
-    // El gate de app pasa (principal miente), pero la BD manda: 42501.
+  it("si la RPC falla, el tablero lo DICE (no pinta ceros indistinguibles de una plataforma vacía)", async () => {
+    // El gate de app pasa (principal miente), pero la BD manda: 42501. Sirve como
+    // fallo REAL de la RPC — igual que un timeout, un PGRST202 tras un deploy o un
+    // 5xx de PostgREST, que caen en la misma rama.
     const rpc = await sessionRpc({ sub: SUPERADMIN_ID, tenant_id: TENANT_A, roles: ["otec_admin"] });
     const overview = await getPlatformOverview(superadmin, { rpc });
+
+    // No revienta: la salud debe seguir siendo visible aunque las métricas no.
+    expect(overview).not.toBeNull();
+    expect(overview!.health.checks.db).toBe("ok");
+
+    // Lo que importa: "no pude leer" NO se colapsa en "no hay nada". Sin esta
+    // marca el tablero afirmaba 0 OTECs, 0 alertas y 0 errores SENCE con la salud
+    // en verde — o sea, "no hay nada que atender" — que es exactamente lo
+    // contrario de lo que este tablero existe para detectar (HU-10.3).
+    expect(overview!.metrics).toBe("unavailable");
     expect(overview!.tenants).toEqual([]);
-    expect(overview!.summary.totalTenants).toBe(0);
+  });
+
+  it("la lectura exitosa se marca como confiable", async () => {
+    const rpc = await sessionRpc({ sub: SUPERADMIN_ID, roles: ["superadmin"] });
+    const overview = await getPlatformOverview(superadmin, { rpc });
+    expect(overview!.metrics).toBe("ok");
+  });
+});
+
+describe("sence_errors_7d: errores SENCE REALES, no alertas disparadas (CA HU-10.3)", () => {
+  /**
+   * Tenant ficticio propio: los conteos se afirman EXACTOS, así que no pueden
+   * depender de lo que inserten otras suites (que corren en paralelo).
+   */
+  const OWN_TENANT = "33333333-3333-4333-8333-333333333333";
+
+  beforeAll(async () => {
+    await svc.from("tenants").upsert({
+      id: OWN_TENANT,
+      slug: "otec-errores-sence-test",
+      name: "OTEC Errores SENCE (test)",
+    });
+
+    const stamp = `plat-${Date.now()}-${Math.random()}`;
+    const now = new Date().toISOString();
+    // `received_at` va EXPLÍCITO en todas las filas: en un insert por lote
+    // PostgREST usa la unión de las claves y manda NULL donde faltan, así que el
+    // `default now()` de la columna no se aplica y el not-null revienta.
+    const { error: insertError } = await svc.from("sence_events").insert([
+      // Cuentan: errores dentro de los 7 días.
+      {
+        tenant_id: OWN_TENANT,
+        kind: "start_error",
+        dedupe_hash: `${stamp}-1`,
+        error_codes: ["100"],
+        received_at: now,
+      },
+      {
+        tenant_id: OWN_TENANT,
+        kind: "close_error",
+        dedupe_hash: `${stamp}-2`,
+        error_codes: ["313"],
+        received_at: now,
+      },
+      // No cuenta: no es un error.
+      {
+        tenant_id: OWN_TENANT,
+        kind: "start_ok",
+        dedupe_hash: `${stamp}-3`,
+        error_codes: [],
+        received_at: now,
+      },
+      // No cuenta: fuera de la ventana.
+      {
+        tenant_id: OWN_TENANT,
+        kind: "start_error",
+        dedupe_hash: `${stamp}-4`,
+        error_codes: ["100"],
+        received_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ]);
+    if (insertError) throw new Error(`no se pudo sembrar sence_events: ${insertError.message}`);
+  });
+
+  it("cuenta los eventos start_error/close_error de la ventana, y solo esos", async () => {
+    const rpc = await sessionRpc({ sub: SUPERADMIN_ID, roles: ["superadmin"] });
+    const overview = await getPlatformOverview(superadmin, { rpc });
+    const own = overview!.tenants.find((t) => t.tenantId === OWN_TENANT);
+    expect(own).toBeDefined();
+
+    // Dos errores REALES. Cuando esta columna contaba `alerts.kind =
+    // 'sence_error_rate'`, este mismo escenario reportaba 0: el worker exige
+    // `total >= minEvents` (5 por defecto) antes de insertar una alerta, así que
+    // una OTEC con pocos callbacks y 100% de error salía impecable.
+    expect(own!.senceErrors7d).toBe(2);
+  });
+
+  it("una alerta de tasa de error NO infla el conteo de errores", async () => {
+    const { error: alertError } = await svc.from("alerts").insert({
+      tenant_id: OWN_TENANT,
+      kind: "sence_error_rate",
+      message: "Tasa de error SENCE alta en rcetest (dato de prueba).",
+      details: { environment: "rcetest", rate: 1, total: 2 },
+    });
+    expect(alertError).toBeNull();
+
+    const rpc = await sessionRpc({ sub: SUPERADMIN_ID, roles: ["superadmin"] });
+    const overview = await getPlatformOverview(superadmin, { rpc });
+    const own = overview!.tenants.find((t) => t.tenantId === OWN_TENANT)!;
+
+    // La alerta se ve como alerta (presión operativa)...
+    expect(own.openAlerts).toBeGreaterThanOrEqual(1);
+    // ...pero NO como un error: los errores siguen siendo los 2 eventos reales.
+    expect(own.senceErrors7d).toBe(2);
   });
 });
 

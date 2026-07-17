@@ -18,10 +18,18 @@ const PLAN_LABEL: Record<string, string> = {
   enterprise: esCL.superadmin.planEnterprise,
 };
 
-/** Fecha corta es-CL; null => "Sin actividad". */
+/**
+ * Fecha corta es-CL; null => "Sin actividad". La zona horaria es EXPLÍCITA: este
+ * es un Server Component, así que sin ella formatea con la TZ del contenedor
+ * (UTC en Coolify) y toda actividad entre 00:00 y 04:00 UTC se pinta con la fecha
+ * del día siguiente. Misma convención que `tablero/notas` y `reportes`.
+ */
 function formatDate(iso: string | null): string {
   if (!iso) return t.never;
-  return new Intl.DateTimeFormat("es-CL", { dateStyle: "short" }).format(new Date(iso));
+  return new Intl.DateTimeFormat("es-CL", {
+    dateStyle: "short",
+    timeZone: "America/Santiago",
+  }).format(new Date(iso));
 }
 
 function StatusBadge({ status }: Readonly<{ status: TenantStatsRow["status"] }>) {
@@ -74,8 +82,13 @@ export default async function SuperadminBoardPage() {
       </main>
     );
   }
-  const { summary, tenants, health } = overview;
+  const { summary, tenants, health, metrics } = overview;
   const dbOk = health.checks.db === "ok";
+  // Las métricas fallaron: `summary`/`tenants` van en cero/vacío porque no se
+  // pudieron leer, NO porque la plataforma esté vacía. Pintarlos sería afirmar
+  // que no hay OTECs suspendidas, ni alertas, ni errores SENCE — exactamente lo
+  // que este tablero existe para detectar. Mejor no decir nada que mentir en cero.
+  const metricsOk = metrics === "ok";
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-6 p-4 sm:p-6">
@@ -92,18 +105,31 @@ export default async function SuperadminBoardPage() {
         </Link>
       </header>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">{t.summaryHeading}</h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          <SummaryCard label={t.totalTenants} value={summary.totalTenants} />
-          <SummaryCard label={t.active} value={summary.active} />
-          <SummaryCard label={t.suspended} value={summary.suspended} />
-          <SummaryCard label={t.totalStudents} value={summary.totalStudents} />
-          <SummaryCard label={t.totalEnrollments} value={summary.totalEnrollments} />
-          <SummaryCard label={t.openAlerts} value={summary.openAlerts} />
-        </div>
-      </section>
+      {!metricsOk && (
+        <p
+          role="alert"
+          className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
+        >
+          {t.metricsUnavailable}
+        </p>
+      )}
 
+      {metricsOk && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold">{t.summaryHeading}</h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <SummaryCard label={t.totalTenants} value={summary.totalTenants} />
+            <SummaryCard label={t.active} value={summary.active} />
+            <SummaryCard label={t.suspended} value={summary.suspended} />
+            <SummaryCard label={t.totalStudents} value={summary.totalStudents} />
+            <SummaryCard label={t.totalEnrollments} value={summary.totalEnrollments} />
+            <SummaryCard label={t.openAlerts} value={summary.openAlerts} />
+          </div>
+        </section>
+      )}
+
+      {/* La salud se pinta SIEMPRE, también con las métricas caídas: una BD abajo
+          debe seguir siendo visible. */}
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">{t.healthHeading}</h2>
         <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
@@ -128,6 +154,7 @@ export default async function SuperadminBoardPage() {
         </div>
       </section>
 
+      {metricsOk && (
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">{t.tenantsHeading}</h2>
         {tenants.length === 0 ? (
@@ -167,8 +194,8 @@ export default async function SuperadminBoardPage() {
                     </div>
                     <div className="flex justify-between gap-2">
                       <dt className="text-muted-foreground">{t.colSenceErrors}</dt>
-                      <dd className={`font-medium tabular-nums ${tenant.senceErrorAlerts7d > 0 ? "text-red-600 dark:text-red-400" : ""}`}>
-                        {tenant.senceErrorAlerts7d}
+                      <dd className={`font-medium tabular-nums ${tenant.senceErrors7d > 0 ? "text-red-600 dark:text-red-400" : ""}`}>
+                        {tenant.senceErrors7d}
                       </dd>
                     </div>
                     <div className="col-span-2 flex justify-between gap-2">
@@ -222,8 +249,8 @@ export default async function SuperadminBoardPage() {
                       <td className={`p-2 text-right tabular-nums ${tenant.openAlerts > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>
                         {tenant.openAlerts}
                       </td>
-                      <td className={`p-2 text-right tabular-nums ${tenant.senceErrorAlerts7d > 0 ? "text-red-600 dark:text-red-400" : ""}`}>
-                        {tenant.senceErrorAlerts7d}
+                      <td className={`p-2 text-right tabular-nums ${tenant.senceErrors7d > 0 ? "text-red-600 dark:text-red-400" : ""}`}>
+                        {tenant.senceErrors7d}
                       </td>
                       <td className="p-2 whitespace-nowrap">{formatDate(tenant.lastEnrollmentAt)}</td>
                       <td className="p-2">
@@ -245,6 +272,7 @@ export default async function SuperadminBoardPage() {
           </>
         )}
       </section>
+      )}
     </main>
   );
 }

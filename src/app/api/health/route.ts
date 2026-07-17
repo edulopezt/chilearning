@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { probeDb } from "@/lib/observability/db-probe";
-import { buildHealthPayload, type HealthChecks, type HealthPayload } from "@/lib/observability/health";
+import { appVersion, buildHealthPayload, type HealthChecks, type HealthPayload } from "@/lib/observability/health";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +26,9 @@ export async function GET(): Promise<Response> {
     return NextResponse.json(cache.payload, { status: cache.payload.status === "ok" ? 200 : 503, headers: { "cache-control": "no-store" } });
   }
 
-  const version = process.env.SENTRY_RELEASE ?? process.env.APP_VERSION ?? "dev";
   const db: HealthChecks["db"] = await probeDb();
 
-  const payload = buildHealthPayload({ db }, version, new Date(now).toISOString());
+  const payload = buildHealthPayload({ db }, appVersion(), new Date(now).toISOString());
   cache = { payload, expiresAt: now + CACHE_MS };
   return NextResponse.json(payload, { status: payload.status === "ok" ? 200 : 503, headers: { "cache-control": "no-store" } });
 }

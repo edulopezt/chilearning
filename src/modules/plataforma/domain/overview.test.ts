@@ -18,7 +18,7 @@ function row(over: Partial<TenantStatsRow> & { slug: string }): TenantStatsRow {
     courses: 0,
     certificates: 0,
     openAlerts: 0,
-    senceErrorAlerts7d: 0,
+    senceErrors7d: 0,
     lastEnrollmentAt: null,
     ...over,
   };

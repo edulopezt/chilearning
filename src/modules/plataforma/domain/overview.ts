@@ -23,7 +23,8 @@ export interface TenantStatsRow {
   readonly courses: number;
   readonly certificates: number;
   readonly openAlerts: number;
-  readonly senceErrorAlerts7d: number;
+  /** Eventos `start_error`/`close_error` de los últimos 7 días (errores REALES). */
+  readonly senceErrors7d: number;
   readonly lastEnrollmentAt: string | null;
 }
 

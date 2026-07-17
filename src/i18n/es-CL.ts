@@ -1088,6 +1088,8 @@ export const esCL = {
       openAlerts: "Alertas abiertas",
       tenantsHeading: "Detalle por OTEC",
       empty: "Aún no hay OTECs que medir.",
+      metricsUnavailable:
+        "No pudimos cargar las métricas de la plataforma, así que no las mostramos: unos números en cero se leerían como «no hay nada que atender», y eso no lo sabemos. Reintenta en unos minutos; si persiste, revisa la salud del sistema y los registros del servidor.",
       colTenant: "OTEC",
       colPlan: "Plan",
       colStatus: "Estado",

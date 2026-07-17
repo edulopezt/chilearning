@@ -40,7 +40,7 @@ const EXPECTED_KEYS = [
   "name",
   "open_alerts",
   "plan",
-  "sence_error_alerts_7d",
+  "sence_errors_7d",
   "slug",
   "status",
   "students",
@@ -174,7 +174,7 @@ describe("platform_tenant_stats: el superadmin ve la plataforma completa", () =>
       "courses",
       "certificates",
       "open_alerts",
-      "sence_error_alerts_7d",
+      "sence_errors_7d",
     ];
     for (const row of rows) {
       for (const key of counters) {
