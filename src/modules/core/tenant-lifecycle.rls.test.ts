@@ -129,33 +129,40 @@ describe("la suspensión corta el plano de datos con el JWT YA emitido (4-ojos)"
     expect(insertErr).toBeNull();
     const tenantId = created!.id as string;
 
-    // Token acuñado ANTES de la suspensión (sigue vigente 1 h).
-    const db = clientFor(
-      await mintJwt({
-        sub: "cccccccc-0000-4000-8000-000000000001",
-        tenant_id: tenantId,
-        roles: ["otec_admin"],
-      }),
-    );
+    // El tenant efímero se borra SIEMPRE: otras suites de la misma corrida
+    // afirman sobre la lista completa de tenants (auth-matrix), así que dejar
+    // residuo las rompe según el orden de ejecución.
+    try {
+      // Token acuñado ANTES de la suspensión (sigue vigente 1 h).
+      const db = clientFor(
+        await mintJwt({
+          sub: "cccccccc-0000-4000-8000-000000000001",
+          tenant_id: tenantId,
+          roles: ["otec_admin"],
+        }),
+      );
 
-    // Con el tenant activo, el token opera.
-    const before = await db.from("tenants").select("id").eq("id", tenantId);
-    expect(before.error).toBeNull();
-    expect(before.data?.length).toBe(1);
+      // Con el tenant activo, el token opera.
+      const before = await db.from("tenants").select("id").eq("id", tenantId);
+      expect(before.error).toBeNull();
+      expect(before.data?.length).toBe(1);
 
-    // Suspensión: el MISMO token deja de ver todo AL INSTANTE (jwt_tenant_id
-    // devuelve NULL => toda policy de negocio deniega, sin esperar el refresh).
-    await svc.from("tenants").update({ status: "suspended" }).eq("id", tenantId);
-    const during = await db.from("tenants").select("id").eq("id", tenantId);
-    expect(during.error).toBeNull();
-    expect(during.data ?? []).toEqual([]);
-    const memberships = await db.from("memberships").select("id");
-    expect(memberships.data ?? []).toEqual([]);
+      // Suspensión: el MISMO token deja de ver todo AL INSTANTE (jwt_tenant_id
+      // devuelve NULL => toda policy de negocio deniega, sin esperar el refresh).
+      await svc.from("tenants").update({ status: "suspended" }).eq("id", tenantId);
+      const during = await db.from("tenants").select("id").eq("id", tenantId);
+      expect(during.error).toBeNull();
+      expect(during.data ?? []).toEqual([]);
+      const memberships = await db.from("memberships").select("id");
+      expect(memberships.data ?? []).toEqual([]);
 
-    // Reactivación en 1 clic: el mismo token vuelve a operar sin re-login.
-    await svc.from("tenants").update({ status: "active" }).eq("id", tenantId);
-    const after = await db.from("tenants").select("id").eq("id", tenantId);
-    expect(after.data?.length).toBe(1);
+      // Reactivación en 1 clic: el mismo token vuelve a operar sin re-login.
+      await svc.from("tenants").update({ status: "active" }).eq("id", tenantId);
+      const after = await db.from("tenants").select("id").eq("id", tenantId);
+      expect(after.data?.length).toBe(1);
+    } finally {
+      await svc.from("tenants").delete().eq("id", tenantId);
+    }
   });
 });
 
