@@ -49,3 +49,14 @@ Sin `N8N_WEBHOOK_URL`/`N8N_WEBHOOK_SECRET` el emisor es **no-op** (verde en dev/
 
 Nunca contiene RUN, nombre, correo ni el `user_id` crudo. Verificado por
 `src/modules/comunicacion/domain/automation.test.ts` y `reminders.integration.test.ts`.
+
+## Digest semanal de empresa (task 5.9, HU-8.2) — SIN evento a n8n (decisión)
+
+El job `company-weekly-digest-tick` (`src/modules/portal-empresa/company-digest-service.ts`)
+manda el correo semanal a RRHH **directo** por `EmailSender`, igual que `reminders-tick` y
+`expiry-alerts-tick`. A diferencia de esos dos, **no emite además un evento agregado a n8n**: la
+CA de HU-8.2 dice "n8n permitido", no obligatorio, y hoy no hay un flujo de n8n que consuma este
+digest (los otros dos alimentan alertas operativas al EQUIPO de la OTEC — asistencia baja,
+vencimientos — que sí tienen un canal de destino identificado). Si aparece un caso de uso real
+(por ejemplo, un tablero de RRHH agregado), agregar `{ type: "company_digest", tenant, count, at }`
+es un cambio aislado en `company-digest-service.ts`, sin tocar el resto del contrato.

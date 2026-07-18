@@ -41,7 +41,7 @@ vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() })
 import { tenantGuard } from "@/lib/tenant-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Principal } from "@/modules/core/domain/rbac";
-import type { AiClient, ChatMessage, ChatStreamChunk, EmbedResult } from "@/modules/tutor-ia/ai-client";
+import type { AiClient, ChatMessage, ChatStreamChunk, CompleteResult, EmbedResult } from "@/modules/tutor-ia/ai-client";
 import {
   checkBudgetForContext,
   getOrCreateConversation,
@@ -275,6 +275,9 @@ function scriptedAiClient(opts: {
       return (async function* () {
         for (const c of opts.chunks) yield c;
       })();
+    },
+    async complete(): Promise<CompleteResult> {
+      return { ok: false, error: "not_used_in_this_test" };
     },
   };
 }

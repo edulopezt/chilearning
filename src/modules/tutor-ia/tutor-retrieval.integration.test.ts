@@ -12,7 +12,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { tenantGuard } from "@/lib/tenant-guard";
-import type { AiClient, EmbedResult } from "@/modules/tutor-ia/ai-client";
+import type { AiClient, CompleteResult, EmbedResult } from "@/modules/tutor-ia/ai-client";
 import { noopAiClient } from "@/modules/tutor-ia/ai-client";
 import { reindexLesson } from "@/modules/tutor-ia/indexing";
 import { searchChunks } from "@/modules/tutor-ia/retrieval";
@@ -47,6 +47,9 @@ const FIXED_VECTOR = (() => {
 async function* unusedChatStream(): AsyncGenerator<{ type: "error"; error: string }> {
   yield { type: "error", error: "not_used_in_this_test" };
 }
+async function unusedComplete(): Promise<CompleteResult> {
+  return { ok: false, error: "not_used_in_this_test" };
+}
 
 function fakeAiClient(): AiClient {
   return {
@@ -56,6 +59,7 @@ function fakeAiClient(): AiClient {
       return { ok: true, vectors: texts.map(() => FIXED_VECTOR) };
     },
     chatStream: unusedChatStream,
+    complete: unusedComplete,
   };
 }
 
@@ -139,6 +143,7 @@ describe("searchChunks (retrieval híbrido, ADR-007)", () => {
         return { ok: false, error: "network_error" };
       },
       chatStream: unusedChatStream,
+      complete: unusedComplete,
     };
     const guard = tenantGuard(TENANT_A);
     const { fragments, mode } = await searchChunks(guard, failing, courseId, "elementos de protección personal", 6);

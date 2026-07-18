@@ -1174,6 +1174,9 @@ export const esCL = {
     backToCourse: "Volver al curso",
     forumLink: "Foro",
     messagesLink: "Mensajes",
+    aiDraftButton: "Generar borrador con IA",
+    aiDraftLoading: "Generando borrador…",
+    aiDraftError: "No se pudo generar el borrador. Puedes redactar la respuesta tú mismo.",
   },
   assignmentStudent: {
     sectionTitle: "Tareas",

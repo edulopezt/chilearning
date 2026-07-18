@@ -7,6 +7,7 @@ import { getPrincipal } from "@/modules/core/auth/session";
 import { createAnnouncement, publishAnnouncement } from "@/modules/comunicacion/announcement-service";
 import { createCalendarItem, deleteCalendarItem } from "@/modules/comunicacion/calendar-service";
 import { resolveThread, addPost } from "@/modules/comunicacion/forum-service";
+import { generateReplyDraft } from "@/modules/comunicacion/draft-service";
 
 async function origin(): Promise<string> {
   const h = await headers();
@@ -66,4 +67,14 @@ export async function staffReplyAction(formData: FormData): Promise<void> {
   const threadId = String(formData.get("threadId") ?? "");
   await addPost(principal, threadId, { body: formData.get("body") }, `${await origin()}/mi-curso/comunicacion/foro/${threadId}`);
   revalidatePath(`/admin/cursos/${courseId}/comunicacion/foro/${threadId}`);
+}
+
+/** Borrador de IA para la respuesta del staff en el foro (task 5.9, HU-9.5).
+ *  Llamado directamente desde el cliente (`AiDraftButton`), no por un `<form>`. */
+export async function generateForumDraftAction(
+  threadId: string,
+): Promise<{ ok: true; draft: string } | { ok: false; error: string }> {
+  const principal = await getPrincipal();
+  if (!principal) return { ok: false, error: "forbidden" };
+  return generateReplyDraft(principal, "forum", threadId);
 }

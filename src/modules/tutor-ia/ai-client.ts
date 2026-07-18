@@ -35,6 +35,9 @@ export interface EmbedFailure {
 }
 export type EmbedResult = EmbedSuccess | EmbedFailure;
 
+/** Resultado de una respuesta NO-streaming (task 5.9: borradores de IA para staff). */
+export type CompleteResult = { readonly ok: true; readonly text: string } | { readonly ok: false; readonly error: string };
+
 /** Un turno de la conversación tal como lo espera el endpoint chat/completions. */
 export interface ChatMessage {
   readonly role: string;
@@ -61,6 +64,10 @@ export interface AiClient {
   embed(texts: string[]): Promise<EmbedResult>;
   /** Streaming de chat (task 5.8b). Nunca lanza: los fallos se reportan como `{type:"error"}`. */
   chatStream(messages: ChatMessage[]): AsyncGenerator<ChatStreamChunk>;
+  /** Respuesta NO-streaming (task 5.9: borradores de respuesta para staff, digest
+   *  semanal de empresa). Nunca lanza. Implementada SIEMPRE sobre `chatStream`
+   *  (ver `completeFromStream`): un solo parseo SSE en toda la clase. */
+  complete(messages: ChatMessage[]): Promise<CompleteResult>;
 }
 
 export interface OpenRouterConfig {
@@ -217,6 +224,25 @@ async function* chatStreamImpl(
   }
 }
 
+/**
+ * Consume un `AsyncGenerator<ChatStreamChunk>` HASTA el final (concatenando los
+ * `delta.text`) y lo colapsa a una única respuesta no-streaming. Única puerta de
+ * `complete()` hacia el stream: así se hereda gratis el parseo SSE y la limpieza
+ * del reader (`finally { reader.cancel() }`) de `chatStreamImpl` — sin un segundo
+ * path de fetch/parseo duplicado.
+ */
+async function completeFromStream(stream: AsyncGenerator<ChatStreamChunk>): Promise<CompleteResult> {
+  let text = "";
+  for await (const chunk of stream) {
+    if (chunk.type === "delta") text += chunk.text ?? "";
+    else if (chunk.type === "error") return { ok: false, error: chunk.error ?? "unknown_error" };
+    else if (chunk.type === "done") return { ok: true, text };
+  }
+  // El stream se cerró sin emitir "done" ni "error" (no debería pasar con
+  // OpenRouter, pero no hay que lanzar): se devuelve lo acumulado hasta ahí.
+  return { ok: true, text };
+}
+
 /** Cliente real contra OpenRouter. Nunca lanza: reporta `ok:false`. */
 export function openRouterAiClient(cfg: OpenRouterConfig): AiClient {
   const fetchImpl = cfg.fetchImpl ?? fetch;
@@ -226,6 +252,9 @@ export function openRouterAiClient(cfg: OpenRouterConfig): AiClient {
     chatModel: cfg.chatModel ?? DEFAULT_CHAT_MODEL,
     chatStream(messages: ChatMessage[]): AsyncGenerator<ChatStreamChunk> {
       return chatStreamImpl(messages, cfg, fetchImpl);
+    },
+    async complete(messages: ChatMessage[]): Promise<CompleteResult> {
+      return completeFromStream(chatStreamImpl(messages, cfg, fetchImpl));
     },
     async embed(texts: string[]): Promise<EmbedResult> {
       if (texts.length === 0) return { ok: true, vectors: [] };
@@ -271,6 +300,9 @@ export function noopAiClient(): AiClient {
     },
     chatStream(): AsyncGenerator<ChatStreamChunk> {
       return noopChatStream();
+    },
+    async complete(): Promise<CompleteResult> {
+      return { ok: false, error: "not_configured" };
     },
   };
 }

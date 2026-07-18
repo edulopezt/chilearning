@@ -26,7 +26,9 @@ import { emailSenderFromEnv } from "../modules/comunicacion/email-sender";
 import { n8nEmitterFromEnv } from "../modules/comunicacion/n8n-webhook";
 import { runRemindersTick } from "../modules/comunicacion/reminders";
 import { runScormExtract, runScormSweep } from "../modules/contenido/scorm-extract";
+import { runCompanyWeeklyDigestTick } from "../modules/portal-empresa/company-digest-service";
 import { runTenantExportTick } from "../modules/reportes/tenant-export-runner";
+import { aiClientFromEnv } from "../modules/tutor-ia/ai-client";
 import { runTutorReconcile } from "../modules/tutor-ia/tutor-maintenance";
 
 const QUEUE_NAME = "sence";
@@ -39,6 +41,7 @@ const SCORM_SWEEP_JOB = "scorm-sweep";
 const DESCRIPTOR_EXTRACT_JOB = "descriptor-extract";
 const DESCRIPTOR_SWEEP_JOB = "descriptor-sweep";
 const TUTOR_RECONCILE_JOB = "tutor-reconcile-tick";
+const COMPANY_DIGEST_JOB = "company-weekly-digest-tick";
 
 function remindersEveryMs(): number {
   const raw = Number(process.env.REMINDERS_EVERY_MS);
@@ -68,6 +71,13 @@ function descriptorSweepEveryMs(): number {
 function tutorReconcileEveryMs(): number {
   const raw = Number(process.env.TUTOR_RECONCILE_EVERY_MS);
   return Number.isInteger(raw) && raw >= 60_000 ? raw : 24 * 60 * 60 * 1000; // default 24 h
+}
+
+function companyDigestEveryMs(): number {
+  const raw = Number(process.env.COMPANY_DIGEST_EVERY_MS);
+  // Default ~7 días: la ventana es SEMANAL y el ledger (tenant, company, week_start)
+  // deduplica -- correr seguido no reenvía, solo gastaría consultas de más.
+  return Number.isInteger(raw) && raw >= 60_000 ? raw : 7 * 24 * 60 * 60 * 1000;
 }
 
 /** Índice user_id → {email, name} recorriendo el admin API (para el correo PII). */
@@ -185,6 +195,19 @@ async function tutorReconcileTick(db: SupabaseClient): Promise<void> {
   const startedAt = Date.now();
   const summary = await runTutorReconcile(db, { now: startedAt });
   console.log("[worker][tutor-reconcile] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
+}
+
+/** Digest semanal de empresa (task 5.9, HU-8.2): resumen ejecutivo (IA si hay
+ *  proveedor, plantilla determinística si no) a RRHH de cada empresa cliente. */
+async function companyDigestTick(db: SupabaseClient): Promise<void> {
+  const startedAt = Date.now();
+  const summary = await runCompanyWeeklyDigestTick(db, {
+    now: startedAt,
+    emailSender: emailSenderFromEnv(process.env),
+    aiClient: aiClientFromEnv(process.env),
+    appBaseUrl: process.env.APP_BASE_URL,
+  });
+  console.log("[worker][company-digest] " + JSON.stringify({ tookMs: Date.now() - startedAt, ...summary }));
 }
 
 function requiredEnv(name: string): string {
@@ -322,6 +345,15 @@ async function main(): Promise<void> {
     { every: tutorReconcileEveryMs() },
     { name: TUTOR_RECONCILE_JOB, opts: { removeOnComplete: { count: 30 }, removeOnFail: { age: 7 * 24 * 3600, count: 100 } } },
   );
+  // Digest semanal de empresa (task 5.9): cadencia de DÍAS por defecto (~7 d) —
+  // el ledger `(tenant, company, week_start)` deduplica, así que correrlo más
+  // seguido no reenvía nada, solo permite recuperarse rápido si el proceso
+  // estuvo caído justo el día de corte.
+  await queue.upsertJobScheduler(
+    COMPANY_DIGEST_JOB,
+    { every: companyDigestEveryMs() },
+    { name: COMPANY_DIGEST_JOB, opts: { removeOnComplete: { count: 30 }, removeOnFail: { age: 7 * 24 * 3600, count: 100 } } },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
@@ -334,6 +366,7 @@ async function main(): Promise<void> {
       else if (job.name === DESCRIPTOR_EXTRACT_JOB) await descriptorExtractTick(db, job.data);
       else if (job.name === DESCRIPTOR_SWEEP_JOB) await descriptorSweepTick(db);
       else if (job.name === TUTOR_RECONCILE_JOB) await tutorReconcileTick(db);
+      else if (job.name === COMPANY_DIGEST_JOB) await companyDigestTick(db);
       else await tick(db);
     },
     { connection, concurrency: 1 },
