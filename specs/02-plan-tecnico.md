@@ -244,6 +244,16 @@ propio (tasa éxito/error por tenant — es métrica de negocio, no solo técnic
 | 010 | `fast-xml-parser` para PARSEAR `imsmanifest.xml` de paquetes SCORM subidos por el tenant (Hito 5, HU-4.2, task 5.1a) | a) Parser XML casero con regex: fragilísimo contra el XML real de authoring tools SCORM (namespaces, atributos, `xml:base`), justo el input NO confiable que más lo necesita bien hecho; b) `xml2js`: mantenimiento más lento, API basada en callbacks/promesas más pesada para este uso puntual; c) `sax`/parseo por streaming: sobra para manifiestos que ya vienen acotados por el guardia anti zip-bomb (§ dominio `scorm-zip.ts`), complejidad injustificada | MIT, sin binarios/WASM, streaming-DoS ya mitigado en la capa de extracción (tamaño acotado antes de llegar aquí — ver `scorm-extract.ts`), API síncrona simple para un XML ya en memoria; input siempre "untrusted" (lo sube el tenant) pero acotado en tamaño antes de parsear | Alta: aislado tras `contenido/domain/scorm-manifest.ts` (un archivo) |
 | 011 | `mammoth` para EXTRAER el texto plano de un descriptor SENCE `.docx` subido por el coordinador (Hito 5, HU-3.5, task 5.10 — asistente de creación de cursos) | a) `docx4js`/parsers de `.docx` de mantenimiento irregular o menos maduros; b) parseo manual de `word/document.xml` con `fast-xml-parser` (ya en el stack): reimplementar a mano las reglas de párrafos/runs/tablas de OOXML solo para sacar texto plano, superficie de trabajo desproporcionada para lo que se necesita; c) LibreOffice/Pandoc como binario externo invocado por shell: viola P5 (contenedor mínimo, sin binarios pesados adicionales) y agrega una dependencia de sistema fuera de npm | MIT, sin binarios/WASM, API mínima (`extractRawText`) suficiente porque mammoth SOLO destila el `.docx` a texto — la extracción real de campos (nombre/horas/módulos/aprendizajes) la hace el motor determinista propio `descriptor-extract.ts` sobre ese texto plano, sin IA y sin depender de mammoth para nada del dominio; input siempre "untrusted" (lo sube el tenant) pero acotado a 10 MB por el bucket `course_descriptors` antes de llegar aquí | Alta: aislado tras `wizard-service.ts` (única función que lo importa); el contrato hacia `descriptor-extract.ts` es texto plano, no cambia si se reemplaza mammoth |
 
+### Amendments
+
+- **ADR-007 (amendment 2026-07-17, task 5.8a, ver D-055):** el retrieval del Tutor IA es HÍBRIDO,
+  no vector-only — full-text search nativo de Postgres (`tsvector`, config `spanish`) SIEMPRE
+  disponible como base/fallback; similitud vectorial (pgvector/HNSW) como retrieval PRIMARIO
+  únicamente cuando hay `OPENROUTER_API_KEY` configurada, con fallback automático a FTS ante
+  cualquier fallo del proveedor de embeddings. Esto no cambia la decisión original (RAG sobre
+  pgvector de Supabase) pero la completa: el sistema debe funcionar sin ninguna key externa
+  (CI/staging verdes) y nunca dejar al tutor inoperante por un fallo transitorio de OpenRouter.
+
 ## 13. Pendientes que bloquean partes del plan (van al Sprint 1)
 
 1. ⚠ Descargar manuales oficiales v1.1.5 (+ confirmar v1.1.6) y hacer diff contra la SPEC

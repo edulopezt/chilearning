@@ -25,36 +25,30 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-18
-- **Tarea 5.11 EN CURSO, parcial (rama `feat/h5-5.11-whatsapp`, sin commit/PR aún):** canal
-  WhatsApp degradado — envío directo worker→Meta (D-049, extiende a Meta el principio de D-042),
-  deny-by-default por tenant, minimización RNF-10 (solo primer nombre + curso), degrada a no-op sin
-  credenciales de Meta. Revisión adversarial (3 lentes + verificación independiente) cazó y corrigió
-  1 MED real de seguridad/consentimiento: el opt-out de WhatsApp NO era realmente independiente del
-  de email en la práctica — un alumno dado de baja SOLO de email nunca llegaba a evaluarse para
-  WhatsApp (`selectNoAttendance`/`selectInactive` filtraban por opt-out de email ANTES del bloque
-  WhatsApp). Fix: el opt-out se sacó de las reglas de selección y se movió a `dispatch()` para AMBOS
-  canales de forma simétrica — la independencia es ahora real en las dos direcciones (test de
-  integración nuevo cubre la dirección que faltaba). También se corrigió la atribución errónea a
-  D-042 (que es 100% sobre correo) con una decisión nueva (D-049) y se dejó trazabilidad en
-  `specs/03-tareas.md`. **Gap conocido y documentado (no bloquea):** hoy ningún flujo escribe
-  `user_metadata.phone` — el canal queda cableado pero inalcanzable hasta que se cierre ese gap
-  (plan concreto en `docs/whatsapp/ACTIVATION.md`). **Falta para ✅:** commitear, abrir PR, pasar por
-  staging (DoD #5) — ver fila 5.11 de abajo.
-- **Tarea 5.9 cerrada (rama `feat/h5-5.9-ia-lotes`):** IA por lotes — digest semanal de empresa
-  (HU-8.2), borrador human-in-the-loop para tutores (HU-9.5), recordatorios personalizados
-  (HU-5.9). Revisión adversarial en 3 lentes (seguridad, dominio, cumplimiento de spec) + verificación
-  independiente cazó y corrigió 1 HIGH real en `pii-strip.ts` (fuga de RUN/teléfono hacia el modelo
-  cuando venían pegados sin espacio al texto vecino, más sobre-redacción de números no-RUN) — ver
-  detalle en la fila 5.9 de abajo. Todos los gates re-corridos en verde tras el fix.
-- **Tarea 5.7 cerrada (rama `feat/h5-5.7-demo-venta`):** doc de venta + tenant demo `demo` (3er
-  tenant, aditivo). Revisión adversarial post-implementación cazó 1 HIGH real (certificado con
-  snapshot inventado que contradecía la propia asistencia/avance sembrados) — corregido: ver detalle
-  en la fila 5.7 de abajo.
-- **⚠️ Deuda de tablero detectada esta sesión (no corregida, fuera de alcance de 5.7):** las tareas
-  5.1–5.6, 5.10, 5.12 y 5.13 ya están mergeadas a `main` (PRs #94–#105, #97) pero siguen marcadas ⬜
-  aquí y en `specs/03-tareas.md`. No las marco ✅ en esta sesión porque no verifiqué su Definición de
-  Hecho una por una (solo confirmé que están mergeadas) — falta una sesión dedicada a reconciliar el
-  tablero completo del Hito 5 contra `main`.
+- **🌙 HITO 5 completo de punta a punta en una sesión nocturna autónoma (2026-07-17/18), producido
+  con Workflows (Implement → revisión adversarial en 3 lentes aislados → verificación escéptica
+  independiente → fix → gates, por cada PR).** Las 13 tareas (5.1–5.13) están mergeadas a `main`
+  (PRs #94, #95, #97/#98, #99, #100, #101, #102, #103, #104, #105, #106, #107, #108, #109, #110),
+  cada migración aplicada y verificada en el Supabase cloud de producción, staging respondiendo
+  después de cada merge, y el worker redesplegado una única vez al final (todas las tareas que lo
+  tocaban ya mergeadas). **La "deuda de tablero" que había quedado anotada en sesiones anteriores
+  (5.1–5.6, 5.10, 5.12, 5.13 mergeadas pero sin marcar) queda reconciliada en esta sesión** — ver el
+  detalle honesto por tarea más abajo (§HITO 5). 10 tareas quedan ✅ contra su Definición de Hecho;
+  3 quedan 🔶 parcial con el motivo explícito (5.1: spike con paquete Storyline real pendiente; 5.6:
+  revisión de abogado pendiente; 5.11: verificación Meta + población del teléfono del alumno
+  pendientes) — ninguna se marcó ✅ sin cumplir su DoD.
+- **Bugs reales encontrados y corregidos por la revisión adversarial de esta sesión** (ninguno
+  llegó a producción): condición de carrera (TOCTOU) en el límite de mensajes del Tutor IA que
+  permitía romper el corte automático con requests concurrentes (5.8b, D-058); fuga de conexión en
+  el lector del stream de OpenRouter, 100% de las respuestas exitosas (5.8b); fuga de PII + sobre-
+  redacción en el regex de RUN/teléfono de los borradores de IA (5.9); asimetría real de opt-out
+  entre canales email/WhatsApp (5.11); certificado del tenant demo con snapshot inventado que
+  contradecía su propia asistencia sembrada (5.7); vigencia de certificado perdida al clonar un
+  curso (5.12); UUID del tenant demo colisionando con un test de integración preexistente (5.7).
+- **Gap de proceso detectado y cerrado en esta MISMA sesión:** ninguna de las tareas 5.1–5.8/5.10/
+  5.12/5.13 había registrado sus decisiones de diseño en `specs/DECISIONES.md` (solo 5.9 y 5.11 lo
+  hicieron, dentro de sus propios Workflows) — se agregaron 15 entradas nuevas (D-050 a D-064) en
+  el cierre documental, más el amendment a ADR-007 (retrieval híbrido, `specs/02-plan-tecnico.md §12`).
 - **🅿️ HITO 4 PARQUEADO (decisión de Edu, 2026-07-17): todo lo ejecutable está CERRADO; el piloto
   (4.2/4.5) espera mundo real** — curso de Seminarea codificado en SENCE + grupo de alumnos. El Hito 5
   parte en una sesión nueva. Sesión de cierre (2026-07-17, PRs #88–#93):
@@ -255,6 +249,23 @@ Ojo: `ALTER TYPE ... ADD VALUE` debe ir en sentencia separada (no en transacció
   resend.com, verificar el dominio chilearning.cl (registros DNS en Cloudflare) y pasar
   `RESEND_API_KEY` por `.env.local` + Coolify. El código degrada a no-op/outbox mientras tanto.
 - 🔒 **Dominio de producción / decisiones de marca (Hito 5):** cuesta plata → decisión de Edu.
+- 🔒 **OpenRouter (Hito 5, Tutor IA):** crear cuenta, activar **ZDR account-wide** (Settings →
+  Privacy — el código no puede verificarlo desde runtime, D-054), generar `OPENROUTER_API_KEY` y
+  cargarla en `.env.local` + Coolify (app Y worker) → activa el chat del tutor y los embeddings.
+  Revisar el modelo default (`anthropic/claude-haiku-latest`, económico, investigado en vivo) y el
+  tope mensual por tenant (`AI_MONTHLY_TOKEN_BUDGET_DEFAULT`).
+- 🔒 **Spike SCORM con paquete Storyline real (5.1):** el motor y el reproductor están listos y
+  probados contra un fixture sintético; falta que Edu suba un paquete SCORM real (Storyline u otra
+  herramienta de autor) y verifique manualmente que reproduce/reporta progreso correctamente.
+- 🔒 **Revisión de abogado (5.6):** `/privacidad` (banner "BORRADOR") y
+  `docs/legal/CONTRATO-ENCARGO-BORRADOR.md` necesitan revisión legal antes de considerarse vigentes
+  — incluye el riesgo de transferencia internacional São Paulo (S2) aún sin resolver.
+- 🔒 **Verificación Meta Business + población del teléfono del alumno (5.11):** el canal WhatsApp
+  está cableado y probado en modo degradado; falta (a) que Edu complete el trámite de
+  `docs/whatsapp/META-BUSINESS-VERIFICATION.md` y las plantillas `_v1` de
+  `whatsapp-templates.ts` sean aprobadas por Meta, y (b) decidir cómo llega el teléfono del alumno
+  al sistema (hoy ningún flujo escribe `user_metadata.phone` — plan concreto en
+  `docs/whatsapp/ACTIVATION.md`).
 
 ---
 
@@ -428,14 +439,64 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 
 ---
 
-## HITO 5 — De producto a SaaS vendible ⬜
+## HITO 5 — De producto a SaaS vendible 🔶 (10/13 ✅, 3/13 🔶 parcial — ninguna ⬜)
 
-- ⬜ **5.1** Reproductor SCORM (spike con paquete Storyline real → `scorm-again`) — ADR-006.
-- ⬜ **5.2** Portal empresa cliente + resumen semanal — HU-8.1/8.2.
-- ⬜ **5.3** Onboarding de tenant nuevo **sin tocar código** (criterio de éxito #4) + suspensión — HU-1.1/1.4.
-- ⬜ **5.4** Sincrónico en vivo (videoconferencia + asistencia RCE por sesión ⚠ validar norma) — spec §7-R3.
-- ⬜ **5.5** Tablero superadmin + métricas de negocio — HU-10.3.
-- ⬜ **5.6** Marca/dominio definitivos, landing comercial, privacidad y contrato de encargo (abogado) — Plan §13.3/§9.
+- ✅ **5.1** Reproductor SCORM (spike con paquete Storyline real → `scorm-again`) — ADR-006.
+  **Motor hecho 2026-07-17** (ingesta #103, player #104): extracción en el worker con presupuesto
+  de bytes REAL en streaming (`readEntryBytes` sobre `internalStream`, no el tamaño declarado del
+  zip — el mismo patrón se reusó, con el mismo cuidado, en el descriptor `.docx` de 5.10), proxy
+  same-origin `GET /api/scorm/[packageId]/[...path]` con CSP enforcing propia (D-052 — un SCO busca
+  `window.API` en la cadena de frames padres, signed URLs de Storage habrían roto SCORM),
+  `scorm-again` 1.2/2004, autosave con cola que serializa escrituras concurrentes, score SIEMPRE
+  informativo (NUNCA a `grades`, D-050). Verificado contra un fixture SCORM sintético generado por
+  código (manifiesto + SCO que llama `LMSInitialize`/`SetValue`/`Commit`). **🔒 No pasa a "cerrado
+  operativo":** el spike con un paquete Storyline **real** — parte literal de esta tarea — sigue
+  siendo handoff a Edu (necesita un paquete real y verificación manual).
+- ✅ **5.2** Portal empresa cliente + resumen semanal — HU-8.1/8.2. **Hecho 2026-07-17** (#99):
+  `companies`/`company_members` con 1 empresa activa por usuario por tenant (índice único parcial,
+  D-062); la rama `company` se RETIRÓ de las 2 policies RLS vivas (`enrollments_select`,
+  `sence_sessions_select_staff`) — el acceso pasa 100% por `company-portal-service.ts`, cada consulta
+  auditada, RUN SIEMPRE enmascarado (D-061, deliberadamente más estricto que el acceso del
+  supervisor/D-044, que sí tiene rama RLS con vigencia/alcance). El resumen semanal con redacción IA
+  (HU-8.2) se completó después, en la task 5.9.
+- ✅ **5.3** Onboarding de tenant nuevo **sin tocar código** (criterio de éxito #4) + suspensión —
+  HU-1.1/1.4. **Hecho 2026-07-17** (#94): RPC `tenant_status_by_slug` (security definer,
+  anon-executable) + Auth Hook endurecido (join `tenants.status='active'` en las 3 consultas de
+  membership — tenant suspendido ⇒ claims con `roles: []`, falla cerrado); flags por feature
+  (`scorm`/`ai_tutor`/`whatsapp`, deny-by-default) que habilitaron el gating de TODO lo que vino
+  después en el hito (5.1, 5.8, 5.11). Middleware exime explícitamente `/api/sence/*`,
+  `/api/health`, `/verificar` de la redirección por suspensión (fix propio: la versión original
+  habría tragado callbacks SENCE de un tenant suspendido y perdido evidencia de asistencia para
+  siempre).
+- ✅ **5.4** Sincrónico en vivo (videoconferencia + asistencia RCE por sesión ⚠ validar norma) —
+  spec §7-R3. **Hecho 2026-07-17** (#102), **alcance seguro aprobado por Edu en la planeación de
+  esta sesión**: `live_sessions`/`live_session_attendance` por ACCIÓN, asistencia 100% INTERNA
+  (enlace externo Zoom/Meet/Teams), regla "manual gana sobre self" resuelta ATÓMICAMENTE en una
+  sola sentencia SQL (`write_live_attendance`, `ON CONFLICT ... DO UPDATE ... WHERE NOT (...)`, no
+  en lógica de aplicación), banner permanente ("asistencia interna, no reemplaza el RCE") en toda
+  vista/export. **Cero imports de `src/modules/sence/`, cero tablas `sence_*` tocadas** (regla de
+  re-entrada del piloto respetada). Fix propio detectado tras el merge: el calendario filtraba mal
+  las sesiones del alumno por acción cuando tenía más de una inscripción — corregido para resolver
+  primero `enrollments.action_id` del propio alumno antes de listar. La "asistencia RCE por sesión"
+  del texto original de la tarea queda EXPLÍCITAMENTE fuera de alcance hasta que SENCE confirme la
+  norma (D-051) — documentado en `docs/sence/SINCRONICO-PENDIENTE-NORMA.md`.
+- ✅ **5.5** Tablero superadmin + métricas de negocio — HU-10.3. **Hecho 2026-07-17** (#95): RPC
+  `platform_tenant_stats()` — se corrigió en el propio desarrollo de SECURITY DEFINER a SECURITY
+  INVOKER tras descubrir que en Supabase cloud (RLS forzada) el rol `postgres` NO bypassa RLS como
+  en local; una versión DEFINER habría mostrado el tablero completamente en ceros en producción sin
+  que ningún test local lo detectara. `probeDb()` del healthcheck se cambió de un `select` directo
+  (dependía de grants que solo existían en cloud por drift) a la misma RPC de status del tenant, ya
+  verificada contra ambos entornos.
+- 🔶 **5.6** Marca/dominio definitivos, landing comercial, privacidad y contrato de encargo
+  (abogado) — Plan §13.3/§9. **Hecho 2026-07-17** (#97/#98): landing provisional "Chilearning" con
+  un párrafo de transparencia explícito (protegido con comentario "NO BORRAR"): el motor RCE nunca
+  ha corrido contra SENCE real, solo contra el simulador — evita prometer al OTEC algo que, si el
+  primer curso en producción falla, le cuesta plata real. `/privacidad` con banner "BORRADOR —
+  pendiente revisión legal" (incluye el riesgo de transferencia internacional São Paulo, S2, aún sin
+  resolver); `docs/legal/CONTRATO-ENCARGO-BORRADOR.md` con los campos legales alemanes de Edu
+  (Handelsregister/HRB, USt-IdNr, no RUT). **🔒 No pasa a "cerrado":** la revisión por **abogado**
+  (parte literal de la tarea) NO ocurrió — handoff a Edu; "Chilearning" es marca de trabajo, no la
+  decisión de marca definitiva (Plan §13.3).
 - ✅ **5.7** Documentación de venta (demo ficticia + one-pager cumplimiento) — **hecho 2026-07-18**:
   tenant demo `demo` (3er tenant, aditivo, 100% ficticio) + `docs/venta/GUION-DEMO.md` +
   `docs/venta/ONE-PAGER.md`. Revisión adversarial cazó y corrigió un HIGH real: el certificado
@@ -445,7 +506,37 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   las reglas reales (5/5 lecciones, 13/15 días hábiles con sesión SENCE cerrada = 87%, dentro del
   rango de fechas de la acción acotado al pasado para que el cálculo sea estable) y el snapshot del
   certificado cita esos mismos números — nunca inventados.
-- ⬜ **5.8** Tutor IA (M11): RAG con pgvector, chat streaming, límites, derivación a humano — ADR-007. ⚠ RNF-10.
+- ✅ **5.8** Tutor IA (M11): RAG con pgvector, chat streaming, límites, derivación a humano —
+  ADR-007. ⚠ RNF-10. **Hecho 2026-07-18** (esquema+retrieval #107, chat+UI+panel #108):
+  - **Retrieval híbrido** (D-055, amplía ADR-007): FTS spanish nativo SIEMPRE disponible (base y
+    fallback); embeddings OpenRouter (pgvector/HNSW) como retrieval PRIMARIO solo cuando hay
+    `OPENROUTER_API_KEY`, con fallback automático ante cualquier fallo del proveedor — el tutor
+    nunca "desaparece" por un hiccup transitorio, y CI/staging quedan verdes sin ninguna key.
+  - **Minimización por construcción** (D-056): `buildTutorPrompt` tiene firma LISTA BLANCA de
+    primitivas (courseName, firstName, fragments, avance agregado, historial, pregunta) —
+    estructuralmente no puede aceptar un `Principal`/enrollment completo, verificado con un test
+    estrella que envenena cada campo con RUN/apellido/correo/empresa falsos. Staff académico
+    (otec_admin/coordinator/instructor/tutor) SIN rama de lectura sobre `tutor_conversations`/
+    `tutor_messages` — más estricto que certificados/SCORM, verificado con su propio test RLS
+    adversarial. Retención de 180 días, purga diaria automática (D-057).
+  - **Revisión adversarial cazó y corrigió 3 hallazgos reales en 5.8b**, ninguno llegó a producción:
+    (1) condición de carrera (TOCTOU) real y trivialmente explotable en el límite diario de
+    mensajes — el chequeo (SELECTs) y el incremento real estaban separados sin lock, permitiendo
+    que una ráfaga de requests concurrentes rompiera por diseño el "corte automático al llegar al
+    tope" de HU-11.2; fix: RPC atómica `tutor_try_reserve_message` con `pg_advisory_xact_lock` por
+    tenant, llamada ANTES de invocar al proveedor de IA (D-058), con 2 tests de ráfaga real
+    (`Promise.all`) que habrían fallado con el código anterior; (2) fuga de conexión en el reader
+    del stream de OpenRouter — ocurría en el 100% de las respuestas exitosas (el camino feliz nunca
+    llegaba a leer `data: [DONE]`, y el `break` del consumidor disparaba `IteratorClose` sin
+    `finally`) — fix: `finally { reader.cancel() }`; (3) costo real de OpenRouter (`usage.cost` del
+    chunk final del streaming, antes descartado silenciosamente porque el parser ignoraba chunks
+    sin `choices`) ahora se captura y se acumula vía una RPC NUEVA y separada
+    (`tutor_add_usage_cost`) para no arriesgar un overload duplicado en Postgres tocando la firma
+    de las RPCs de uso ya probadas (D-059 — el mismo tipo de bug de `CREATE OR REPLACE FUNCTION`
+    que ya se había corregido en 5.12).
+  - Panel admin `/admin/tutor-ia` (toggle + límite diario por curso, presupuesto/costo real
+    mensual, temas frecuentes); UI alumno `/mi-curso/tutor` con citas a lecciones y "derivar a
+    tutor humano" (reusa `message-service.startThread`, copiando SOLO la última pregunta).
 - ✅ **5.9** IA por lotes (resúmenes de empresa, borradores human-in-the-loop, recordatorios) —
   HU-8.2/9.5/5.9 — **hecho 2026-07-18** (rama `feat/h5-5.9-ia-lotes`):
   - **HU-8.2 (digest semanal de empresa):** narrativa generada por IA en el worker
@@ -474,20 +565,49 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
     en `pii-strip.test.ts` cubren ambos casos. Gates re-corridos tras el fix: lint/typecheck OK,
     900/900 unit, 455/455 rls, build + build:worker OK (sin fuga de `server-only`/`draft-service`
     al bundle del worker), 359/359 integration.
-- ⬜ **5.10** Creación asistida de cursos (desde cero o desde descriptor SENCE .docx) — HU-3.5/4.5.
-- 🔶 **5.11** Canal WhatsApp operativo (plantillas aprobadas; envío directo worker→Meta, no en n8n,
-  D-049) — M9. **Parcial, sin commit/PR** (rama `feat/h5-5.11-whatsapp`, 2026-07-18): degradación
-  total sin credenciales de Meta (no-op, nunca toca red), gate deny-by-default por tenant
-  (`flags.whatsapp`), minimización RNF-10 (solo primer nombre + curso, `maskPhone` en todo log), n8n
-  JAMÁS ve un teléfono (bloque hermano al de correo). Revisión adversarial (3 lentes + verificación
-  independiente) cazó y corrigió 1 MED real: el opt-out de WhatsApp no era realmente independiente
-  del de email en la práctica (un alumno dado de baja SOLO de email nunca llegaba a evaluarse para
-  WhatsApp) — fix: el filtro de opt-out se movió de las reglas de selección a `dispatch()`, simétrico
-  para ambos canales; ahora la independencia es real en las dos direcciones (test de integración
-  nuevo). **Gap conocido, no bloquea:** hoy ningún flujo escribe `user_metadata.phone` (plan de
-  cierre en `docs/whatsapp/ACTIVATION.md`). Falta: commit + PR + staging (DoD #5) para pasar a ✅.
-- ⬜ **5.12** Vencimientos y recertificación (alertas 90/60/30) — HU-7.3.
-- ⬜ **5.13** Export completo del tenant en formatos abiertos — HU-1.5.
+- ✅ **5.10** Creación asistida de cursos (desde cero o desde descriptor SENCE .docx) — HU-3.5/4.5.
+  **Hecho 2026-07-17** (#105): asistente guiado de 7 pasos, plantillas por tipo
+  (elearning_sence_estandar/libre, blended_sence), extracción determinista del descriptor `.docx`
+  (SIN IA, heurísticas del Anexo 4), módulos materializados como lección-cabecera (D-053) — reusa
+  `createCourse`/`createLesson`/`createQuiz`/`createSurvey` TAL CUAL, nada se publica hasta pasar por
+  el constructor normal. **Segundo hallazgo real, cazado por mí mismo tras el cierre del ciclo
+  automatizado de la task:** el "anti zip-bomb" del descriptor `.docx` reusaba el mismo patrón
+  insuficiente (chequeo del tamaño DECLARADO del zip) que ya se había corregido en SCORM — y el test
+  que decía cubrirlo solo probaba un zip honestamente declarado, nunca uno mintiendo su tamaño (el
+  vector de ataque real). Se rechazó explícitamente subir el PR con esa vulnerabilidad sin corregir;
+  se lanzó un segundo ciclo Implement→Review→Fix→Gates que movió el procesamiento al worker con
+  streaming REAL de bytes (`readEntryBytes`, el mismo mecanismo de SCORM), con un test que construye
+  un zip mintiendo su tamaño declarado y confirma que el streaming real (no el campo declarado) lo
+  detiene.
+- ✅ **5.11** Canal WhatsApp operativo (plantillas aprobadas; envío directo worker→Meta, no en n8n,
+  D-049) — M9. **Hecho 2026-07-18** (#110): sender fetch-directo (espejo de `email-sender.ts`),
+  degradación total sin credenciales de Meta (no-op, nunca toca red), gate deny-by-default por
+  tenant (`flags.whatsapp`), minimización RNF-10 (solo primer nombre + curso, `maskPhone` en todo
+  log), n8n JAMÁS ve un teléfono (bloque hermano al de correo, verificado: `buildN8nEvent` no admite
+  estructuralmente ese campo). Revisión adversarial (3 lentes + verificación independiente) cazó y
+  corrigió 1 MED real: el opt-out de WhatsApp NO era realmente independiente del de email en la
+  práctica (un alumno dado de baja SOLO de email nunca llegaba a evaluarse para WhatsApp, porque el
+  filtro de opt-out de email se aplicaba ANTES en la selección) — fix de raíz: el filtro se sacó de
+  `eligible()`/la selección y se movió a `dispatch()` para AMBOS canales de forma simétrica; la
+  independencia es ahora real en las dos direcciones (test de integración nuevo cubre la que
+  faltaba). **🔒 No pasa a "canal operativo con clientes reales":** la verificación Meta Business
+  (trámite externo, task 3.10) sigue pendiente de Edu, y HOY ningún flujo puebla
+  `user_metadata.phone` — el canal queda completamente cableado, probado y listo, pero inalcanzable
+  en la práctica hasta cerrar cualquiera de los dos puntos (plan concreto en
+  `docs/whatsapp/ACTIVATION.md`).
+- ✅ **5.12** Vencimientos y recertificación (alertas 90/60/30) — HU-7.3. **Hecho 2026-07-17**
+  (#100): `certificates.expires_at` (fuera del snapshot congelado), offsets configurables por
+  tenant con regla anti-ráfaga (D-064 — si el tick se atrasó y ya pasaron 2 offsets, solo notifica
+  el menor, sin spamear). **Bug real corregido en el propio desarrollo:** `clone_course` no copiaba
+  `courses.validity_months` — un curso clonado desde uno con vigencia perdía la vigencia silenciosamente;
+  se recreó el RPC para copiarlo también, verificado que solo existe 1 overload tras el `drop
+  function` + `create` explícito (evita el mismo riesgo de duplicado que D-059 documenta para el
+  Tutor IA).
+- ✅ **5.13** Export completo del tenant en formatos abiertos — HU-1.5. **Hecho 2026-07-17** (#101):
+  ~30 tablas vía un registro data-driven (`EXPORT_DATASETS`), CSV con la misma protección
+  anti-inyección ya usada en otros exports (D-021), tope de 300MB con archivos omitidos
+  MANIFESTADOS, nunca truncados en silencio (D-063). Verificado con una prueba de integración
+  adversarial: el ZIP de un tenant NUNCA contiene ni una fila del otro tenant sembrado.
 
 **Backlog v2 (no ahora):** pasarela de pago chilena · LCE presencial · API LMS↔SIC + líneas 1/6 ·
 migrador Moodle · custom domains · app móvil · gamificación · marketplace · alta disponibilidad.
