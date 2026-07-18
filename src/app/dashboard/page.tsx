@@ -76,6 +76,19 @@ export default async function DashboardPage() {
             </Link>
           </>
         ) : null}
+        {/* `tutor-admin-service.ts` (`canManage()`) autoriza otec_admin O
+            coordinator — bloque separado del anterior (solo otec_admin) para
+            que un coordinador también tenga cómo descubrir/llegar (hallazgo
+            de revisión de spec-compliance, 2026-07-18: el backend concedía
+            más de lo que el dashboard dejaba descubrir). */}
+        {hasRole(principal, "otec_admin") || hasRole(principal, "coordinator") ? (
+          <Link
+            href="/admin/tutor-ia"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
+          >
+            {esCL.tutorIA.adminTitle}
+          </Link>
+        ) : null}
         {hasRole(principal, "otec_admin") ||
         hasRole(principal, "coordinator") ||
         hasRole(principal, "instructor") ||

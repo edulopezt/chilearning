@@ -15,6 +15,7 @@ import { listStudentQuizzes } from "@/modules/evaluacion/attempt-service";
 import { listStudentAssignments } from "@/modules/evaluacion/assignment-service";
 import { listStudentSurveys } from "@/modules/evaluacion/survey-service";
 import { hasCurrentConsent } from "@/modules/core/privacy-service";
+import { resolveTutorContext } from "@/modules/tutor-ia/tutor-chat-service";
 import { LessonComplete } from "./lesson-complete";
 import { LiveSessionMark } from "./live-session-mark";
 import { SessionCountdown } from "./session-countdown";
@@ -71,6 +72,11 @@ export default async function MiCursoPage() {
   // del candado SENCE — se muestran SIEMPRE, nunca detrás de `lock.unlocked`.
   const upcomingSessions = (await listMySessions(principal)).filter((s) => s.endsAtMs >= serverNowMs);
 
+  // Tutor IA (task 5.8b, HU-11.1): la función DESAPARECE si no está disponible
+  // (feature apagada, curso sin config, sin proveedor, etc.) — mismo criterio
+  // que SCORM, nunca se muestra deshabilitada a medias.
+  const tutorGate = await resolveTutorContext(principal);
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
@@ -101,6 +107,16 @@ export default async function MiCursoPage() {
           </Link>
         </div>
       </header>
+
+      {/* Tutor IA (task 5.8b, HU-11.1): oculto por completo si no está disponible. */}
+      {tutorGate.ok ? (
+        <section className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4">
+          <p className="text-sm font-medium">{esCL.tutorIA.studentLinkBanner}</p>
+          <Link href="/mi-curso/tutor" className="text-sm font-medium underline">
+            {esCL.tutorIA.studentLinkCta}
+          </Link>
+        </section>
+      ) : null}
 
       {/* Barra de estado de asistencia */}
       {!view.exento && view.attendanceLock ? (

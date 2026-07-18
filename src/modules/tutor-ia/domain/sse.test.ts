@@ -10,6 +10,11 @@ const FINISH_LENGTH = 'data: {"id":"gen-1","choices":[{"index":0,"delta":{},"fin
 const MALFORMED = "data: {esto no es json valido";
 const NOT_DATA_LINE = "event: ping";
 const EMPTY_LINE = "";
+// Chunk final REAL de OpenRouter (investigado en vivo, 5.8b): sin `choices`
+// (o `choices: []`), con el objeto `usage` que trae el costo REAL en USD.
+const USAGE_ONLY_NO_CHOICES = 'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":45,"cost":0.000034}}';
+const FINISH_WITH_USAGE =
+  'data: {"id":"gen-1","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":2,"cost":0.000001}}';
 
 describe("parseSseLine (OpenRouter/OpenAI-compatible, puro)", () => {
   it("delta con texto → event delta con el texto", () => {
@@ -41,5 +46,20 @@ describe("parseSseLine (OpenRouter/OpenAI-compatible, puro)", () => {
 
   it("sin choices → event other (no lanza, no asume estructura)", () => {
     expect(parseSseLine('data: {"id":"gen-1","choices":[]}')).toEqual({ event: "other" });
+  });
+
+  it("chunk final SIN choices pero CON usage → event done con el usage (5.8b: antes se perdía como 'other')", () => {
+    expect(parseSseLine(USAGE_ONLY_NO_CHOICES)).toEqual({
+      event: "done",
+      usage: { promptTokens: 120, completionTokens: 45, costUsd: 0.000034 },
+    });
+  });
+
+  it("finish_reason Y usage en el mismo chunk → ambos se propagan", () => {
+    expect(parseSseLine(FINISH_WITH_USAGE)).toEqual({
+      event: "done",
+      finishReason: "stop",
+      usage: { promptTokens: 10, completionTokens: 2, costUsd: 0.000001 },
+    });
   });
 });
