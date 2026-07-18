@@ -57,33 +57,41 @@ describe("RNF-10: el evento a n8n JAMÁS lleva PII", () => {
 });
 
 describe("reglas de recordatorio", () => {
-  const base: ReminderEnrollment = { enrollmentId: "e", userId: "u", exento: false, attendedToday: false, lastActivityDaysAgo: 0, optedOut: false };
+  const base: ReminderEnrollment = { enrollmentId: "e", userId: "u", exento: false, attendedToday: false, lastActivityDaysAgo: 0, optedOut: false, optedOutWhatsapp: false };
   const enrollments: ReminderEnrollment[] = [
     { ...base, enrollmentId: "e1", userId: "u1", attendedToday: false, lastActivityDaysAgo: 10 },
     { ...base, enrollmentId: "e2", userId: "u2", attendedToday: true, lastActivityDaysAgo: 0 },
     { ...base, enrollmentId: "e3", userId: "u3", exento: true, attendedToday: false }, // exento: excluido
-    { ...base, enrollmentId: "e4", userId: "u4", attendedToday: false, optedOut: true }, // opt-out: excluido
+    { ...base, enrollmentId: "e4", userId: "u4", attendedToday: false, optedOut: true, lastActivityDaysAgo: 10 }, // opt-out de EMAIL + inactivo: sigue seleccionado (el filtro es por canal, en dispatch())
     { ...base, enrollmentId: "e5", userId: "u5", attendedToday: false, lastActivityDaysAgo: null }, // nunca ingresó
   ];
 
-  it("sin asistencia: excluye exentos, opt-out y ya-recordados", () => {
+  it("sin asistencia: excluye exentos y ya-recordados; el opt-out NO excluye aquí (se filtra por canal en dispatch(), fix task 5.11)", () => {
     const sent = new Set([reminderKey("no_attendance", "u1")]);
     const targets = selectNoAttendance(enrollments, sent).map((t) => t.userId);
-    expect(targets).toEqual(["u5"]); // u1 ya recordado, u2 asistió, u3 exento, u4 opt-out
+    // u1 ya recordado, u2 asistió, u3 exento → excluidos. u4 (opt-out de email)
+    // y u5 (nunca ingresó) SÍ son seleccionados: u4 debe seguir siendo target de
+    // WhatsApp aunque se haya dado de baja SOLO de email — el gate por canal
+    // vive en dispatch(), no aquí (ver reminders-rules.ts::eligible()).
+    expect(targets).toEqual(expect.arrayContaining(["u4", "u5"]));
+    expect(targets).not.toContain("u1");
+    expect(targets).not.toContain("u2");
+    expect(targets).not.toContain("u3");
+    expect(targets).toHaveLength(2);
   });
 
-  it("inactivos ≥ umbral (o nunca ingresó)", () => {
+  it("inactivos ≥ umbral (o nunca ingresó); el opt-out de email NO excluye aquí (fix task 5.11)", () => {
     const targets = selectInactive(enrollments, 7, new Set()).map((t) => t.userId);
     expect(targets).toContain("u1"); // 10 >= 7
     expect(targets).toContain("u5"); // null = nunca
     expect(targets).not.toContain("u2"); // 0 días
-    expect(targets).not.toContain("u4"); // opt-out
+    expect(targets).toContain("u4"); // opt-out de EMAIL: sigue seleccionado, se filtra por canal en dispatch()
   });
 
   it("informe al coordinador: agregado sin PII", () => {
     const r = coordinatorReport(enrollments, 7);
     expect(r.total).toBe(4); // excluye el exento
     expect(r.withoutAttendanceToday).toBe(3); // u1, u4, u5 (u2 asistió)
-    expect(r.inactive).toBe(2); // u1(10), u5(null)
+    expect(r.inactive).toBe(3); // u1(10), u4(10), u5(null) — coordinatorReport nunca filtró por opt-out
   });
 });
