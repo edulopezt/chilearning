@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   escapeHtml,
   renderCertificateExpiringEmail,
+  renderCompanyDigestEmail,
   renderExportFailedEmail,
   renderExportReadyEmail,
   renderInvitationEmail,
+  renderReminderEmail,
   renderWelcomeEmail,
 } from "./email-templates";
 
@@ -93,6 +95,82 @@ describe("renderCertificateExpiringEmail (task 5.12, HU-7.3)", () => {
   it("escapa un nombre de curso malicioso (anti-inyección)", () => {
     const evil = renderCertificateExpiringEmail({ ...base, courseName: "<script>alert(1)</script>", daysLeft: 10 });
     expect(evil.html).not.toContain("<script>alert(1)</script>");
+    expect(evil.html).toContain("&lt;script&gt;");
+  });
+});
+
+describe("renderReminderEmail (task 3.9, HU-5.9 — personalización 5.9)", () => {
+  const base = {
+    brand,
+    recipientName: "Ana",
+    courseName: "Prevención de riesgos",
+    courseUrl: "https://seminarea.chilearning.cl/mi-curso",
+  };
+
+  it("kind:inactive CON lastActivityDaysAgo -> incluye la frase con el número correcto", () => {
+    const email = renderReminderEmail({ ...base, kind: "inactive", lastActivityDaysAgo: 9 });
+    expect(email.html).toContain("Han pasado 9 días desde tu última actividad en el curso.");
+    expect(email.text).toContain("Han pasado 9 días desde tu última actividad en el curso.");
+  });
+
+  it("conjuga singular cuando es 1 día", () => {
+    const email = renderReminderEmail({ ...base, kind: "inactive", lastActivityDaysAgo: 1 });
+    expect(email.html).toContain("Han pasado 1 día desde tu última actividad en el curso.");
+  });
+
+  it("kind:no_attendance NO cambia aunque venga lastActivityDaysAgo (no aplica a ese camino)", () => {
+    const withField = renderReminderEmail({ ...base, kind: "no_attendance", lastActivityDaysAgo: 9 });
+    const without = renderReminderEmail({ ...base, kind: "no_attendance" });
+    expect(withField).toEqual(without);
+    expect(withField.html).not.toContain("última actividad");
+  });
+
+  it("kind:inactive SIN lastActivityDaysAgo (undefined) -> comportamiento IDÉNTICO al previo (sin la frase)", () => {
+    const email = renderReminderEmail({ ...base, kind: "inactive" });
+    expect(email.html).not.toContain("última actividad");
+    expect(email.text).not.toContain("última actividad");
+  });
+});
+
+describe("renderCompanyDigestEmail (task 5.9, HU-8.2)", () => {
+  const base = {
+    brand,
+    razonSocial: "Pesquera Demo del Sur Ltda",
+    weekStart: "13-07-2026",
+    narrative: "El avance de la semana fue sólido, sin riesgos relevantes.",
+    workers: 12,
+    actions: 2,
+    lessonsCompletedInPeriod: 34,
+    attendanceDaysInPeriod: 40,
+    gradesPublishedInPeriod: 3,
+    certificatesIssuedInPeriod: 1,
+    portalUrl: "https://seminarea.chilearning.cl/empresa",
+  };
+
+  it("saluda con la razón social y muestra los 6 conteos + la narrativa", () => {
+    const email = renderCompanyDigestEmail(base);
+    expect(email.subject).toContain("Pesquera Demo del Sur Ltda");
+    expect(email.html).toContain("Pesquera Demo del Sur Ltda");
+    expect(email.html).toContain("El avance de la semana fue sólido");
+    expect(email.html).toContain("<strong>12</strong>");
+    expect(email.html).toContain("<strong>34</strong>");
+    expect(email.text).toContain("Trabajadores vinculados: 12");
+  });
+
+  it("enlaza al portal de la empresa", () => {
+    const email = renderCompanyDigestEmail(base);
+    expect(email.html).toContain(base.portalUrl);
+    expect(email.text).toContain(base.portalUrl);
+  });
+
+  it("escapa una razón social y una narrativa maliciosas (anti-inyección)", () => {
+    const evil = renderCompanyDigestEmail({
+      ...base,
+      razonSocial: "<script>alert(1)</script>",
+      narrative: "<img src=x onerror=alert(1)>",
+    });
+    expect(evil.html).not.toContain("<script>alert(1)</script>");
+    expect(evil.html).not.toContain("<img src=x onerror=alert(1)>");
     expect(evil.html).toContain("&lt;script&gt;");
   });
 });

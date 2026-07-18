@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { AiClient, EmbedResult } from "@/modules/tutor-ia/ai-client";
+import type { AiClient, CompleteResult, EmbedResult } from "@/modules/tutor-ia/ai-client";
 import { noopAiClient } from "@/modules/tutor-ia/ai-client";
 import { reindexLesson, type IndexableLesson } from "@/modules/tutor-ia/indexing";
 import { searchChunksLexical } from "@/modules/tutor-ia/retrieval";
@@ -47,6 +47,9 @@ function fakeVector(seed: number): number[] {
 async function* unusedChatStream(): AsyncGenerator<{ type: "error"; error: string }> {
   yield { type: "error", error: "not_used_in_this_test" };
 }
+async function unusedComplete(): Promise<CompleteResult> {
+  return { ok: false, error: "not_used_in_this_test" };
+}
 
 function fakeAiClient(): AiClient {
   return {
@@ -56,6 +59,7 @@ function fakeAiClient(): AiClient {
       return { ok: true, vectors: texts.map((_, i) => fakeVector(i + 1)) };
     },
     chatStream: unusedChatStream,
+    complete: unusedComplete,
   };
 }
 
@@ -67,6 +71,7 @@ function failingAiClient(): AiClient {
       return { ok: false, error: "network_error" };
     },
     chatStream: unusedChatStream,
+    complete: unusedComplete,
   };
 }
 

@@ -113,14 +113,26 @@ ${button(params.brand.primaryColor, params.courseUrl, "Ver en el curso")}`;
   return { subject, html: shell(params.brand, body), text };
 }
 
-/** Recordatorio de asistencia/actividad (task 3.9, HU-5.9). PII solo aquí — al
- *  destinatario real; a n8n jamás. `kind` decide el mensaje. */
+/**
+ * Recordatorio de asistencia/actividad (task 3.9, HU-5.9). PII solo aquí — al
+ * destinatario real; a n8n jamás. `kind` decide el mensaje.
+ *
+ * `lastActivityDaysAgo` (task 5.9, mismo HU): personalización DETERMINÍSTICA
+ * (interpolación de string, CERO IA — ruling de Edu: nada que salga a un
+ * alumno en el envío automático puede ser generado por un modelo, RNF-10 al
+ * pie de la letra). Solo aplica a `kind:"inactive"` (para `"no_attendance"` no
+ * tiene sentido: ahí el dato relevante es que hoy no asistió, no hace cuánto
+ * fue su última actividad). Opcional y sin efecto en `undefined`: el
+ * comportamiento previo (sin el campo) queda IDÉNTICO.
+ */
 export function renderReminderEmail(params: {
   brand: EmailBrand;
   recipientName: string;
   kind: "no_attendance" | "inactive";
   courseName: string;
   courseUrl: string;
+  /** Días desde la última actividad del alumno; solo se usa con `kind:"inactive"`. */
+  lastActivityDaysAgo?: number;
 }): RenderedEmail {
   const name = escapeHtml(params.recipientName || "");
   const course = escapeHtml(params.courseName);
@@ -131,11 +143,17 @@ export function renderReminderEmail(params: {
   const lead = isAttendance
     ? `Aún no registras tu asistencia SENCE de hoy en <strong>${course}</strong>. Recuerda hacerlo con tu Clave Única para que tu participación quede validada.`
     : `Hace unos días que no ingresas a <strong>${course}</strong>. Retoma cuando puedas para no atrasarte.`;
+  const showDaysAgo = !isAttendance && typeof params.lastActivityDaysAgo === "number";
+  const daysAgo = showDaysAgo ? Math.max(0, Math.trunc(params.lastActivityDaysAgo!)) : 0;
+  const daysAgoLine = showDaysAgo
+    ? `<p>Han pasado ${daysAgo} ${daysAgo === 1 ? "día" : "días"} desde tu última actividad en el curso.</p>`
+    : "";
+  const daysAgoText = showDaysAgo ? `Han pasado ${daysAgo} ${daysAgo === 1 ? "día" : "días"} desde tu última actividad en el curso.\n\n` : "";
   const body = `<p>Hola ${name},</p>
 <p>${lead}</p>
-${button(params.brand.primaryColor, params.courseUrl, isAttendance ? "Registrar asistencia" : "Retomar el curso")}
+${daysAgoLine}${button(params.brand.primaryColor, params.courseUrl, isAttendance ? "Registrar asistencia" : "Retomar el curso")}
 <p style="color:#71717a;font-size:13px;">¿No quieres recibir estos recordatorios? Puedes darte de baja desde tu perfil.</p>`;
-  const text = `Hola ${params.recipientName},\n\n${isAttendance ? `Aún no registras tu asistencia SENCE de hoy en ${params.courseName}.` : `Hace días que no ingresas a ${params.courseName}.`}\n\n${params.courseUrl}\n\nPuedes darte de baja de los recordatorios desde tu perfil.\n`;
+  const text = `Hola ${params.recipientName},\n\n${isAttendance ? `Aún no registras tu asistencia SENCE de hoy en ${params.courseName}.` : `Hace días que no ingresas a ${params.courseName}.`}\n\n${daysAgoText}${params.courseUrl}\n\nPuedes darte de baja de los recordatorios desde tu perfil.\n`;
   return { subject, html: shell(params.brand, body), text };
 }
 
@@ -192,6 +210,54 @@ export function renderMessageEmail(params: {
   const body = `<p>Tienes un nuevo mensaje sobre <strong>"${escapeHtml(params.subjectLine)}"</strong>.</p>
 ${button(params.brand.primaryColor, params.courseUrl, "Leer el mensaje")}`;
   const text = `Tienes un nuevo mensaje sobre "${params.subjectLine}".\n\nLeer: ${params.courseUrl}\n`;
+  return { subject, html: shell(params.brand, body), text };
+}
+
+/**
+ * Digest semanal de la empresa cliente (task 5.9, HU-8.2): "resumen periódico
+ * por correo (...), redactado con IA en lenguaje ejecutivo (avance, riesgos,
+ * hitos) sobre datos agregados".
+ *
+ * `razonSocial` SOLO se usa AQUÍ (saludo determinístico del correo) — jamás se
+ * pasa a `buildDigestNarrativePrompt` (`portal-empresa/domain/weekly-digest.ts`),
+ * que ni siquiera declara ese campo en su tipo de entrada. `narrative` llega
+ * YA REDACTADO por el llamador (IA si hay proveedor configurado, o una
+ * plantilla determinística de respaldo si no — ver `company-digest-service.ts`)
+ * y se escapa igual que cualquier otro contenido de usuario.
+ */
+export function renderCompanyDigestEmail(params: {
+  brand: EmailBrand;
+  razonSocial: string;
+  /** Lunes de la semana del digest, ya formateado en es-CL (dd-mm-aaaa) por el llamador. */
+  weekStart: string;
+  narrative: string;
+  workers: number;
+  actions: number;
+  lessonsCompletedInPeriod: number;
+  attendanceDaysInPeriod: number;
+  gradesPublishedInPeriod: number;
+  certificatesIssuedInPeriod: number;
+  portalUrl: string;
+}): RenderedEmail {
+  const razonSocial = escapeHtml(params.razonSocial);
+  const weekStart = escapeHtml(params.weekStart);
+  const narrative = escapeHtml(params.narrative);
+  const subject = `Resumen semanal de capacitación — ${params.razonSocial} (semana del ${params.weekStart})`;
+  const stats = `<ul style="margin:0 0 12px;padding-left:20px;">
+<li>Trabajadores vinculados: <strong>${params.workers}</strong></li>
+<li>Acciones de capacitación en curso: <strong>${params.actions}</strong></li>
+<li>Lecciones completadas esta semana: <strong>${params.lessonsCompletedInPeriod}</strong></li>
+<li>Días con asistencia registrada esta semana: <strong>${params.attendanceDaysInPeriod}</strong></li>
+<li>Notas publicadas esta semana: <strong>${params.gradesPublishedInPeriod}</strong></li>
+<li>Certificados emitidos esta semana: <strong>${params.certificatesIssuedInPeriod}</strong></li>
+</ul>`;
+  const body = `<p>Hola equipo de <strong>${razonSocial}</strong>,</p>
+<p>Este es el resumen semanal de la capacitación de sus trabajadores (semana del ${weekStart}):</p>
+<p style="white-space:pre-wrap;">${narrative}</p>
+${stats}
+${button(params.brand.primaryColor, params.portalUrl, "Ver el portal de mi empresa")}
+<p style="color:#71717a;font-size:13px;">¿No quieres recibir este resumen? Puedes darte de baja escribiéndole a tu OTEC.</p>`;
+  const text = `Hola equipo de ${params.razonSocial},\n\nResumen semanal de capacitación (semana del ${params.weekStart}):\n\n${params.narrative}\n\nTrabajadores vinculados: ${params.workers}\nAcciones en curso: ${params.actions}\nLecciones completadas: ${params.lessonsCompletedInPeriod}\nDías con asistencia: ${params.attendanceDaysInPeriod}\nNotas publicadas: ${params.gradesPublishedInPeriod}\nCertificados emitidos: ${params.certificatesIssuedInPeriod}\n\n${params.portalUrl}\n`;
   return { subject, html: shell(params.brand, body), text };
 }
 

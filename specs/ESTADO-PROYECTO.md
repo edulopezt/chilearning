@@ -25,6 +25,12 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-18
+- **Tarea 5.9 cerrada (rama `feat/h5-5.9-ia-lotes`):** IA por lotes — digest semanal de empresa
+  (HU-8.2), borrador human-in-the-loop para tutores (HU-9.5), recordatorios personalizados
+  (HU-5.9). Revisión adversarial en 3 lentes (seguridad, dominio, cumplimiento de spec) + verificación
+  independiente cazó y corrigió 1 HIGH real en `pii-strip.ts` (fuga de RUN/teléfono hacia el modelo
+  cuando venían pegados sin espacio al texto vecino, más sobre-redacción de números no-RUN) — ver
+  detalle en la fila 5.9 de abajo. Todos los gates re-corridos en verde tras el fix.
 - **Tarea 5.7 cerrada (rama `feat/h5-5.7-demo-venta`):** doc de venta + tenant demo `demo` (3er
   tenant, aditivo). Revisión adversarial post-implementación cazó 1 HIGH real (certificado con
   snapshot inventado que contradecía la propia asistencia/avance sembrados) — corregido: ver detalle
@@ -425,7 +431,34 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
   rango de fechas de la acción acotado al pasado para que el cálculo sea estable) y el snapshot del
   certificado cita esos mismos números — nunca inventados.
 - ⬜ **5.8** Tutor IA (M11): RAG con pgvector, chat streaming, límites, derivación a humano — ADR-007. ⚠ RNF-10.
-- ⬜ **5.9** IA por lotes en n8n (resúmenes, borradores human-in-the-loop, recordatorios) — HU-8.2/9.5/5.9.
+- ✅ **5.9** IA por lotes (resúmenes de empresa, borradores human-in-the-loop, recordatorios) —
+  HU-8.2/9.5/5.9 — **hecho 2026-07-18** (rama `feat/h5-5.9-ia-lotes`):
+  - **HU-8.2 (digest semanal de empresa):** narrativa generada por IA en el worker
+    (`company-digest-service.ts`), minimizada por diseño — `DigestNarrativeInput` es una lista
+    blanca de 6 conteos que NO admite `razonSocial`/`companyId` (verificado: no compila si se
+    cuelan). Ledger de idempotencia `(tenant_id, company_id, week_start)` insert-first (antes de
+    tocar IA/correo). Opt-out por `(tenant_id, user_id, channel)`. Correo va directo por
+    `EmailSender`, no por n8n — decisión documentada en `docs/n8n/WORKFLOWS.md` con el mismo
+    criterio ya aceptado en 3.9/PR #66 (lógica crítica y envío de PII SIEMPRE en el worker,
+    testeable/auditable por P3/P6; n8n solo para eventos periféricos agregados). El título de la
+    tarea dice "en n8n" pero la implementación real vive en el worker — nota para no confundir a
+    futuro.
+  - **HU-9.5 (borrador de respuesta para staff):** efímero (no se persiste), gate doble
+    (rol staff + `aiClient.configured`, revalidado server-side), botón desaparece por completo
+    (no deshabilitado) sin `OPENROUTER_API_KEY`.
+  - **Ruling "recordatorios sin IA" respetado:** `reminders.ts` no importa IA en ningún punto;
+    la personalización nueva es interpolación pura de un dato ya calculado.
+  - **Revisión adversarial (3 lentes + verificación independiente) cazó y corrigió 1 HIGH real**
+    en `pii-strip.ts` (saneo de PII para el borrador de HU-9.5): el regex de RUN/teléfono usaba
+    `\b` (no distingue letra de dígito) con separadores todos opcionales — esto causaba (a) fuga
+    real hacia el modelo cuando el RUN/teléfono venía pegado sin espacio a la palabra vecina
+    (ej. `"rut12345678-9tengounaduda"` no se redactaba, bypass de minimización RNF-10), y (b)
+    sobre-redacción de números legítimos sin relación con un RUN (fechas, folios, teléfonos
+    fijos de 8 dígitos). Fix: lookaround de dígito (`(?<!\d)`/`(?!\d)`) en los bordes + exigir
+    que al menos uno de los tres separadores del RUN esté presente. 8 tests adversariales nuevos
+    en `pii-strip.test.ts` cubren ambos casos. Gates re-corridos tras el fix: lint/typecheck OK,
+    900/900 unit, 455/455 rls, build + build:worker OK (sin fuga de `server-only`/`draft-service`
+    al bundle del worker), 359/359 integration.
 - ⬜ **5.10** Creación asistida de cursos (desde cero o desde descriptor SENCE .docx) — HU-3.5/4.5.
 - ⬜ **5.11** Canal WhatsApp operativo (plantillas aprobadas, n8n) — M9.
 - ⬜ **5.12** Vencimientos y recertificación (alertas 90/60/30) — HU-7.3.

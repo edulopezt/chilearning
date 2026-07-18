@@ -260,6 +260,57 @@ describe("openRouterAiClient.chatStream (fetch inyectado — jamas la API real)"
   });
 });
 
+describe("openRouterAiClient.complete (task 5.9 — reusa chatStream, sin segundo parseo SSE)", () => {
+  it("2 deltas + done -> concatena el texto completo", async () => {
+    const encoder = new TextEncoder();
+    const delta1 = 'data: {"id":"gen-1","choices":[{"index":0,"delta":{"content":"Hola "},"finish_reason":null}]}\n\n';
+    const delta2 = 'data: {"id":"gen-1","choices":[{"index":0,"delta":{"content":"que tal"},"finish_reason":null}]}\n\n';
+    const usageLine = 'data: {"choices":[],"usage":{"prompt_tokens":5,"completion_tokens":3,"cost":0.000002}}\n\n';
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(delta1));
+        controller.enqueue(encoder.encode(delta2));
+        controller.enqueue(encoder.encode(usageLine));
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
+    const client = openRouterAiClient({
+      apiKey: "k",
+      embeddingModel: "m",
+      fetchImpl: async () => new Response(stream, { status: 200 }),
+    });
+    const result = await client.complete([{ role: "user", content: "hola" }]);
+    expect(result).toEqual({ ok: true, text: "Hola que tal" });
+  });
+
+  it("un chunk de error propaga {ok:false} (sin lanzar)", async () => {
+    const client = openRouterAiClient({
+      apiKey: "k",
+      embeddingModel: "m",
+      fetchImpl: async () => new Response("{}", { status: 429 }),
+    });
+    expect(await client.complete([{ role: "user", content: "x" }])).toEqual({
+      ok: false,
+      error: "openrouter_http_429",
+    });
+  });
+
+  it("fallo de red -> ok:false network_error (sin lanzar)", async () => {
+    const client = openRouterAiClient({
+      apiKey: "k",
+      embeddingModel: "m",
+      fetchImpl: async () => {
+        throw new Error("ECONNRESET");
+      },
+    });
+    expect(await client.complete([{ role: "user", content: "x" }])).toEqual({
+      ok: false,
+      error: "network_error",
+    });
+  });
+});
+
 describe("noopAiClient (sin proveedor)", () => {
   it("configured:false y nunca llama red", async () => {
     const client = noopAiClient();
@@ -272,6 +323,14 @@ describe("noopAiClient (sin proveedor)", () => {
     expect(await collect(client.chatStream([{ role: "user", content: "x" }]))).toEqual([
       { type: "error", error: "not_configured" },
     ]);
+  });
+
+  it("complete: {ok:false, error:not_configured}, sin tocar red", async () => {
+    const client = noopAiClient();
+    expect(await client.complete([{ role: "user", content: "x" }])).toEqual({
+      ok: false,
+      error: "not_configured",
+    });
   });
 });
 

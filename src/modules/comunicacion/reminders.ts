@@ -106,6 +106,11 @@ async function dispatch(
   ctx: { tenantId: string; actionId: string; courseName: string; courseUrl: string },
   kind: Extract<AutomationKind, "no_attendance" | "inactive">,
   targets: readonly ReminderTarget[],
+  // Task 5.9 (HU-5.9): personalización DETERMINÍSTICA del correo `inactive`
+  // con `lastActivityDaysAgo` (ya calculado por `loadEnrollmentData`, cero IA
+  // en el envío automático). Solo el llamador del kind "inactive" lo pasa; el
+  // de "no_attendance" lo omite y el email queda IDÉNTICO al de siempre.
+  lastActivityByUser?: ReadonlyMap<string, number | null>,
 ): Promise<{ emails: number; emitted: boolean }> {
   if (targets.length === 0) return { emails: 0, emitted: false };
   const recipients = await deps.resolveRecipients(targets.map((t) => t.userId));
@@ -116,7 +121,17 @@ async function dispatch(
     // que la ventana "hoy" sea determinista respecto a `deps.now` (no al reloj real).
     await db.from("notifications").insert({ tenant_id: ctx.tenantId, user_id: t.userId, kind: `reminder.${kind}`, payload: { actionId: ctx.actionId }, created_at: new Date(deps.now).toISOString() });
     if (r?.email && deps.emailSender.configured) {
-      const email = renderReminderEmail({ brand: { orgName: ctx.courseName, primaryColor: "#1e3a8a" }, recipientName: r.name, kind, courseName: ctx.courseName, courseUrl: ctx.courseUrl });
+      const lastActivityDaysAgo = lastActivityByUser?.get(t.userId);
+      const email = renderReminderEmail({
+        brand: { orgName: ctx.courseName, primaryColor: "#1e3a8a" },
+        recipientName: r.name,
+        kind,
+        courseName: ctx.courseName,
+        courseUrl: ctx.courseUrl,
+        // `null` (nunca tuvo actividad) se omite a propósito: "hace null días" no
+        // es una frase honesta -- mejor sin la línea que con un dato incorrecto.
+        ...(typeof lastActivityDaysAgo === "number" ? { lastActivityDaysAgo } : {}),
+      });
       const sent = await deps.emailSender.send({ to: r.email, subject: email.subject, html: email.html, text: email.text });
       if (sent.ok) emails++;
     }
@@ -165,7 +180,8 @@ export async function runRemindersTick(db: SupabaseClient, deps: RemindersDeps):
     }
     if (kinds.has("inactive")) {
       const days = Number((kinds.get("inactive") as { inactiveDays?: number })?.inactiveDays ?? deps.inactiveDays ?? 7);
-      const r = await dispatch(db, deps, ctx, "inactive", selectInactive(enrollments, days, sent));
+      const lastActivityByUser = new Map(enrollments.map((e) => [e.userId, e.lastActivityDaysAgo]));
+      const r = await dispatch(db, deps, ctx, "inactive", selectInactive(enrollments, days, sent), lastActivityByUser);
       emailsSent += r.emails;
       if (r.emitted) n8nEvents++;
     }
