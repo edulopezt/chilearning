@@ -25,6 +25,7 @@ import { runExpiryAlertsTick } from "../modules/certificados/expiry-alerts";
 import { emailSenderFromEnv } from "../modules/comunicacion/email-sender";
 import { n8nEmitterFromEnv } from "../modules/comunicacion/n8n-webhook";
 import { runRemindersTick } from "../modules/comunicacion/reminders";
+import { whatsappSenderFromEnv } from "../modules/comunicacion/whatsapp-sender";
 import { runScormExtract, runScormSweep } from "../modules/contenido/scorm-extract";
 import { runCompanyWeeklyDigestTick } from "../modules/portal-empresa/company-digest-service";
 import { runTenantExportTick } from "../modules/reportes/tenant-export-runner";
@@ -80,11 +81,16 @@ function companyDigestEveryMs(): number {
   return Number.isInteger(raw) && raw >= 60_000 ? raw : 7 * 24 * 60 * 60 * 1000;
 }
 
-/** Índice user_id → {email, name} recorriendo el admin API (para el correo PII). */
+/** Índice user_id → {email, name, phone} recorriendo el admin API (correo PII
+ *  + WhatsApp, task 5.11). `phone` es `null` cuando el alumno no tiene
+ *  teléfono en `user_metadata` (hoy solo lo puebla el import CSV si trae la
+ *  columna opcional — ver `docs/whatsapp/ACTIVATION.md`). */
 async function resolveRecipientsFactory(db: SupabaseClient) {
-  return async (userIds: readonly string[]): Promise<Map<string, { email: string; name: string }>> => {
+  return async (
+    userIds: readonly string[],
+  ): Promise<Map<string, { email: string; name: string; phone: string | null }>> => {
     const want = new Set(userIds);
-    const out = new Map<string, { email: string; name: string }>();
+    const out = new Map<string, { email: string; name: string; phone: string | null }>();
     for (let page = 1; page <= 50 && out.size < want.size; page++) {
       const { data, error } = await db.auth.admin.listUsers({ page, perPage: 200 });
       if (error) break;
@@ -92,7 +98,8 @@ async function resolveRecipientsFactory(db: SupabaseClient) {
       for (const u of users) {
         if (want.has(u.id) && u.email) {
           const name = (u.user_metadata?.full_name as string | undefined) ?? "";
-          out.set(u.id, { email: u.email, name });
+          const phone = (u.user_metadata?.phone as string | undefined) || null;
+          out.set(u.id, { email: u.email, name, phone });
         }
       }
       if (users.length < 200) break;
@@ -107,6 +114,7 @@ async function remindersTick(db: SupabaseClient): Promise<void> {
     now: startedAt,
     secret: process.env.N8N_WEBHOOK_SECRET ?? "unconfigured",
     emailSender: emailSenderFromEnv(process.env),
+    whatsappSender: whatsappSenderFromEnv(process.env),
     n8n: n8nEmitterFromEnv(process.env),
     resolveRecipients: await resolveRecipientsFactory(db),
     inactiveDays: Number(process.env.REMINDERS_INACTIVE_DAYS) || undefined,

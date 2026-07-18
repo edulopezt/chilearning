@@ -25,6 +25,21 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-18
+- **Tarea 5.11 EN CURSO, parcial (rama `feat/h5-5.11-whatsapp`, sin commit/PR aún):** canal
+  WhatsApp degradado — envío directo worker→Meta (D-049, extiende a Meta el principio de D-042),
+  deny-by-default por tenant, minimización RNF-10 (solo primer nombre + curso), degrada a no-op sin
+  credenciales de Meta. Revisión adversarial (3 lentes + verificación independiente) cazó y corrigió
+  1 MED real de seguridad/consentimiento: el opt-out de WhatsApp NO era realmente independiente del
+  de email en la práctica — un alumno dado de baja SOLO de email nunca llegaba a evaluarse para
+  WhatsApp (`selectNoAttendance`/`selectInactive` filtraban por opt-out de email ANTES del bloque
+  WhatsApp). Fix: el opt-out se sacó de las reglas de selección y se movió a `dispatch()` para AMBOS
+  canales de forma simétrica — la independencia es ahora real en las dos direcciones (test de
+  integración nuevo cubre la dirección que faltaba). También se corrigió la atribución errónea a
+  D-042 (que es 100% sobre correo) con una decisión nueva (D-049) y se dejó trazabilidad en
+  `specs/03-tareas.md`. **Gap conocido y documentado (no bloquea):** hoy ningún flujo escribe
+  `user_metadata.phone` — el canal queda cableado pero inalcanzable hasta que se cierre ese gap
+  (plan concreto en `docs/whatsapp/ACTIVATION.md`). **Falta para ✅:** commitear, abrir PR, pasar por
+  staging (DoD #5) — ver fila 5.11 de abajo.
 - **Tarea 5.9 cerrada (rama `feat/h5-5.9-ia-lotes`):** IA por lotes — digest semanal de empresa
   (HU-8.2), borrador human-in-the-loop para tutores (HU-9.5), recordatorios personalizados
   (HU-5.9). Revisión adversarial en 3 lentes (seguridad, dominio, cumplimiento de spec) + verificación
@@ -460,7 +475,17 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
     900/900 unit, 455/455 rls, build + build:worker OK (sin fuga de `server-only`/`draft-service`
     al bundle del worker), 359/359 integration.
 - ⬜ **5.10** Creación asistida de cursos (desde cero o desde descriptor SENCE .docx) — HU-3.5/4.5.
-- ⬜ **5.11** Canal WhatsApp operativo (plantillas aprobadas, n8n) — M9.
+- 🔶 **5.11** Canal WhatsApp operativo (plantillas aprobadas; envío directo worker→Meta, no en n8n,
+  D-049) — M9. **Parcial, sin commit/PR** (rama `feat/h5-5.11-whatsapp`, 2026-07-18): degradación
+  total sin credenciales de Meta (no-op, nunca toca red), gate deny-by-default por tenant
+  (`flags.whatsapp`), minimización RNF-10 (solo primer nombre + curso, `maskPhone` en todo log), n8n
+  JAMÁS ve un teléfono (bloque hermano al de correo). Revisión adversarial (3 lentes + verificación
+  independiente) cazó y corrigió 1 MED real: el opt-out de WhatsApp no era realmente independiente
+  del de email en la práctica (un alumno dado de baja SOLO de email nunca llegaba a evaluarse para
+  WhatsApp) — fix: el filtro de opt-out se movió de las reglas de selección a `dispatch()`, simétrico
+  para ambos canales; ahora la independencia es real en las dos direcciones (test de integración
+  nuevo). **Gap conocido, no bloquea:** hoy ningún flujo escribe `user_metadata.phone` (plan de
+  cierre en `docs/whatsapp/ACTIVATION.md`). Falta: commit + PR + staging (DoD #5) para pasar a ✅.
 - ⬜ **5.12** Vencimientos y recertificación (alertas 90/60/30) — HU-7.3.
 - ⬜ **5.13** Export completo del tenant en formatos abiertos — HU-1.5.
 

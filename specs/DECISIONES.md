@@ -887,3 +887,30 @@ entrada original.
   el contrato es la vara de medir de la revisión); mantener el comportamiento actual de Q-01
   (descartada por Edu: crea no-asistencias falsas).
 - **Origen:** 2026-07-16 · rulings de `REVISION-ADVERSARIAL-H4.md` resueltos por Edu
+
+## D-049 — Canal WhatsApp (5.11): mismo principio de D-042 extendido a Meta — n8n nunca ve un teléfono
+
+- **ID:** D-049
+- **Fecha:** 2026-07-18
+- **Decisión:** el envío de plantillas WhatsApp (task 5.11, HU-5.9) es DIRECTO desde el worker a la
+  Graph API de Meta (`src/modules/comunicacion/whatsapp-sender.ts`), como bloque HERMANO al de
+  correo dentro de `reminders-tick`; NUNCA se orquesta por n8n. Gateado por: feature `whatsapp` por
+  tenant (deny-by-default, task 5.3), teléfono presente en `user_metadata.phone`, sender configurado
+  (degrada a no-op sin credenciales de Meta) y opt-out específico del canal WhatsApp
+  (`communication_opt_outs.channel = 'whatsapp'`, independiente del de email en AMBAS direcciones —
+  fix de la asimetría cazada por la revisión adversarial de esta misma sesión: antes, un alumno dado
+  de baja SOLO de email nunca llegaba a evaluarse para WhatsApp).
+- **Por qué:** extiende a WhatsApp el mismo principio que D-042 sentó para el correo — la lógica
+  crítica con PII (aquí, un número de teléfono) vive en código testeable/auditable (worker), nunca en
+  n8n (P3/ADR-004); n8n solo automatización periférica. `specs/03-tareas.md` (5.11) seguía con el
+  texto literal "orquestado en n8n" heredado de cuando se escribió la tarea, antes de que D-042
+  sentara el precedente del correo — esta entrada corrige esa divergencia (P1: toda contradicción
+  código↔spec debe quedar resuelta y trazada, no silenciada) y deja registrada la extensión
+  específica del principio al canal WhatsApp, que D-042 no cubría (D-042 es 100% sobre correo,
+  tarea 3.9/PR #66).
+- **Alternativas descartadas:** pasar el teléfono a n8n para que dispare el WhatsApp (descartada:
+  viola el mismo principio que D-042 protege para el correo — un teléfono es PII tan sensible como
+  un correo); dejar el texto de `specs/03-tareas.md` sin corregir (descartada: P1 exige trazabilidad
+  explícita de la divergencia, no solo que el código haga lo correcto).
+- **Origen:** 2026-07-18 · revisión adversarial de `feat/h5-5.11-whatsapp` (3 lentes: seguridad,
+  dominio, cumplimiento de spec + verificación independiente) · tarea 5.11 / `specs/03-tareas.md:103`

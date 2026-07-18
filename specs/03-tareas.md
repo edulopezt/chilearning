@@ -100,7 +100,7 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 5.8 Tutor IA (M11): RAG con pgvector, chat streaming, límites y panel de uso, derivación a humano — ADR-007
 - 5.9 ✅ IA por lotes en n8n: resúmenes ejecutivos para empresas, borradores human-in-the-loop para tutores, recordatorios personalizados (upgrade de 3.9) — HU-8.2, 9.5, 5.9 — **hecho 2026-07-18**: digest de empresa y borrador de staff corren en el worker/server actions (no en n8n, mismo criterio ya aceptado en 3.9/PR #66 — ver detalle en ESTADO-PROYECTO.md §5.9); revisión adversarial cazó y corrigió una fuga real de PII en `pii-strip.ts` (RUN/teléfono pegado sin espacio al texto vecino no se redactaba)
 - 5.10 Creación asistida de cursos: asistente guiado paso a paso con dos entradas (desde cero o desde descriptor SENCE .docx) + plantillas por tipo — HU-3.5, 4.5
-- 5.11 Canal WhatsApp operativo (plantillas aprobadas, orquestado en n8n) — M9
+- 5.11 Canal WhatsApp operativo (plantillas aprobadas; envío directo worker→Meta, no en n8n — D-049, mismo criterio ya aceptado en 3.9/PR #66 y 5.9) — M9
 - 5.12 Vencimientos y recertificación de certificados (alertas 90/60/30, listado por empresa) — HU-7.3
 - 5.13 Export completo del tenant en formatos abiertos — HU-1.5
 
