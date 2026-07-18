@@ -914,3 +914,138 @@ entrada original.
   explícita de la divergencia, no solo que el código haga lo correcto).
 - **Origen:** 2026-07-18 · revisión adversarial de `feat/h5-5.11-whatsapp` (3 lentes: seguridad,
   dominio, cumplimiento de spec + verificación independiente) · tarea 5.11 / `specs/03-tareas.md:103`
+
+## D-050 — Score SCORM es informativo; NUNCA se convierte en nota (`grades`)
+
+- **ID:** D-050
+- **Fecha:** 2026-07-17
+- **Decisión:** el resultado (`score_raw`) reportado por un paquete SCORM al terminar (vía `LMSSetValue`/`SetValue` de `cmi.core.score.raw`/`cmi.score.raw`) se guarda SOLO en `scorm_cmi.score_raw`, puramente informativo para staff. Nunca se escribe en `grades` ni se convierte a la escala chilena 1.0–7.0. Lo que SÍ mueve el progreso del alumno es `completed`/`passed` del CMI, que marca `lesson_progress.completed` igual que cualquier otra lección.
+- **Por qué:** convertir un score 0-100 (o el criterio pass/fail de la herramienta de autor) a una nota 1.0–7.0 exigiría una política pedagógica (¿escala lineal? ¿umbral de aprobación?) que no está definida en ningún CA ni HU — inventarla en el código sería tomar una decisión de negocio no pedida. Queda como follow-up explícito si Edu la quiere (HU-6.1 ya cubre notas nativas del LMS vía quizzes/tareas).
+- **Alternativas descartadas:** mapear linealmente 0-100 → 1.0-7.0 (descartada: política pedagógica inventada, sin CA que la respalde); ignorar el score completamente (descartada: sigue siendo información útil para el staff, solo no debe confundirse con una nota real).
+- **Origen:** 2026-07-17 · task 5.1b (reproductor SCORM) · PR #104
+
+## D-051 — Asistencia sincrónica es un registro INTERNO; nunca sustituye ni alimenta el RCE de SENCE
+
+- **ID:** D-051
+- **Fecha:** 2026-07-17
+- **Decisión:** `live_sessions`/`live_session_attendance` (task 5.4) registran asistencia a sesiones sincrónicas (Zoom/Meet/Teams) de forma 100% interna a la OTEC. Cero imports de `src/modules/sence/`, cero tablas `sence_*` tocadas. Un banner permanente ("Asistencia interna — no reemplaza el registro SENCE") se muestra en toda vista y export. La dirección de dependencia, si algún día se conecta al RCE, sería `sence → academico` (SENCE leyendo/validando este dato), JAMÁS al revés.
+- **Por qué:** la norma que regula si SENCE acepta asistencia sincrónica vía RCE por sesión sigue sin verificar oficialmente (spec §7-R3, marcado ⚠). Tocar `sence/` sin esa verificación arriesgaría el módulo más sensible/probado del sistema por una norma no confirmada, y violaría la regla de re-entrada del piloto (Hito 4: cero cambios en `sence/` durante todo el Hito 5).
+- **Alternativas descartadas:** integrar directo con `sence_sessions`/RCE ahora, apostando a que la norma lo permite (descartada: riesgo alto sobre el módulo más crítico, sin confirmación oficial); esperar la confirmación de SENCE antes de construir nada (descartada: el registro interno ya tiene valor real para la OTEC hoy, con o sin esa confirmación).
+- **Origen:** 2026-07-17 · task 5.4 (sesiones en vivo) · PR #102
+
+## D-052 — Proxy same-origin para assets SCORM (no signed URLs de Storage)
+
+- **ID:** D-052
+- **Fecha:** 2026-07-17
+- **Decisión:** los assets de un paquete SCORM (HTML/JS/CSS/imágenes extraídos) se sirven vía `GET /api/scorm/[packageId]/[...path]`, un proxy same-origin autenticado que siempre responde 404 (nunca 403) ante cualquier fallo de autorización. El iframe del reproductor usa `sandbox="allow-scripts allow-same-origin allow-forms"`.
+- **Por qué:** un SCO (SCORM Content Object) busca `window.API`/`window.API_1484_11` en la cadena de frames padres para hablar con el LMS — si el contenido se sirviera desde un origen distinto (p.ej. una signed URL de `supabase.co`), esa búsqueda cross-origin fallaría y el paquete no podría reportar progreso/notas. Same-origin es un requisito funcional del estándar SCORM, no una preferencia. La compensación por el riesgo de correr JS same-origin (solo staff sube paquetes) es la CSP enforcing (`buildScormContentCsp`: `connect-src 'none'`, `object-src 'none'`, `form-action 'none'`) aplicada SOLO a las respuestas de este proxy.
+- **Alternativas descartadas:** signed URLs directas de Storage (descartada: rompe la comunicación SCORM API por cross-origin, no es una opción funcional); confiar en sandboxing del iframe sin CSP adicional (descartada: capa de defensa insuficiente para contenido subido por terceros, aunque sea staff).
+- **Origen:** 2026-07-17 · task 5.1b (reproductor SCORM) · PR #104
+
+## D-053 — Módulos del asistente de creación de cursos se materializan como lección-cabecera
+
+- **ID:** D-053
+- **Fecha:** 2026-07-17
+- **Decisión:** cuando el asistente guiado (task 5.10) genera el curso real desde un borrador, cada "módulo" definido en el wizard se materializa como una lección-cabecera ("Módulo N — título", con los aprendizajes esperados como contenido) seguida de sus lecciones reales, en vez de crear un concepto de "módulo" nuevo en el esquema de `courses`/`lessons`.
+- **Por qué:** el esquema de contenido (HU-4.1, ya construido en Hito 1) no tiene noción de agrupación por módulo — agregarla exigiría migrar el constructor libre de cursos ya en producción. Una lección-cabecera reusa el modelo existente sin tocarlo, y resuelve el CA del wizard (mostrar la estructura por módulo) con el mínimo cambio de superficie.
+- **Alternativas descartadas:** agregar una tabla `course_modules`/columna de agrupación a `lessons` (descartada: migración de un modelo en producción, fuera de alcance de esta task); generar el curso sin ninguna indicación visual de módulo (descartada: no cumple el CA del wizard de mostrar la estructura definida).
+- **Origen:** 2026-07-17 · task 5.10 (asistente de creación de cursos) · PR #105
+
+## D-054 — OpenRouter como gateway único de IA; ZDR es responsabilidad OPERATIVA de Edu
+
+- **ID:** D-054
+- **Fecha:** 2026-07-17/18
+- **Decisión:** todo el Tutor IA (chat + embeddings) pasa por OpenRouter (`POST /api/v1/chat/completions`, `POST /api/v1/embeddings`), fetch-directo sin SDK (mismo patrón que `email-sender.ts`/Resend). La configuración de Zero Data Retention es un ajuste de cuenta OpenRouter (Settings → Privacy) — el código NO puede verificar en runtime que esté activada; es la base operativa de RNF-10, no algo forzable desde la app. Sin `OPENROUTER_API_KEY`, todo el módulo degrada a no-op (`noopAiClient`) sin romper CI/staging.
+- **Por qué:** Edu pidió explícitamente OpenRouter (no Anthropic directo) tras investigación en vivo esa misma noche — permite elegir/cambiar de modelo por knob (`OPENROUTER_MODEL`) sin tocar código, y expone tanto chat como embeddings bajo una sola cuenta/facturación. Documentar la responsabilidad operativa de ZDR evita la falsa sensación de que el código "garantiza" algo que en realidad es un ajuste de cuenta externo.
+- **Alternativas descartadas:** Anthropic API directa (descartada por decisión explícita de Edu); un proveedor de embeddings separado del de chat (descartada: complejidad de 2 cuentas/facturaciones para lo que OpenRouter resuelve con una).
+- **Origen:** 2026-07-17/18 · tasks 5.8a/5.8b (Tutor IA) · PRs #107, #108
+
+## D-055 — Retrieval híbrido: FTS lexical SIEMPRE disponible, vector como primario cuando hay key (amplía ADR-007)
+
+- **ID:** D-055
+- **Fecha:** 2026-07-17
+- **Decisión:** el retrieval del Tutor IA (`searchChunks`) intenta primero similitud vectorial (pgvector/HNSW) cuando `aiClient.configured`, con fallback AUTOMÁTICO a full-text search nativo de Postgres (`tsvector`, config `spanish`) si no hay proveedor configurado o si la llamada de embeddings falla por cualquier motivo. El FTS nunca depende de un proveedor externo.
+- **Por qué:** ADR-007 ya fijó "RAG sobre pgvector de Supabase" pero no especificaba qué pasa sin proveedor de embeddings — esta entrada amplía esa decisión: el sistema debe funcionar (aunque con retrieval más simple) con CERO llaves externas configuradas, para que CI/staging queden siempre verdes y el tutor nunca "desaparezca" solo porque OpenRouter tuvo un hiccup transitorio.
+- **Alternativas descartadas:** retrieval vector-only, fallando duro sin key (descartada: rompe CI/staging sin credenciales y dejaría al tutor inoperante ante cualquier fallo transitorio del proveedor); FTS-only sin nunca intentar vector (descartada: no cumpliría la promesa real de ADR-007 de RAG sobre pgvector).
+- **Origen:** 2026-07-17 · task 5.8a (Tutor IA, esquema RAG) · PR #107 · amplía ADR-007 (`specs/02-plan-tecnico.md §12`)
+
+## D-056 — Staff académico NO lee conversaciones del Tutor IA (minimización más estricta que certificados/SCORM)
+
+- **ID:** D-056
+- **Fecha:** 2026-07-17
+- **Decisión:** `tutor_conversations`/`tutor_messages` tienen RLS que permite lectura SOLO al propio alumno dueño (`user_id = auth.uid()`) o al superadmin (soporte de plataforma) — a diferencia de `certificates`/`scorm_cmi`, donde otec_admin/coordinator/instructor SÍ tienen una rama de lectura. El soporte al alumno llega exclusivamente por derivación explícita ("derivar a tutor humano", task 5.8b), nunca por acceso directo del staff a la conversación completa.
+- **Por qué:** HU-11.3 pide minimización estricta: una conversación con un asistente de IA es un dato más sensible/personal que un certificado o un intento SCORM (puede incluir dudas, errores, frustración del alumno expresados en lenguaje natural) — exponerla por defecto a todo el staff académico del tenant excede lo necesario para operar el curso.
+- **Alternativas descartadas:** mismo patrón que certificados/SCORM (staff con rama de lectura completa) (descartada: excede la minimización que amerita el contenido de una conversación con IA); ocultar también al superadmin (descartada: necesario para soporte de plataforma ante incidentes).
+- **Origen:** 2026-07-17 · task 5.8a (Tutor IA, esquema RAG) · PR #107
+
+## D-057 — Retención de conversaciones del Tutor IA: 180 días, purga diaria automática
+
+- **ID:** D-057
+- **Fecha:** 2026-07-17
+- **Decisión:** `tutor-maintenance.ts` (`runTutorReconcile`, job diario del worker) purga conversaciones/mensajes con más de `TUTOR_RETENTION_DAYS` (default 180) de antigüedad. Configurable por env, sin UI de override por tenant en esta iteración.
+- **Por qué:** Ley 21.719 (minimización/limitación de plazo) — no hay razón operativa para conservar indefinidamente el historial de chat de un alumno con el tutor, a diferencia de certificados/asistencia SENCE (que SÍ tienen obligación de conservación regulatoria). 180 días cubre holgadamente la duración de un curso típico más margen de soporte post-egreso.
+- **Alternativas descartadas:** retención indefinida (descartada: viola minimización de la Ley 21.719 sin justificación regulatoria, a diferencia de los datos SENCE); retención configurable por tenant desde el día 1 (descartada: complejidad de UI no justificada todavía; el knob de env ya permite ajustarlo si hace falta).
+- **Origen:** 2026-07-17 · task 5.8a (Tutor IA, esquema RAG) · PR #107
+
+## D-058 — Reserva atómica del cupo de mensajes del Tutor IA (advisory lock por tenant) — fix de una condición de carrera real
+
+- **ID:** D-058
+- **Fecha:** 2026-07-18
+- **Decisión:** el enforcement del límite diario de mensajes/presupuesto mensual del tutor pasó de "leer contadores, luego incrementar al final del streaming" (TOCTOU) a una RPC atómica (`tutor_try_reserve_message`) que hace chequeo + incremento del contador de MENSAJES en la misma transacción, serializada con `pg_advisory_xact_lock` por tenant, llamada ANTES de invocar al proveedor de IA.
+- **Por qué:** la revisión adversarial de 5.8b encontró que el diseño original permitía que una ráfaga de requests concurrentes del mismo alumno (o de varios alumnos del mismo tenant) leyera el mismo contador "viejo", pasara TODAS el chequeo, e incurriera cada una en una llamada REAL y pagada a OpenRouter antes de que ninguna alcanzara a incrementar el contador — rompiendo por diseño (no por bug transitorio) el "corte automático al llegar al tope" de la CA de HU-11.2. Límite conocido y documentado: el presupuesto MENSUAL de tokens del tenant no se puede reservar exacto por adelantado (el conteo real de tokens solo se sabe al terminar el streaming) — el advisory lock acota esa ventana a "como mucho 1 request en vuelo por tenant sin sumar", no la elimina del todo.
+- **Alternativas descartadas:** dejar el enforcement como estaba, aceptando el riesgo de ráfaga (descartada: viola la CA explícita de HU-11.2 y es trivialmente explotable por un alumno autenticado); reservar también el presupuesto de tokens por adelantado con una estimación (descartada por complejidad/alcance: el fix de mensajes ya cierra el vector de abuso más directo; queda como refinamiento futuro si hace falta).
+- **Origen:** 2026-07-18 · revisión adversarial + fix de `feat/h5-5.8b-tutor-chat` · task 5.8b · PR #108
+
+## D-059 — Costo real de OpenRouter vía RPC separada; NUNCA se toca la firma de `tutor_add_usage`/`tutor_add_usage_system`
+
+- **ID:** D-059
+- **Fecha:** 2026-07-18
+- **Decisión:** el costo real en USD que reporta OpenRouter (chunk final de `usage.cost` del streaming) se acumula en `tutor_usage_daily.cost_usd` vía una RPC NUEVA y separada (`tutor_add_usage_cost`), en vez de agregar un parámetro a las RPCs existentes `tutor_add_usage`/`tutor_add_usage_system` mediante `CREATE OR REPLACE FUNCTION` con un parámetro adicional.
+- **Por qué:** en Postgres, agregar un parámetro a una función cambia su firma (lista de tipos), y `CREATE OR REPLACE FUNCTION` con una firma distinta CREA UN OVERLOAD DUPLICADO en vez de reemplazar la función existente — un patrón de bug ya visto y corregido esta misma noche en otra tarea (recreación de `issue_certificate` vía drop+create explícito, task 5.12). Una RPC nueva, independiente, evita ese riesgo por completo sin tocar las 2 firmas que ya funcionan y ya están probadas.
+- **Alternativas descartadas:** `CREATE OR REPLACE FUNCTION tutor_add_usage(..., p_cost_usd numeric default 0)` (descartada: riesgo real de overload duplicado, ya materializado en otra parte del código base esta misma sesión); `DROP FUNCTION` + recrear con el parámetro nuevo (descartada: viable pero innecesariamente arriesgada cuando una RPC nueva logra lo mismo con cero riesgo sobre las 2 firmas existentes).
+- **Origen:** 2026-07-18 · task 5.8b (Tutor IA, chat streaming) · PR #108
+
+## D-060 — Recordatorios automáticos de alumnos SIEMPRE deterministas; CERO IA en el envío automático
+
+- **ID:** D-060
+- **Fecha:** 2026-07-18
+- **Decisión:** pese a que HU-5.9 dice literalmente "personalización con IA en Hito 5", el envío automático de recordatorios (`reminders-tick`) sigue siendo 100% plantilla determinista (interpolación de string), enriquecida con datos ya calculados (p.ej. `lastActivityDaysAgo`) pero JAMÁS redactada por un modelo. La IA generativa de la task 5.9 se usa SOLO en flujos con humano-en-el-loop (borrador de respuesta de foro/mensajería que el staff revisa antes de enviar; narrativa del digest semanal de empresa, un correo a RRHH no al alumno).
+- **Por qué:** RNF-10 exige que ningún contenido dirigido automáticamente a un alumno salga generado por IA sin revisión humana — un recordatorio automático, por definición, no tiene ese humano en el medio. El texto literal de la HU quedó redactado antes de que este principio se aplicara con este nivel de estrictez; esta entrada deja explícito que el ruling gana sobre el texto literal de la HU, y por qué (verificado por 3 revisores independientes en la sesión de la task 5.9, ninguno encontró IA en el camino automático).
+- **Alternativas descartadas:** redactar el recordatorio con IA como sugiere el texto literal de la HU (descartada: viola RNF-10 al no tener humano-en-el-loop en un envío 100% automático); no enriquecer el recordatorio en absoluto (descartada: pierde valor real — el dato de inactividad ya estaba calculado y disponible, ocultarlo sería desperdiciar información útil sin motivo).
+- **Origen:** 2026-07-18 · task 5.9 (IA por lotes) · PR #109
+
+## D-061 — Portal de empresa: RUN del trabajador SIEMPRE enmascarado; rama `company` retirada de las policies vivas
+
+- **ID:** D-061
+- **Fecha:** 2026-07-17
+- **Decisión:** el rol `company` (RRHH de empresa cliente) NO tiene rama de acceso en las policies RLS vivas de `enrollments`/`sence_sessions` (a diferencia de `supervisor`, que sí la tiene con vigencia/alcance — D-044). Todo el acceso de `company` pasa por el servicio curado `company-portal-service.ts`, con cada consulta auditada y el RUN del trabajador SIEMPRE enmascarado antes de llegar a la respuesta.
+- **Por qué:** a diferencia del fiscalizador (supervisor, con mandato legal de auditoría), RRHH de una empresa cliente no necesita ni debe ver el RUN completo de sus propios trabajadores para el caso de uso real (seguimiento de avance/asistencia/certificados) — enmascarar por defecto en el servicio, en vez de en la policy RLS, permite auditar cada acceso y mantener la superficie de RLS más simple (sin una tercera rama de rol con reglas de vigencia/alcance como la del supervisor).
+- **Alternativas descartadas:** dar a `company` una rama de RLS con vigencia/alcance como `supervisor` (descartada: RRHH no tiene el mismo mandato legal que un fiscalizador OTIC, y el RUN completo no aporta valor a su caso de uso real); exponer el RUN completo confiando en que el frontend lo oculte (descartada: minimización real debe aplicarse en el servidor, no en la presentación).
+- **Origen:** 2026-07-17 · task 5.2 (portal empresa) · PR #99
+
+## D-062 — Un usuario `company` pertenece a UNA sola empresa activa por tenant
+
+- **ID:** D-062
+- **Fecha:** 2026-07-17
+- **Decisión:** `company_members` tiene un índice único parcial que impide que un mismo `user_id` tenga más de una fila activa (`revoked_at is null`) por tenant — un usuario RRHH representa una sola empresa cliente a la vez dentro de una OTEC.
+- **Por qué:** simplifica el modelo de autorización (el gate del portal resuelve "la empresa del usuario" sin ambigüedad) y refleja el caso de uso real: una persona de RRHH gestiona su propia empresa, no un portafolio de varias. Si una persona necesita representar 2 empresas, el modelo exige revocar la membresía anterior antes de crear la nueva — explícito y auditable, no implícito.
+- **Alternativas descartadas:** permitir múltiples empresas activas por usuario con selector en la UI (descartada: complejidad no justificada por ningún caso de uso real identificado; el modelo simple cubre el 100% de los casos esperados).
+- **Origen:** 2026-07-17 · task 5.2 (portal empresa) · PR #99
+
+## D-063 — Export completo del tenant: tope de 300MB con archivos omitidos manifestados
+
+- **ID:** D-063
+- **Fecha:** 2026-07-17
+- **Decisión:** el export asíncrono del tenant (task 5.13) tiene un presupuesto (`FileBudget`) de 300MB para los archivos de Storage incluidos en el ZIP (certificados PDF, evidencias, etc.); si se excede, los archivos restantes se OMITEN y quedan listados explícitamente en el manifiesto (`MANIFIESTO.csv`), nunca silenciosamente descartados.
+- **Por qué:** un tenant con muchos años de operación podría generar un ZIP de tamaño impráctico (horas de generación, límites de memoria del worker) — un tope protege la operación del export sin bloquearlo por completo; manifestar lo omitido (en vez de solo truncar en silencio) mantiene la honestidad del export: quien lo recibe sabe exactamente qué NO está incluido y puede pedirlo aparte.
+- **Alternativas descartadas:** sin tope, exportar todo siempre (descartada: riesgo real de agotar memoria/tiempo del worker con un tenant grande); truncar en silencio sin manifestar lo omitido (descartada: viola la honestidad esperada de un export completo — el usuario creería tener todo cuando no es así).
+- **Origen:** 2026-07-17 · task 5.13 (export completo del tenant) · PR #101
+
+## D-064 — Alertas de vencimiento de certificado: offsets configurables por tenant, regla anti-ráfaga
+
+- **ID:** D-064
+- **Fecha:** 2026-07-17
+- **Decisión:** `certificate_expiry_config` permite a cada tenant configurar sus propios offsets de alerta (default 90/60/30 días antes del vencimiento). El worker (`expiry-alerts-tick`) aplica una regla anti-ráfaga: si una alerta "entra tarde" (p.ej. el tick no corrió por unos días y ya pasaron 2 offsets), SOLO notifica el offset MENOR alcanzado, marcando los offsets mayores como enviados sin notificarlos — el alumno nunca recibe 2-3 avisos idénticos de golpe.
+- **Por qué:** HU-7.3 pide alertas configurables 90/60/30 pero no todos los tenants operan igual (algunos podrían preferir ventanas distintas); el ledger INSERT-only (`certificate_expiry_alerts`, único por cert×offset) da idempotencia real, y la regla anti-ráfaga evita que un tick con retraso genere una experiencia confusa/spam para el alumno.
+- **Alternativas descartadas:** offsets fijos 90/60/30 sin configuración por tenant (descartada: menos flexible sin necesidad real de estar fijo); notificar TODOS los offsets alcanzados si el tick se atrasó (descartada: genera una ráfaga de correos idénticos de golpe, mala experiencia sin beneficio real).
+- **Origen:** 2026-07-17 · task 5.12 (vencimientos de certificados) · PR #100
