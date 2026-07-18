@@ -42,6 +42,12 @@ function fakeVector(seed: number): number[] {
   return v;
 }
 
+// `chatStream` no se ejercita en esta suite (solo embeddings/indexación): un
+// stub mínimo alcanza para satisfacer la interfaz `AiClient` (task 5.8b).
+async function* unusedChatStream(): AsyncGenerator<{ type: "error"; error: string }> {
+  yield { type: "error", error: "not_used_in_this_test" };
+}
+
 function fakeAiClient(): AiClient {
   return {
     configured: true,
@@ -49,6 +55,7 @@ function fakeAiClient(): AiClient {
     async embed(texts: string[]): Promise<EmbedResult> {
       return { ok: true, vectors: texts.map((_, i) => fakeVector(i + 1)) };
     },
+    chatStream: unusedChatStream,
   };
 }
 
@@ -59,6 +66,7 @@ function failingAiClient(): AiClient {
     async embed(): Promise<EmbedResult> {
       return { ok: false, error: "network_error" };
     },
+    chatStream: unusedChatStream,
   };
 }
 

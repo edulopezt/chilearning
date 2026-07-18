@@ -6,6 +6,10 @@
  * Sin IO: el llamador hace las queries y le pasa los números ya resueltos.
  */
 
+/** Límite diario de mensajes por alumno cuando `tutor_course_config.daily_message_limit`
+ *  es `NULL` (task 5.8b, HU-11.2). */
+export const DEFAULT_DAILY_MESSAGE_LIMIT = 30;
+
 export interface TutorBudgetInput {
   readonly messagesToday: number;
   readonly dailyLimit: number;
