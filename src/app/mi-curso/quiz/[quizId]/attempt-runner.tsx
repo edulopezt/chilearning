@@ -7,6 +7,7 @@ import { esCL } from "@/i18n/es-CL";
 import type { QuestionSnapshot } from "@/modules/evaluacion/domain/grading";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { saveAnswersAction, submitAttemptAction } from "./actions";
 
@@ -183,18 +184,21 @@ function QuestionInput({
         <div key={left.id} className="flex flex-wrap items-center gap-2 text-sm">
           <span className="min-w-32 flex-1">{left.text}</span>
           <span aria-hidden>→</span>
-          <select
-            value={current[left.id] ?? ""}
-            onChange={(e) => onChange({ ...current, [left.id]: e.target.value })}
-            className="input flex-1"
+          <Select
+            value={current[left.id] ?? null}
+            onValueChange={(v) => onChange({ ...current, [left.id]: v })}
           >
-            <option value="">{t.matchSelect}</option>
-            {question.rights.map((right) => (
-              <option key={right.id} value={right.id}>
-                {right.text}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder={t.matchSelect} />
+            </SelectTrigger>
+            <SelectContent>
+              {question.rights.map((right) => (
+                <SelectItem key={right.id} value={right.id}>
+                  {right.text}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       ))}
     </div>

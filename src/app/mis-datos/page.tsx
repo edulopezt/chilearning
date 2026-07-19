@@ -8,6 +8,9 @@ import { PROCESSING_ACTIVITIES, RETENTION_POLICIES } from "@/modules/core/domain
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { FieldControl, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { PageHeader } from "@/components/ui/page-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { requestDsrAction } from "./actions";
 
@@ -29,10 +32,7 @@ export default async function MisDatosPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-sm text-muted-foreground">{t.intro}</p>
-      </header>
+      <PageHeader title={t.title} description={t.intro} />
 
       <section className="flex flex-col gap-3">
         <a href="/api/mis-datos/export" className={cn(buttonVariants(), "w-fit")}>
@@ -44,16 +44,23 @@ export default async function MisDatosPage() {
         <h2 className="text-lg font-semibold">{t.requestTitle}</h2>
         <p className="text-xs text-muted-foreground">{t.retentionNote}</p>
         <form action={requestDsrAction} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="flex flex-col gap-1 text-sm">
-            {t.kindLabel}
-            <select name="kind" className="input">
-              <option value="access">{t.kindAccess}</option>
-              <option value="rectification">{t.kindRectification}</option>
-              <option value="erasure">{t.kindErasure}</option>
-              <option value="portability">{t.kindPortability}</option>
-            </select>
-          </label>
-          <input name="detail" placeholder={t.detailLabel} className="input flex-1" />
+          <FieldRoot>
+            <FieldLabel>{t.kindLabel}</FieldLabel>
+            <Select name="kind" defaultValue="access">
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="access">{t.kindAccess}</SelectItem>
+                <SelectItem value="rectification">{t.kindRectification}</SelectItem>
+                <SelectItem value="erasure">{t.kindErasure}</SelectItem>
+                <SelectItem value="portability">{t.kindPortability}</SelectItem>
+              </SelectContent>
+            </Select>
+          </FieldRoot>
+          <FieldRoot className="flex-1">
+            <FieldControl name="detail" placeholder={t.detailLabel} />
+          </FieldRoot>
           <Button type="submit" variant="outline">
             {t.submit}
           </Button>

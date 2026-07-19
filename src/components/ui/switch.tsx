@@ -10,7 +10,7 @@ function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        "inline-flex h-6 w-10 shrink-0 items-center rounded-full border border-transparent bg-input outline-none transition-colors",
+        "inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-input outline-none transition-colors",
         "data-[checked]:bg-primary",
         "focus-visible:ring-3 focus-visible:ring-ring/50",
         "data-[invalid]:ring-3 data-[invalid]:ring-destructive/20",
