@@ -114,34 +114,34 @@ shell de la app). Guía de diseño: `docs/design/MASTER.md` (generado con la ski
 loaders, errores comprensibles, reglas de formulario — pedido explícito de Edu). Plan completo
 en la sesión que abrió el hito (2026-07-19).
 
-- 6.0 ⬜ Spec del hito + `docs/design/MASTER.md` + `docs/design/UX-STANDARDS.md` — RNF-6 — registra
+- 6.0 ✅ Spec del hito + `docs/design/MASTER.md` + `docs/design/UX-STANDARDS.md` — RNF-6 — registra
   el hito en `specs/03-tareas.md`/`ESTADO-PROYECTO.md`/`DECISIONES.md` (D-065, D-066) y genera
-  la guía de diseño con la skill instalada global
-- 6.1 ⬜ Design tokens oklch (paleta azul/cyan real, neutrales con chroma, dark) + fuente Inter +
+  la guía de diseño con la skill instalada global (#112)
+- 6.1 ✅ Design tokens oklch (paleta azul/cyan real, neutrales con chroma, dark) + fuente Inter +
   fix de escala táctil del `Button` (hoy h-8/36px, viola RNF-6 ≥44px) — RNF-6
-- 6.2 ⬜ Primitivos estáticos (`card`, `input`, `textarea`, `field`, `badge`, `alert`, `skeleton`,
+- 6.2 ✅ Primitivos estáticos (`card`, `input`, `textarea`, `field`, `badge`, `alert`, `skeleton`,
   `spinner`, `progress`, `page-header`, `empty-state`) + `phone.ts` — RNF-6
-- 6.3 ⬜ Primitivos interactivos (`tabs`, `select`, `checkbox`, `radio-group`, `switch`, `dialog`,
+- 6.3 ✅ Primitivos interactivos (`tabs`, `select`, `checkbox`, `radio-group`, `switch`, `dialog`,
   `alert-dialog`, `sheet`, `dropdown-menu`, `tooltip`, `password-requirements`) — RNF-6
-- 6.4 ⬜ Tabla responsive (`table.tsx` + colapso a cards por CSS) probada en el gradebook real —
+- 6.4 ✅ Tabla responsive (`table.tsx` + colapso a cards por CSS) probada en el gradebook real —
   RNF-6
-- 6.5 ⬜ Dark mode completo (script anti-FOUC, provider, toggle en topbar + `/preferencias`) —
+- 6.5 ✅ Dark mode completo (script anti-FOUC, provider, toggle en topbar + `/preferencias`) —
   RNF-6
-- 6.6 ⬜ Branding por tenant en runtime (RPC `tenant_branding_by_slug`, clamp de contraste
-  server-side, `<TenantBrandStyle>`, co-brand del login) — HU-1.2
-- 6.7 ⬜ App shell + layouts por rol (sidebar/topbar/nav), `error.tsx`/`loading.tsx` por área,
+- 6.6 ✅ Branding por tenant en runtime (RPC `tenant_branding_by_slug`, clamp de contraste
+  server-side, `<TenantBrandStyle>`, co-brand del login) — HU-1.2 (#118)
+- 6.7 ✅ App shell + layouts por rol (sidebar/topbar/nav), `error.tsx`/`loading.tsx` por área,
   dashboard rediseñado como home real de LMS — RNF-6
-- 6.8 ⬜ Migración: área pública (landing, login, privacidad, verificar, consentimiento,
-  suspendido) — RNF-6
-- 6.9 ⬜ Migración: área alumno (`mi-curso/*`, mis-datos, preferencias) — RNF-6
-- 6.10 ⬜ Migración: área tablero (instructor/tutor: entregas, notas) — RNF-6
-- 6.11 ⬜ Migración: admin cursos (+ asistente IA de creación) — RNF-6
-- 6.12 ⬜ Migración: admin acciones + inscripciones (chrome visual únicamente; `sence/`
-  intocable) — RNF-6
-- 6.13 ⬜ Migración: resto de admin (sence, marca, correos, mensajes, empresas, supervisores,
-  derechos, exportación, vencimientos, tutor-ia) — RNF-6
-- 6.14 ⬜ Migración: portales (supervisor, empresa, superadmin) — RNF-6
-- 6.15 ⬜ Polish: motion, auditoría de foco/contraste en ambos modos, capturas visuales
+- 6.8 ✅ Migración: área pública (landing, login, privacidad, verificar, consentimiento,
+  suspendido) — RNF-6 (#120)
+- 6.9 ✅ Migración: área alumno (`mi-curso/*`, mis-datos, preferencias) — RNF-6 (#121)
+- 6.10 ✅ Migración: área tablero (instructor/tutor: entregas, notas) — RNF-6 (#122)
+- 6.11 ✅ Migración: admin cursos (+ asistente IA de creación) — RNF-6 (#123)
+- 6.12 ✅ Migración: admin acciones + inscripciones (chrome visual únicamente; `sence/`
+  intocable) — RNF-6 (#124)
+- 6.13 ✅ Migración: resto de admin (sence, marca, correos, mensajes, empresas, supervisores,
+  derechos, exportación, vencimientos, tutor-ia) — RNF-6 (#125)
+- 6.14 ✅ Migración: portales (supervisor, empresa, superadmin) — RNF-6 (#126)
+- 6.15 ✅ Polish: motion, auditoría de foco/contraste en ambos modos, capturas visuales
   (`VISUAL=1`), regla ESLint anti-regresión de estilos hardcodeados — RNF-6
 - 6.16 ⬜ Cierre: revisión adversarial visual global (worktrees aislados) + fixes + snapshot
   final en `ESTADO-PROYECTO.md`

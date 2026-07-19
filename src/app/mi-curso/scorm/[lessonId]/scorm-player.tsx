@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Scorm12API, Scorm2004API } from "scorm-again";
 
 import { esCL } from "@/i18n/es-CL";
+import { Button } from "@/components/ui/button";
 import { createSaveQueue } from "@/modules/contenido/domain/scorm-save-queue";
 
 const DEBOUNCE_MS = 2000;
@@ -237,18 +238,18 @@ function SaveIndicator({
 }) {
   if (status === "error") {
     return (
-      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+      <div className="flex items-center gap-2 text-warning">
         <span>{esCL.scorm.saveError}</span>
-        <button type="button" onClick={onRetry} className="underline">
+        <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={onRetry}>
           {esCL.scorm.retrySave}
-        </button>
+        </Button>
       </div>
     );
   }
   if (status === "saving") return <span className="text-muted-foreground">{esCL.scorm.saving}</span>;
   if (status === "saved" && savedAt !== null) {
     return (
-      <span className="text-green-700 dark:text-green-400">
+      <span className="text-success">
         {esCL.scorm.saved}{" "}
         {new Date(savedAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
       </span>

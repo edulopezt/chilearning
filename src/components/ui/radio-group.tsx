@@ -15,7 +15,7 @@ function RadioGroupItem<Value = string>({ className, ...props }: RadioPrimitive.
     <RadioPrimitive.Root
       data-slot="radio-group-item"
       className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-full border border-input outline-none transition-colors",
+        "flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full border border-input outline-none transition-colors",
         "data-[checked]:border-primary",
         "focus-visible:ring-3 focus-visible:ring-ring/50",
         "data-[invalid]:border-destructive data-[invalid]:ring-3 data-[invalid]:ring-destructive/20",
