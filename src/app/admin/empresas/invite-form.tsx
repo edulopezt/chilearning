@@ -3,6 +3,11 @@
 import { useActionState, useState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   createCompanyAction,
   inviteCompanyMemberAction,
@@ -36,27 +41,40 @@ export function CreateCompanyForm() {
   });
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-md border p-4">
-      <h2 className="text-lg font-semibold">{t.createHeading}</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.createHeading}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={formAction} className="flex flex-col gap-4">
+          <FieldRoot>
+            <FieldLabel>{t.rut}</FieldLabel>
+            <FieldControl name="rut" required inputMode="text" />
+            <FieldDescription>{t.rutHint}</FieldDescription>
+          </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.rut}</span>
-        <input name="rut" required inputMode="text" className="min-h-11 rounded-md border px-3" />
-        <span className="text-muted-foreground text-xs">{t.rutHint}</span>
-      </label>
+          <FieldRoot>
+            <FieldLabel>{t.razonSocial}</FieldLabel>
+            <FieldControl name="razonSocial" required maxLength={200} />
+          </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.razonSocial}</span>
-        <input name="razonSocial" required maxLength={200} className="min-h-11 rounded-md border px-3" />
-      </label>
+          <Button type="submit" loading={pending} className="w-full sm:w-auto">
+            {t.create}
+          </Button>
 
-      <button type="submit" disabled={pending} className="min-h-11 rounded-md border px-4 font-medium disabled:opacity-50">
-        {t.create}
-      </button>
-
-      {state.error ? <p className="text-sm text-red-600">{ERRORS[state.error] ?? t.errorFailed}</p> : null}
-      {state.ok ? <p className="text-sm text-green-700 dark:text-green-400">{t.createOk}</p> : null}
-    </form>
+          {state.error ? (
+            <Alert variant="destructive" role="alert">
+              <AlertDescription>{ERRORS[state.error] ?? t.errorFailed}</AlertDescription>
+            </Alert>
+          ) : null}
+          {state.ok ? (
+            <Alert variant="success" role="status">
+              <AlertDescription>{t.createOk}</AlertDescription>
+            </Alert>
+          ) : null}
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -72,65 +90,85 @@ export function InviteForm({ companies }: { companies: readonly CompanyOption[] 
 
   if (companies.length === 0) {
     return (
-      <div className="rounded-md border p-4">
-        <h2 className="text-lg font-semibold">{t.inviteHeading}</h2>
-        <p className="text-muted-foreground mt-1 text-sm">{t.noCompanies}</p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.inviteHeading}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">{t.noCompanies}</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-md border p-4">
-      <h2 className="text-lg font-semibold">{t.inviteHeading}</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.inviteHeading}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={formAction} className="flex flex-col gap-4">
+          <FieldRoot>
+            <FieldLabel>{t.company}</FieldLabel>
+            <Select name="companyId" required defaultValue={companies[0]?.id}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.razonSocial} · {c.rut}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.company}</span>
-        <select name="companyId" required className="min-h-11 rounded-md border px-3">
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.razonSocial} · {c.rut}
-            </option>
-          ))}
-        </select>
-      </label>
+          <FieldRoot>
+            <FieldLabel>{t.email}</FieldLabel>
+            <FieldControl type="email" name="email" required />
+          </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.email}</span>
-        <input type="email" name="email" required className="min-h-11 rounded-md border px-3" />
-      </label>
+          <Button type="submit" loading={pending} className="w-full sm:w-auto">
+            {t.invite}
+          </Button>
 
-      <button type="submit" disabled={pending} className="min-h-11 rounded-md border px-4 font-medium disabled:opacity-50">
-        {t.invite}
-      </button>
-
-      {state.error ? <p className="text-sm text-red-600">{ERRORS[state.error] ?? t.errorFailed}</p> : null}
-      {state.ok ? (
-        <div className="flex flex-col gap-2 rounded-md border border-green-300 bg-green-50 p-3 text-sm dark:bg-green-950">
-          <p className="font-medium text-green-800 dark:text-green-200">{t.inviteOk}</p>
-          {state.emailSent ? (
-            <p>{t.emailSent}</p>
-          ) : state.inviteLink ? (
-            <div className="flex flex-col gap-1">
-              <span>{t.emailNotSent}</span>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-neutral-100 px-2 py-1 text-xs dark:bg-neutral-800">
-                  {state.inviteLink}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(state.inviteLink!);
-                    setCopied(true);
-                  }}
-                  className="min-h-11 rounded-md border px-3 text-xs"
-                >
-                  {copied ? "✓" : t.copy}
-                </button>
-              </div>
-            </div>
+          {state.error ? (
+            <Alert variant="destructive" role="alert">
+              <AlertDescription>{ERRORS[state.error] ?? t.errorFailed}</AlertDescription>
+            </Alert>
           ) : null}
-        </div>
-      ) : null}
-    </form>
+          {state.ok ? (
+            <Alert variant="success" role="status">
+              <div className="flex flex-1 flex-col gap-2">
+                <AlertTitle>{t.inviteOk}</AlertTitle>
+                {state.emailSent ? (
+                  <AlertDescription>{t.emailSent}</AlertDescription>
+                ) : state.inviteLink ? (
+                  <AlertDescription className="flex flex-col gap-2">
+                    <span>{t.emailNotSent}</span>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted flex-1 truncate rounded px-2 py-1 text-xs">
+                        {state.inviteLink}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(state.inviteLink!);
+                          setCopied(true);
+                        }}
+                      >
+                        {copied ? "✓" : t.copy}
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                ) : null}
+              </div>
+            </Alert>
+          ) : null}
+        </form>
+      </CardContent>
+    </Card>
   );
 }

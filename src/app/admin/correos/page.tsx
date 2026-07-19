@@ -5,6 +5,7 @@ import { getBrandingState } from "@/modules/core/branding-service";
 import { renderInvitationEmail, renderWelcomeEmail, type RenderedEmail } from "@/modules/comunicacion/domain/email-templates";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -54,10 +55,7 @@ export default async function EmailsPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.emails.title}</h1>
-        <p className="text-muted-foreground text-sm">{esCL.emails.intro}</p>
-      </header>
+      <PageHeader title={esCL.emails.title} description={esCL.emails.intro} />
       <Preview title={esCL.emails.invitationTitle} email={invitation} />
       <Preview title={esCL.emails.welcomeTitle} email={welcome} />
       <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">{esCL.emails.note}</p>
