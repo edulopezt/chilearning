@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { esCL } from "@/i18n/es-CL";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import {
   DATA_RIGHTS,
@@ -40,9 +44,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
-
 /** Párrafos con "•" son ítems de lista; se renderizan con sangría. */
 function Paragraph({ text }: { readonly text: string }) {
   const isBullet = text.startsWith("•");
@@ -59,10 +60,7 @@ export default function PrivacyPage() {
       <nav aria-label={esCL.landing.title} className="border-b">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <span className="text-lg font-bold tracking-tight">{esCL.landing.title}</span>
-          <Link
-            href="/"
-            className={`inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-muted ${FOCUS_RING}`}
-          >
+          <Link href="/" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
             {t.backHome}
           </Link>
         </div>
@@ -95,23 +93,27 @@ export default function PrivacyPage() {
         </header>
 
         {/* Índice */}
-        <nav aria-labelledby="indice" className="mt-8 rounded-lg border p-4 sm:p-5">
-          <h2 id="indice" className="text-sm font-semibold">
-            {t.tocTitle}
-          </h2>
-          <ol className="mt-3 flex flex-col gap-1">
-            {POLICY_SECTIONS.map((section) => (
-              <li key={section.id}>
-                <a
-                  href={`#${section.id}`}
-                  className={`inline-flex min-h-11 items-center text-sm underline underline-offset-4 hover:text-muted-foreground sm:min-h-0 sm:py-1 ${FOCUS_RING}`}
-                >
-                  {section.heading}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
+        <Card className="mt-8 py-4 sm:py-5">
+          <CardContent>
+            <nav aria-labelledby="indice">
+              <h2 id="indice" className="text-sm font-semibold">
+                {t.tocTitle}
+              </h2>
+              <ol className="mt-3 flex flex-col gap-1">
+                {POLICY_SECTIONS.map((section) => (
+                  <li key={section.id}>
+                    <a
+                      href={`#${section.id}`}
+                      className="inline-flex min-h-11 items-center text-sm underline underline-offset-4 outline-none hover:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-0 sm:py-1"
+                    >
+                      {section.heading}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </CardContent>
+        </Card>
 
         <div className="mt-10 flex flex-col gap-10">
           {POLICY_SECTIONS.map((section) => (
@@ -125,88 +127,88 @@ export default function PrivacyPage() {
 
               {/* Registro de tratamientos — desde el catálogo de dominio */}
               {section.id === "finalidades" ? (
-                <div className="mt-2 overflow-x-auto">
-                  <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-                    <caption className="sr-only">{p.processingTitle}</caption>
-                    <thead>
-                      <tr className="border-b">
-                        <th scope="col" className="py-2 pr-3 font-semibold">{p.colPurpose}</th>
-                        <th scope="col" className="py-2 pr-3 font-semibold">{p.colCategories}</th>
-                        <th scope="col" className="py-2 font-semibold">{p.colBasis}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="mt-2 min-w-[36rem]">
+                  <Table>
+                    <TableCaption className="sr-only">{p.processingTitle}</TableCaption>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{p.colPurpose}</TableHead>
+                        <TableHead>{p.colCategories}</TableHead>
+                        <TableHead>{p.colBasis}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {PROCESSING_ACTIVITIES.map((activity) => (
-                        <tr key={activity.purpose} className="border-b align-top">
-                          <td className="py-2 pr-3">{activity.purpose}</td>
-                          <td className="text-muted-foreground py-2 pr-3">{activity.dataCategories}</td>
-                          <td className="text-muted-foreground py-2">{activity.basis}</td>
-                        </tr>
+                        <TableRow key={activity.purpose}>
+                          <TableCell className="align-top">{activity.purpose}</TableCell>
+                          <TableCell className="align-top text-muted-foreground">{activity.dataCategories}</TableCell>
+                          <TableCell className="align-top text-muted-foreground">{activity.basis}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               ) : null}
 
               {/* Subencargados */}
               {section.id === "encargados" ? (
-                <div className="mt-2 overflow-x-auto">
-                  <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-                    <caption className="sr-only">{section.heading}</caption>
-                    <thead>
-                      <tr className="border-b">
-                        <th scope="col" className="py-2 pr-3 font-semibold">{t.colProvider}</th>
-                        <th scope="col" className="py-2 pr-3 font-semibold">{t.colPurposeShort}</th>
-                        <th scope="col" className="py-2 font-semibold">{t.colLocation}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="mt-2 min-w-[36rem]">
+                  <Table>
+                    <TableCaption className="sr-only">{section.heading}</TableCaption>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t.colProvider}</TableHead>
+                        <TableHead>{t.colPurposeShort}</TableHead>
+                        <TableHead>{t.colLocation}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {SUBPROCESSORS.map((sub) => (
-                        <tr key={sub.name} className="border-b align-top">
-                          <td className="py-2 pr-3 font-medium">
+                        <TableRow key={sub.name}>
+                          <TableCell className="align-top font-medium">
                             {sub.name}
                             {sub.conditional ? (
                               <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
                                 {t.pendingLabel}
                               </span>
                             ) : null}
-                          </td>
-                          <td className="text-muted-foreground py-2 pr-3">{sub.purpose}</td>
-                          <td className="text-muted-foreground py-2">{sub.location}</td>
-                        </tr>
+                          </TableCell>
+                          <TableCell className="align-top text-muted-foreground">{sub.purpose}</TableCell>
+                          <TableCell className="align-top text-muted-foreground">{sub.location}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               ) : null}
 
               {/* Retención — desde el catálogo de dominio */}
               {section.id === "retencion" ? (
-                <div className="mt-2 overflow-x-auto">
-                  <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-                    <caption className="sr-only">{p.retentionTitle}</caption>
-                    <thead>
-                      <tr className="border-b">
-                        <th scope="col" className="py-2 pr-3 font-semibold">{p.colDataType}</th>
-                        <th scope="col" className="py-2 pr-3 font-semibold">{p.colRetention}</th>
-                        <th scope="col" className="py-2 font-semibold">{p.colBasis}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="mt-2 min-w-[36rem]">
+                  <Table>
+                    <TableCaption className="sr-only">{p.retentionTitle}</TableCaption>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{p.colDataType}</TableHead>
+                        <TableHead>{p.colRetention}</TableHead>
+                        <TableHead>{p.colBasis}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {RETENTION_POLICIES.map((policy) => (
-                        <tr key={policy.dataType} className="border-b align-top">
-                          <td className="py-2 pr-3">
+                        <TableRow key={policy.dataType}>
+                          <TableCell className="align-top">
                             {policy.dataType}
-                            <span className="text-muted-foreground ml-2 text-xs">
+                            <span className="ml-2 text-xs text-muted-foreground">
                               ({policy.retained ? p.retainedBadge : p.erasableBadge})
                             </span>
-                          </td>
-                          <td className="py-2 pr-3">{policy.periodLabel}</td>
-                          <td className="text-muted-foreground py-2">{policy.basis}</td>
-                        </tr>
+                          </TableCell>
+                          <TableCell className="align-top">{policy.periodLabel}</TableCell>
+                          <TableCell className="align-top text-muted-foreground">{policy.basis}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               ) : null}
 
@@ -263,10 +265,7 @@ export default function PrivacyPage() {
                   <div className="mt-4 flex flex-col gap-2 rounded-lg border bg-muted/40 p-4">
                     <h3 className="text-sm font-semibold">{t.rightsCtaTitle}</h3>
                     <p className="text-muted-foreground text-sm text-pretty">{t.rightsCtaBody}</p>
-                    <Link
-                      href="/mis-datos"
-                      className={`inline-flex min-h-11 w-fit items-center rounded-md bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 ${FOCUS_RING}`}
-                    >
+                    <Link href="/mis-datos" className={cn(buttonVariants({ size: "sm" }), "w-fit")}>
                       {t.rightsCtaLink}
                     </Link>
                   </div>
@@ -281,7 +280,7 @@ export default function PrivacyPage() {
         <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
           <Link
             href="/"
-            className={`inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4 hover:text-muted-foreground ${FOCUS_RING}`}
+            className="inline-flex min-h-11 items-center rounded-md text-sm font-medium underline underline-offset-4 outline-none hover:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {t.backHome}
           </Link>

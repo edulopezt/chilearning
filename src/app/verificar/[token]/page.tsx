@@ -1,5 +1,9 @@
+import { CheckCircle2Icon, XCircleIcon } from "lucide-react";
+
 import { esCL } from "@/i18n/es-CL";
 import { verifyCertificate } from "@/modules/certificados/certificates-service";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -23,34 +27,39 @@ export default async function VerificarPage({
       <h1 className="text-center text-xl font-bold tracking-tight">{t.title}</h1>
 
       {!cert ? (
-        <div className="rounded-lg border border-red-300 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-950">
-          <p className="text-red-800 dark:text-red-200">{t.notFound}</p>
-        </div>
+        <Alert variant="destructive" role="alert" className="justify-center">
+          <AlertDescription className="text-center">{t.notFound}</AlertDescription>
+        </Alert>
       ) : (
         <div className="flex flex-col gap-4">
-          <div
-            className={`rounded-lg border p-4 text-center font-semibold ${
-              cert.status === "revoked"
-                ? "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
-                : "border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
-            }`}
-          >
-            {cert.status === "revoked" ? `✕ ${t.revokedStatus}` : `✓ ${t.valid}`}
-          </div>
+          <Alert variant={cert.status === "revoked" ? "destructive" : "success"} role="status" className="justify-center">
+            {cert.status === "revoked" ? (
+              <XCircleIcon className="size-4" aria-hidden="true" />
+            ) : (
+              <CheckCircle2Icon className="size-4" aria-hidden="true" />
+            )}
+            <AlertDescription className="text-center font-semibold">
+              {cert.status === "revoked" ? t.revokedStatus : t.valid}
+            </AlertDescription>
+          </Alert>
 
-          <dl className="flex flex-col gap-2 rounded-lg border p-4 text-sm">
-            <Row label={t.folio} value={cert.folio} />
-            <Row label={t.student} value={cert.studentName} />
-            <Row label={t.run} value={cert.runMasked} />
-            <Row label={t.course} value={cert.courseName} />
-            {cert.hours !== null ? <Row label={t.hours} value={String(cert.hours)} /> : null}
-            {cert.startsOn && cert.endsOn ? <Row label={t.period} value={`${cert.startsOn} — ${cert.endsOn}`} /> : null}
-            <Row label={t.otec} value={cert.otecName} />
-            <Row label={t.issuedAt} value={new Date(cert.issuedAt).toLocaleDateString("es-CL")} />
-            {cert.status === "revoked" && cert.revokedReason ? (
-              <Row label={t.revokedReason} value={cert.revokedReason} />
-            ) : null}
-          </dl>
+          <Card>
+            <CardContent>
+              <dl className="flex flex-col gap-2 text-sm">
+                <Row label={t.folio} value={cert.folio} />
+                <Row label={t.student} value={cert.studentName} />
+                <Row label={t.run} value={cert.runMasked} />
+                <Row label={t.course} value={cert.courseName} />
+                {cert.hours !== null ? <Row label={t.hours} value={String(cert.hours)} /> : null}
+                {cert.startsOn && cert.endsOn ? <Row label={t.period} value={`${cert.startsOn} — ${cert.endsOn}`} /> : null}
+                <Row label={t.otec} value={cert.otecName} />
+                <Row label={t.issuedAt} value={new Date(cert.issuedAt).toLocaleDateString("es-CL")} />
+                {cert.status === "revoked" && cert.revokedReason ? (
+                  <Row label={t.revokedReason} value={cert.revokedReason} />
+                ) : null}
+              </dl>
+            </CardContent>
+          </Card>
 
           <p className="text-center text-xs text-muted-foreground">{t.note}</p>
         </div>
@@ -61,7 +70,7 @@ export default async function VerificarPage({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 border-b pb-1 last:border-0">
+    <div className="flex justify-between gap-4 border-b pb-2 last:border-0 last:pb-0">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="text-right font-medium">{value}</dd>
     </div>
