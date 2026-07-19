@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from "@/components/ui/field";
 import { esCL } from "@/i18n/es-CL";
 import type { ActionMutationResult } from "@/modules/academico/action-service";
 import { activateWithScheduleAction } from "../../actions";
@@ -39,36 +42,34 @@ export function ActivateForm({
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="actionId" value={actionId} />
-      <label className="flex flex-col gap-1 text-sm">
-        {t.codeLabel}
-        <input name="codigoAccion" defaultValue={currentCode} required className="input" />
-        <span className="text-muted-foreground text-xs">{t.activateCodeHint}</span>
-      </label>
+      <FieldRoot>
+        <FieldLabel>{t.codeLabel}</FieldLabel>
+        <FieldControl name="codigoAccion" defaultValue={currentCode} required />
+        <FieldDescription>{t.activateCodeHint}</FieldDescription>
+      </FieldRoot>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.startsLabel}
-          <input type="date" name="startsOn" defaultValue={startsOn ?? ""} required className="input" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.endsLabel}
-          <input type="date" name="endsOn" defaultValue={endsOn ?? ""} required className="input" />
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.startsLabel}</FieldLabel>
+          <FieldControl type="date" name="startsOn" defaultValue={startsOn ?? ""} required />
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.endsLabel}</FieldLabel>
+          <FieldControl type="date" name="endsOn" defaultValue={endsOn ?? ""} required />
+        </FieldRoot>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="min-h-11 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-        >
+        <Button type="submit" loading={pending}>
           {t.activate}
-        </button>
+        </Button>
         {state?.ok ? (
-          <span className="text-sm text-green-700 dark:text-green-400">{t.activated}</span>
+          <Alert variant="success" role="status" className="w-auto">
+            <AlertDescription>{t.activated}</AlertDescription>
+          </Alert>
         ) : null}
         {state && !state.ok ? (
-          <span role="alert" className="text-sm text-red-600">
-            {errorLabel(state)}
-          </span>
+          <Alert variant="destructive" role="alert" className="w-auto">
+            <AlertDescription>{errorLabel(state)}</AlertDescription>
+          </Alert>
         ) : null}
       </div>
     </form>

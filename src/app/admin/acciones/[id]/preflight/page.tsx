@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { esCL } from "@/i18n/es-CL";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { getPrincipal } from "@/modules/core/auth/session";
@@ -13,10 +18,16 @@ export const dynamic = "force-dynamic";
 
 const t = esCL.preflight;
 
-const STATUS_STYLE: Record<ItemStatus, { badge: string; symbol: string }> = {
-  ok: { badge: "text-green-700 dark:text-green-400", symbol: "✓" },
-  warning: { badge: "text-amber-700 dark:text-amber-400", symbol: "⚠" },
-  error: { badge: "text-red-600", symbol: "✕" },
+const STATUS_VARIANT: Record<ItemStatus, "success" | "warning" | "destructive"> = {
+  ok: "success",
+  warning: "warning",
+  error: "destructive",
+};
+
+const STATUS_SYMBOL: Record<ItemStatus, string> = {
+  ok: "✓",
+  warning: "⚠",
+  error: "✕",
 };
 
 /** Pre-flight de una acción SENCE (task 2.7, HU-5.8). Admin/coordinador. */
@@ -50,27 +61,29 @@ export default async function PreflightPage({
     );
   }
   const { view } = result;
-  const overall = STATUS_STYLE[view.checklist.overall];
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-sm">
-          <span className="font-mono">{view.action.codigoAccion}</span>
-          {" · "}
-          {view.action.courseName}
-          {" · "}
-          <span className="text-muted-foreground">
+      <PageHeader
+        title={t.title}
+        description={
+          <>
+            <span className="font-mono">{view.action.codigoAccion}</span>
+            {" · "}
+            {view.action.courseName}
+            {" · "}
             {view.action.startsOn ?? "—"} → {view.action.endsOn ?? "—"}
-          </span>
-        </p>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-      </header>
+            <br />
+            {t.intro}
+          </>
+        }
+      />
 
-      <p className={`text-sm font-semibold ${overall.badge}`} aria-live="polite">
-        {overall.symbol} {t.overall[view.checklist.overall]}
-      </p>
+      <Alert variant={STATUS_VARIANT[view.checklist.overall]}>
+        <AlertDescription className="font-semibold">
+          {STATUS_SYMBOL[view.checklist.overall]} {t.overall[view.checklist.overall]}
+        </AlertDescription>
+      </Alert>
 
       <section className="flex flex-col gap-2" aria-label={t.title}>
         {view.checklist.items.map((item) => (
@@ -85,28 +98,24 @@ export default async function PreflightPage({
       {view.checklist.invalidRuns.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">{t.runsTable.title}</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[24rem] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-3">{t.runsTable.colRun}</th>
-                  <th className="py-2 pr-3">{t.runsTable.colRule}</th>
-                  <th className="py-2">{t.runsTable.colExempt}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {view.checklist.invalidRuns.map((r) => (
-                  <tr key={r.enrollmentId} className="border-b align-top last:border-0">
-                    <td className="py-2 pr-3 font-mono">{r.run || "—"}</td>
-                    <td className="py-2 pr-3">
-                      {t.runsTable.rules[r.rule] ?? r.rule}
-                    </td>
-                    <td className="py-2">{r.exento ? t.runsTable.yes : t.runsTable.no}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table className="min-w-[24rem]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t.runsTable.colRun}</TableHead>
+                <TableHead>{t.runsTable.colRule}</TableHead>
+                <TableHead>{t.runsTable.colExempt}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {view.checklist.invalidRuns.map((r) => (
+                <TableRow key={r.enrollmentId}>
+                  <TableCell className="font-mono">{r.run || "—"}</TableCell>
+                  <TableCell>{t.runsTable.rules[r.rule] ?? r.rule}</TableCell>
+                  <TableCell>{r.exento ? t.runsTable.yes : t.runsTable.no}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </section>
       ) : null}
 
@@ -119,7 +128,9 @@ export default async function PreflightPage({
       <section className="flex flex-col gap-2 border-t pt-6">
         <h2 className="text-lg font-semibold">{t.day1.title}</h2>
         {view.day1Alert ? (
-          <p className="text-sm text-amber-700 dark:text-amber-400">{view.day1Alert.message}</p>
+          <Alert variant="warning">
+            <AlertDescription>{view.day1Alert.message}</AlertDescription>
+          </Alert>
         ) : (
           <p className="text-muted-foreground text-sm">{t.day1.none}</p>
         )}
@@ -135,13 +146,12 @@ export default async function PreflightPage({
 }
 
 function ChecklistRow({ item }: { item: ChecklistItem }) {
-  const style = STATUS_STYLE[item.status];
   const detail = (t.details as Record<string, string>)[item.detailKey] ?? item.detailKey;
   return (
-    <div className="flex items-start gap-3 rounded-md border p-3">
-      <span aria-hidden className={`mt-0.5 font-bold ${style.badge}`}>
-        {style.symbol}
-      </span>
+    <Card className="flex-row items-start gap-3 p-3">
+      <Badge variant={STATUS_VARIANT[item.status]} aria-hidden="true" className="mt-0.5">
+        {STATUS_SYMBOL[item.status]}
+      </Badge>
       <div className="flex flex-col">
         <span className="text-sm font-medium">{t.items[item.id]}</span>
         <span className="text-muted-foreground text-sm">
@@ -154,6 +164,6 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
           ) : null}
         </span>
       </div>
-    </div>
+    </Card>
   );
 }

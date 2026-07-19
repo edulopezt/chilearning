@@ -3,6 +3,10 @@
 import { useActionState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { FieldControl, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DOC_TYPE_LABEL, DOC_TYPES } from "@/modules/reportes/domain/expediente";
 import { uploadDocumentAction, type ExpedienteState } from "./actions";
 
@@ -15,34 +19,60 @@ export function UploadForm({ actionId }: { actionId: string }) {
     <form action={formAction} className="flex flex-col gap-2 border-t pt-4">
       <input type="hidden" name="actionId" value={actionId} />
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.typeLabel}
-          <select name="docType" className="input">
-            {DOC_TYPES.map((d) => (
-              <option key={d} value={d}>{DOC_TYPE_LABEL[d]}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.dateLabel}
-          <input name="documentDate" type="date" className="input" />
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.typeLabel}</FieldLabel>
+          <Select name="docType" defaultValue={DOC_TYPES[0]}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DOC_TYPES.map((d) => (
+                <SelectItem key={d} value={d}>{DOC_TYPE_LABEL[d]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.dateLabel}</FieldLabel>
+          <FieldControl name="documentDate" type="date" />
+        </FieldRoot>
       </div>
-      <label className="flex flex-col gap-1 text-sm">
-        {t.titleLabel}
-        <input name="title" required className="input" />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        {t.fileLabel}
-        <input name="file" type="file" required className="text-sm" />
-      </label>
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className="min-h-11 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900">
+      <FieldRoot>
+        <FieldLabel>{t.titleLabel}</FieldLabel>
+        <FieldControl name="title" required />
+      </FieldRoot>
+      <FieldRoot>
+        <FieldLabel>{t.fileLabel}</FieldLabel>
+        <FieldControl
+          render={
+            <input
+              name="file"
+              type="file"
+              required
+              className="text-sm file:mr-2 file:inline-flex file:h-9 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-sm file:font-medium file:text-secondary-foreground"
+            />
+          }
+        />
+      </FieldRoot>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" loading={pending}>
           {t.save}
-        </button>
-        {state.status === "ok" ? <span className="text-sm text-green-700 dark:text-green-400">{t.saved}</span> : null}
-        {state.status === "file" ? <span role="alert" className="text-sm text-red-600">{t.fileError}</span> : null}
-        {state.status === "error" ? <span role="alert" className="text-sm text-red-600">{t.genericError}</span> : null}
+        </Button>
+        {state.status === "ok" ? (
+          <Alert variant="success" role="status" className="w-auto py-2">
+            <AlertDescription>{t.saved}</AlertDescription>
+          </Alert>
+        ) : null}
+        {state.status === "file" ? (
+          <Alert variant="destructive" role="alert" className="w-auto py-2">
+            <AlertDescription>{t.fileError}</AlertDescription>
+          </Alert>
+        ) : null}
+        {state.status === "error" ? (
+          <Alert variant="destructive" role="alert" className="w-auto py-2">
+            <AlertDescription>{t.genericError}</AlertDescription>
+          </Alert>
+        ) : null}
       </div>
     </form>
   );

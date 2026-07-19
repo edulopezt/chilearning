@@ -2,6 +2,12 @@
 
 import { useActionState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { esCL } from "@/i18n/es-CL";
 import type { ActionMutationResult } from "@/modules/academico/action-service";
 import { createActionAction } from "./actions";
@@ -34,75 +40,94 @@ export function ActionForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1 text-sm">
-        {t.courseLabel}
-        <select name="courseId" required defaultValue={defaultCourseId} className="min-h-11 rounded-md border px-3 text-base">
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {errors.courseId ? <span className="text-xs text-red-600">{errors.courseId}</span> : null}
-      </label>
+      <FieldRoot invalid={!!errors.courseId}>
+        <FieldLabel>{t.courseLabel}</FieldLabel>
+        <Select name="courseId" required defaultValue={defaultCourseId}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {courses.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.courseId ? <FieldError>{errors.courseId}</FieldError> : null}
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t.codeLabel}
-        <input name="codigoAccion" required maxLength={50} className="min-h-11 rounded-md border px-3 font-mono text-base" />
-        <span className="text-muted-foreground text-xs">{t.codeHint}</span>
-        {errors.codigoAccion ? <span className="text-xs text-red-600">{errors.codigoAccion}</span> : null}
-      </label>
+      <FieldRoot invalid={!!errors.codigoAccion}>
+        <FieldLabel>{t.codeLabel}</FieldLabel>
+        <FieldControl name="codigoAccion" required maxLength={50} className="font-mono" />
+        <FieldDescription>{t.codeHint}</FieldDescription>
+        {errors.codigoAccion ? <FieldError>{errors.codigoAccion}</FieldError> : null}
+      </FieldRoot>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.lineLabel}
-          <select name="trainingLine" defaultValue="3" className="min-h-11 rounded-md border px-3 text-base">
-            <option value="1">{t.line1}</option>
-            <option value="3">{t.line3}</option>
-            <option value="6">{t.line6}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.envLabel}
-          <select name="environment" defaultValue="rcetest" className="min-h-11 rounded-md border px-3 text-base">
-            <option value="rcetest">{t.envTest}</option>
-            <option value="rce">{t.envProd}</option>
-          </select>
-          {errors.environment ? <span className="text-xs text-red-600">{errors.environment}</span> : null}
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.lineLabel}</FieldLabel>
+          <Select name="trainingLine" defaultValue="3">
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">{t.line1}</SelectItem>
+              <SelectItem value="3">{t.line3}</SelectItem>
+              <SelectItem value="6">{t.line6}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
+        <FieldRoot invalid={!!errors.environment}>
+          <FieldLabel>{t.envLabel}</FieldLabel>
+          <Select name="environment" defaultValue="rcetest">
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rcetest">{t.envTest}</SelectItem>
+              <SelectItem value="rce">{t.envProd}</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.environment ? <FieldError>{errors.environment}</FieldError> : null}
+        </FieldRoot>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.startsLabel}
-          <input name="startsOn" type="date" className="min-h-11 rounded-md border px-3 text-base" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.endsLabel}
-          <input name="endsOn" type="date" className="min-h-11 rounded-md border px-3 text-base" />
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.startsLabel}</FieldLabel>
+          <FieldControl type="date" name="startsOn" />
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.endsLabel}</FieldLabel>
+          <FieldControl type="date" name="endsOn" />
+        </FieldRoot>
       </div>
-      {errors.dates ? <span className="text-xs text-red-600">{errors.dates}</span> : null}
+      {errors.dates ? (
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{errors.dates}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      <label className="flex items-center gap-2 text-sm">
-        <input name="attendanceLock" type="checkbox" value="true" defaultChecked className="size-4" />
+      <Label>
+        <Checkbox name="attendanceLock" value="true" defaultChecked />
         {t.lockLabel}
-      </label>
+      </Label>
 
       {state?.ok ? (
-        <p role="status" className="text-sm text-green-700 dark:text-green-400">{t.saved}</p>
+        <Alert variant="success" role="status">
+          <AlertDescription>{t.saved}</AlertDescription>
+        </Alert>
       ) : null}
       {state && !state.ok && "error" in state ? (
-        <p role="alert" className="text-sm text-red-600">{t.genericError}</p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{t.genericError}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="min-h-11 w-full rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 sm:w-auto dark:bg-white dark:text-neutral-900"
-      >
+      <Button type="submit" loading={pending} className="w-full sm:w-auto">
         {t.save}
-      </button>
+      </Button>
     </form>
   );
 }

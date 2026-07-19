@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
+import { Button } from "@/components/ui/button";
 import { esCL } from "@/i18n/es-CL";
 import { reexecuteActionAction } from "./actions";
 
@@ -31,10 +32,12 @@ export function ActionControls({
   }
 
   return (
-    <span className="inline-flex items-center gap-2">
-      <button
+    <div className="flex items-center gap-2">
+      <Button
         type="button"
-        disabled={pending}
+        variant="ghost"
+        size="sm"
+        loading={pending}
         onClick={() =>
           start(async () => {
             setMsg(null);
@@ -42,15 +45,14 @@ export function ActionControls({
             setMsg(result.ok ? t.reexecuted : t.genericError);
           })
         }
-        className="text-sm underline disabled:opacity-60"
       >
         {t.reexecute}
-      </button>
+      </Button>
       {msg ? (
-        <span role="alert" className="text-xs text-amber-700 dark:text-amber-400">
+        <p role="alert" className="text-sm text-warning">
           {msg}
-        </span>
+        </p>
       ) : null}
-    </span>
+    </div>
   );
 }
