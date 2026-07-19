@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { principalFromClaims, type Principal } from "@/modules/core/domain/rbac";
 
@@ -10,8 +12,11 @@ import { principalFromClaims, type Principal } from "@/modules/core/domain/rbac"
  * Usa `getClaims()` (verifica la firma del JWT localmente con la JWKS) en vez de
  * confiar en el token sin validar. Los claims `tenant_id`/`roles` los pone el
  * hook (ver migración auth_hook); RLS es igual la última línea de defensa.
+ *
+ * `cache()` (task 6.7): dedup por request — el layout del app shell y la
+ * página que renderiza dentro ya no hacen dos round-trips de auth idénticos.
  */
-export async function getPrincipal(): Promise<Principal | null> {
+export const getPrincipal = cache(async (): Promise<Principal | null> => {
   const supabase = await createSupabaseServerClient();
 
   // getUser() valida la sesión contra el servidor de Auth (no confía en cookies).
@@ -36,7 +41,7 @@ export async function getPrincipal(): Promise<Principal | null> {
     tenant_id: payload.tenant_id,
     roles: payload.roles,
   });
-}
+});
 
 interface JwtClaims {
   tenant_id?: unknown;

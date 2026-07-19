@@ -3,6 +3,7 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { XIcon } from "lucide-react"
 
+import { esCL } from "@/i18n/es-CL"
 import { cn } from "@/lib/utils"
 
 function Dialog(props: DialogPrimitive.Root.Props) {
@@ -64,7 +65,7 @@ function DialogContent({ className, children, showClose = true, ...props }: Dial
               className="absolute top-4 right-4 rounded-md p-1 text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <XIcon className="size-4" />
-              <span className="sr-only">Cerrar</span>
+              <span className="sr-only">{esCL.common.close}</span>
             </DialogClose>
           ) : null}
         </DialogPrimitive.Popup>
