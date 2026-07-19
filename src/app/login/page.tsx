@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { FieldControl, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 
 type Mode = "password" | "magic";
 
@@ -67,91 +71,81 @@ function LoginForm() {
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 p-6">
       <h1 className="text-2xl font-bold tracking-tight">{esCL.auth.loginTitle}</h1>
 
-      <div className="flex gap-1 rounded-md border p-1 text-sm" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "password"}
-          onClick={() => switchMode("password")}
-          className={`min-h-9 flex-1 rounded ${mode === "password" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : ""}`}
-        >
-          {esCL.auth.passwordTab}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "magic"}
-          onClick={() => switchMode("magic")}
-          className={`min-h-9 flex-1 rounded ${mode === "magic" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : ""}`}
-        >
-          {esCL.auth.magicLinkTab}
-        </button>
-      </div>
+      <Tabs value={mode} onValueChange={(value) => switchMode(value as Mode)}>
+        <TabsList className="w-full">
+          <TabsTab value="password" className="flex-1">
+            {esCL.auth.passwordTab}
+          </TabsTab>
+          <TabsTab value="magic" className="flex-1">
+            {esCL.auth.magicLinkTab}
+          </TabsTab>
+        </TabsList>
 
-      {sent ? (
-        <p
-          role="status"
-          className="rounded-md border border-green-600/40 bg-green-50 p-4 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-300"
-        >
-          {esCL.auth.magicLinkSent}
-        </p>
-      ) : mode === "password" ? (
-        <form onSubmit={onPassword} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1 text-sm">
-            {esCL.auth.emailLabel}
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="min-h-11 rounded-md border px-3 text-base"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {esCL.auth.passwordLabel}
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="min-h-11 rounded-md border px-3 text-base"
-            />
-          </label>
-          {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={pending}
-            className="min-h-11 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-          >
-            {pending ? esCL.auth.signingIn : esCL.auth.submit}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={onMagicLink} className="flex flex-col gap-4">
-          <p className="text-muted-foreground text-sm">{esCL.auth.magicLinkIntro}</p>
-          <label className="flex flex-col gap-1 text-sm">
-            {esCL.auth.emailLabel}
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="min-h-11 rounded-md border px-3 text-base"
-            />
-          </label>
-          {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={pending}
-            className="min-h-11 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-          >
-            {pending ? esCL.auth.magicLinkSending : esCL.auth.magicLinkSubmit}
-          </button>
-        </form>
-      )}
+        <TabsPanel value="password" className="mt-4">
+          {sent ? null : (
+            <form onSubmit={onPassword} className="flex flex-col gap-4">
+              <FieldRoot invalid={!!error}>
+                <FieldLabel>{esCL.auth.emailLabel}</FieldLabel>
+                <FieldControl
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </FieldRoot>
+              <FieldRoot invalid={!!error}>
+                <FieldLabel>{esCL.auth.passwordLabel}</FieldLabel>
+                <FieldControl
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </FieldRoot>
+              {error ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
+              <Button type="submit" loading={pending}>
+                {pending ? esCL.auth.signingIn : esCL.auth.submit}
+              </Button>
+            </form>
+          )}
+        </TabsPanel>
+
+        <TabsPanel value="magic" className="mt-4">
+          {sent ? (
+            <Alert variant="success" role="status">
+              <AlertDescription>{esCL.auth.magicLinkSent}</AlertDescription>
+            </Alert>
+          ) : (
+            <form onSubmit={onMagicLink} className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">{esCL.auth.magicLinkIntro}</p>
+              <FieldRoot invalid={!!error}>
+                <FieldLabel>{esCL.auth.emailLabel}</FieldLabel>
+                <FieldControl
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </FieldRoot>
+              {error ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
+              <Button type="submit" loading={pending}>
+                {pending ? esCL.auth.magicLinkSending : esCL.auth.magicLinkSubmit}
+              </Button>
+            </form>
+          )}
+        </TabsPanel>
+      </Tabs>
     </main>
   );
 }

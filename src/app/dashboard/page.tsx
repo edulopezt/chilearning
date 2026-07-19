@@ -7,7 +7,7 @@ import { getPrincipal } from "@/modules/core/auth/session";
 import { isSuperadmin } from "@/modules/core/domain/rbac";
 import { navForRoles } from "@/components/shell/nav-config";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";

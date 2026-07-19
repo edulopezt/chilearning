@@ -7,7 +7,7 @@ import { MenuIcon } from "lucide-react"
 import { esCL } from "@/i18n/es-CL"
 import { cn } from "@/lib/utils"
 import type { RoleKey } from "@/modules/core/domain/rbac"
-import { buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 

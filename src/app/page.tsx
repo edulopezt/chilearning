@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 import { esCL } from "@/i18n/es-CL";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
  * Landing comercial PROVISIONAL (task 5.6, Plan §13.3).
@@ -53,16 +56,12 @@ const OTEC_POINTS = [t.otecs.franchise, t.otecs.evidence, t.otecs.solo] as const
 /** Buzón comercial confirmado por Edu (2026-07-17). */
 const CONTACT_EMAIL = "hola@edulopezt.com";
 
-/** Foco visible y touch target ≥44px en todos los CTA (RNF-6, WCAG AA). */
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
-
 export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col">
       <a
         href="#contenido"
-        className={`sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-background ${FOCUS_RING}`}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-background focus-visible:ring-3 focus-visible:ring-ring/50 focus:outline-none"
       >
         {t.skipToContent}
       </a>
@@ -70,10 +69,7 @@ export default function Home() {
       <nav aria-label={t.title} className="border-b">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <span className="text-lg font-bold tracking-tight">{t.title}</span>
-          <Link
-            href="/login"
-            className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-medium hover:bg-muted ${FOCUS_RING}`}
-          >
+          <Link href="/login" className={cn(buttonVariants({ variant: "ghost" }))}>
             {t.navLogin}
           </Link>
         </div>
@@ -87,16 +83,10 @@ export default function Home() {
           </h1>
           <p className="text-muted-foreground mt-6 max-w-2xl text-lg text-pretty">{t.heroLead}</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className={`inline-flex min-h-11 items-center justify-center rounded-md bg-foreground px-5 text-sm font-medium text-background hover:opacity-90 ${FOCUS_RING}`}
-            >
+            <a href={`mailto:${CONTACT_EMAIL}`} className={cn(buttonVariants({ size: "lg" }))}>
               {t.heroCtaContact}
             </a>
-            <a
-              href="#incluye"
-              className={`inline-flex min-h-11 items-center justify-center rounded-md border px-5 text-sm font-medium hover:bg-muted ${FOCUS_RING}`}
-            >
+            <a href="#incluye" className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
               {t.heroCtaFeatures}
             </a>
           </div>
@@ -131,9 +121,15 @@ export default function Home() {
           <p className="text-muted-foreground mt-3 max-w-2xl text-pretty">{t.featuresIntro}</p>
           <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((feature) => (
-              <li key={feature.title} className="flex flex-col gap-2 rounded-lg border p-5">
-                <h3 className="font-semibold">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm text-pretty">{feature.body}</p>
+              <li key={feature.title}>
+                <Card className="h-full gap-2 py-5">
+                  <CardHeader>
+                    <CardTitle className="text-base">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-pretty text-muted-foreground">{feature.body}</p>
+                  </CardContent>
+                </Card>
               </li>
             ))}
           </ul>
@@ -163,10 +159,7 @@ export default function Home() {
             {t.contactTitle}
           </h2>
           <p className="text-muted-foreground mt-3 max-w-2xl text-pretty">{t.contactBody}</p>
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className={`mt-8 inline-flex min-h-11 items-center justify-center rounded-md bg-foreground px-5 text-sm font-medium text-background hover:opacity-90 ${FOCUS_RING}`}
-          >
+          <a href={`mailto:${CONTACT_EMAIL}`} className={cn(buttonVariants({ size: "lg" }), "mt-8")}>
             {t.contactCta}
             <span className="sr-only">: {CONTACT_EMAIL}</span>
           </a>
@@ -178,7 +171,7 @@ export default function Home() {
           <p className="text-muted-foreground text-sm text-pretty">{t.footerTagline}</p>
           <Link
             href="/privacidad"
-            className={`inline-flex min-h-11 w-fit items-center rounded-md text-sm font-medium underline underline-offset-4 hover:text-muted-foreground ${FOCUS_RING}`}
+            className="inline-flex min-h-11 w-fit items-center rounded-md text-sm font-medium underline underline-offset-4 outline-none hover:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {t.footerPrivacy}
           </Link>

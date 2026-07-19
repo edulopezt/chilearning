@@ -1,3 +1,5 @@
+import { CircleOffIcon } from "lucide-react";
+
 import { esCL } from "@/i18n/es-CL";
 
 /**
@@ -11,9 +13,10 @@ import { esCL } from "@/i18n/es-CL";
 export default function SuspendedPage() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col items-center justify-center gap-4 p-6 text-center">
+      <CircleOffIcon className="size-10 text-muted-foreground" aria-hidden="true" />
       <h1 className="text-2xl font-bold tracking-tight">{esCL.suspended.title}</h1>
       <p className="text-muted-foreground">{esCL.suspended.message}</p>
-      <p className="text-muted-foreground text-sm">{esCL.suspended.contact}</p>
+      <p className="text-sm text-muted-foreground">{esCL.suspended.contact}</p>
     </main>
   );
 }

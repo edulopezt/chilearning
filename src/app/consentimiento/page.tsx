@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { acceptConsentAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -17,14 +19,16 @@ export default async function ConsentimientoPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center gap-6 p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{t.consentTitle}</h1>
-        <p className="text-muted-foreground text-sm">{t.consentIntro}</p>
+        <p className="text-sm text-muted-foreground">{t.consentIntro}</p>
       </header>
-      <p className="text-sm leading-relaxed">{t.consentBody}</p>
-      <form action={acceptConsentAction}>
-        <button type="submit" className="min-h-11 rounded-md bg-neutral-900 px-4 font-medium text-white dark:bg-white dark:text-neutral-900">
-          {t.accept}
-        </button>
-      </form>
+      <Card>
+        <CardContent className="flex flex-col gap-6">
+          <p className="text-sm leading-relaxed">{t.consentBody}</p>
+          <form action={acceptConsentAction}>
+            <Button type="submit">{t.accept}</Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }
