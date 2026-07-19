@@ -3,6 +3,10 @@
 import { useActionState, useState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createTenantAction, type CreateTenantState } from "./actions";
 
 const t = esCL.superadmin;
@@ -30,81 +34,91 @@ export function CreateTenantForm() {
     <form action={formAction} className="flex flex-col gap-3 rounded-md border p-4">
       <h2 className="text-lg font-semibold">{t.newTenantHeading}</h2>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.nameLabel}</span>
-        <input type="text" name="name" required maxLength={200} className="min-h-11 rounded-md border px-3" />
-      </label>
+      <FieldRoot>
+        <FieldLabel>{t.nameLabel}</FieldLabel>
+        <FieldControl name="name" required maxLength={200} />
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.slugLabel}</span>
-        <input
-          type="text"
+      <FieldRoot>
+        <FieldLabel>{t.slugLabel}</FieldLabel>
+        <FieldControl
           name="slug"
           required
           minLength={3}
           maxLength={30}
           pattern="[a-z0-9][a-z0-9-]{1,28}[a-z0-9]"
-          className="min-h-11 rounded-md border px-3 font-mono"
+          className="font-mono"
         />
-        <span className="text-muted-foreground text-xs">{t.slugHint}</span>
-      </label>
+        <FieldDescription>{t.slugHint}</FieldDescription>
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.rutLabel}</span>
-        <input type="text" name="rut" maxLength={12} className="min-h-11 rounded-md border px-3" />
-      </label>
+      <FieldRoot>
+        <FieldLabel>{t.rutLabel}</FieldLabel>
+        <FieldControl name="rut" maxLength={12} />
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.planLabel}</span>
-        <select name="plan" defaultValue="standard" className="min-h-11 rounded-md border px-3">
-          <option value="standard">{t.planStandard}</option>
-          <option value="pro">{t.planPro}</option>
-          <option value="enterprise">{t.planEnterprise}</option>
-        </select>
-      </label>
+      <FieldRoot>
+        <FieldLabel>{t.planLabel}</FieldLabel>
+        <Select name="plan" defaultValue="standard">
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="standard">{t.planStandard}</SelectItem>
+            <SelectItem value="pro">{t.planPro}</SelectItem>
+            <SelectItem value="enterprise">{t.planEnterprise}</SelectItem>
+          </SelectContent>
+        </Select>
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span>{t.adminEmailLabel}</span>
-        <input type="email" name="adminEmail" required maxLength={320} className="min-h-11 rounded-md border px-3" />
-      </label>
+      <FieldRoot>
+        <FieldLabel>{t.adminEmailLabel}</FieldLabel>
+        <FieldControl type="email" name="adminEmail" required maxLength={320} />
+      </FieldRoot>
 
-      <button type="submit" disabled={pending} className="min-h-11 rounded-md border px-4 font-medium disabled:opacity-50">
+      <Button type="submit" loading={pending}>
         {pending ? t.creating : t.create}
-      </button>
+      </Button>
 
-      {state.error ? <p className="text-sm text-red-600">{ERRORS[state.error] ?? t.errorFailed}</p> : null}
+      {state.error ? (
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{ERRORS[state.error] ?? t.errorFailed}</AlertDescription>
+        </Alert>
+      ) : null}
       {state.ok ? (
-        <div className="flex flex-col gap-2 rounded-md border border-green-300 bg-green-50 p-3 text-sm dark:bg-green-950">
-          <p className="font-medium text-green-800 dark:text-green-200">
-            {t.createdOk} {state.slug ? <code className="font-mono">{state.slug}</code> : null}
-          </p>
-          {state.emailSent ? (
-            <p>{t.emailSentInfo}</p>
-          ) : state.inviteLink ? (
-            <div className="flex flex-col gap-1">
-              <span>{t.emailNotSent}</span>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-neutral-100 px-2 py-1 text-xs dark:bg-neutral-800">
-                  {state.inviteLink}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(state.inviteLink!);
-                    setCopied(true);
-                  }}
-                  className="min-h-11 rounded-md border px-3 text-xs"
-                >
-                  {copied ? t.copied : t.copy}
-                </button>
+        <Alert variant="success" role="status">
+          <div className="flex flex-col gap-2">
+            <p className="font-medium">
+              {t.createdOk} {state.slug ? <code className="font-mono">{state.slug}</code> : null}
+            </p>
+            {state.emailSent ? (
+              <p>{t.emailSentInfo}</p>
+            ) : state.inviteLink ? (
+              <div className="flex flex-col gap-1">
+                <span>{t.emailNotSent}</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted flex-1 truncate rounded px-2 py-1 text-xs">
+                    {state.inviteLink}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(state.inviteLink!);
+                      setCopied(true);
+                    }}
+                  >
+                    {copied ? t.copied : t.copy}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : (
-            // Ni correo NI enlace: la invitación se perdió en silencio si no
-            // se advierte aquí (revisión 4-ojos; el CA de HU-1.1 la exige).
-            <p className="text-amber-700 dark:text-amber-300">{t.inviteLinkFailed}</p>
-          )}
-        </div>
+            ) : (
+              // Ni correo NI enlace: la invitación se perdió en silencio si no
+              // se advierte aquí (revisión 4-ojos; el CA de HU-1.1 la exige).
+              <p className="text-warning">{t.inviteLinkFailed}</p>
+            )}
+          </div>
+        </Alert>
       ) : null}
     </form>
   );

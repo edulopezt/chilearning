@@ -2,10 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
+import { cn } from "@/lib/utils";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { isSuperadmin } from "@/modules/core/domain/rbac";
 import type { TenantStatsRow } from "@/modules/plataforma/domain/overview";
 import { getPlatformOverview } from "@/modules/plataforma/platform-service";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TenantSupportDetail } from "./tenant-detail";
 
 export const dynamic = "force-dynamic";
@@ -35,24 +42,27 @@ function formatDate(iso: string | null): string {
 function StatusBadge({ status }: Readonly<{ status: TenantStatsRow["status"] }>) {
   const active = status === "active";
   return (
-    <span
-      className={`w-fit rounded px-2 py-0.5 text-xs ${
-        active
-          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-          : "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-      }`}
-    >
+    <Badge variant={active ? "success" : "warning"}>
       {active ? esCL.superadmin.statusActive : esCL.superadmin.statusSuspended}
-    </span>
+    </Badge>
   );
 }
 
 function SummaryCard({ label, value }: Readonly<{ label: string; value: number }>) {
   return (
-    <div className="flex flex-col gap-1 rounded-md border p-3">
+    <Card className="gap-1 p-3">
       <span className="text-muted-foreground text-xs">{label}</span>
       <span className="text-2xl font-bold tabular-nums">{value}</span>
-    </div>
+    </Card>
+  );
+}
+
+/** Fila "Operar" — Link de navegación estilizado como botón outline. */
+function ManageLink({ size }: Readonly<{ size: "default" | "sm" }>) {
+  return (
+    <Link href="/superadmin/tenants" className={cn(buttonVariants({ variant: "outline", size }))}>
+      {t.manage}
+    </Link>
   );
 }
 
@@ -92,26 +102,23 @@ export default async function SuperadminBoardPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-          <p className="text-muted-foreground text-sm">{t.intro}</p>
-        </div>
-        <Link
-          href="/superadmin/tenants"
-          className="inline-flex min-h-11 w-fit items-center rounded-md border px-3 text-sm"
-        >
-          {t.manageTenants}
-        </Link>
-      </header>
+      <PageHeader
+        title={t.title}
+        description={t.intro}
+        actions={
+          <Link
+            href="/superadmin/tenants"
+            className={cn(buttonVariants({ variant: "outline", size: "default" }))}
+          >
+            {t.manageTenants}
+          </Link>
+        }
+      />
 
       {!metricsOk && (
-        <p
-          role="alert"
-          className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
-        >
-          {t.metricsUnavailable}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{t.metricsUnavailable}</AlertDescription>
+        </Alert>
       )}
 
       {metricsOk && (
@@ -133,18 +140,12 @@ export default async function SuperadminBoardPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">{t.healthHeading}</h2>
         <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
-          <span
-            className={`w-fit rounded px-2 py-0.5 text-xs ${
-              health.status === "ok"
-                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-            }`}
-          >
+          <Badge variant={health.status === "ok" ? "success" : "destructive"}>
             {health.status === "ok" ? t.healthStatusOk : t.healthStatusDegraded}
-          </span>
+          </Badge>
           <span className="text-muted-foreground">
             {t.healthDb}:{" "}
-            <span className={dbOk ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+            <span className={dbOk ? "text-success" : "text-destructive"}>
               {health.checks.db === "ok" ? t.healthOk : health.checks.db === "fail" ? t.healthFail : t.healthSkip}
             </span>
           </span>
@@ -164,110 +165,102 @@ export default async function SuperadminBoardPage() {
             {/* Móvil (360 px): tarjetas. La tabla de abajo se oculta. */}
             <ul className="flex flex-col gap-2 md:hidden">
               {tenants.map((tenant) => (
-                <li key={tenant.tenantId} className="flex flex-col gap-3 rounded-md border p-3 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium break-words">{tenant.name}</p>
-                      <p className="text-muted-foreground text-xs">
-                        <code className="font-mono break-all">{tenant.slug}</code>
-                        {" · "}
-                        {PLAN_LABEL[tenant.plan] ?? tenant.plan}
-                      </p>
+                <li key={tenant.tenantId}>
+                  <Card className="gap-3 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium break-words">{tenant.name}</p>
+                        <p className="text-muted-foreground text-xs">
+                          <code className="font-mono break-all">{tenant.slug}</code>
+                          {" · "}
+                          {PLAN_LABEL[tenant.plan] ?? tenant.plan}
+                        </p>
+                      </div>
+                      <StatusBadge status={tenant.status} />
                     </div>
-                    <StatusBadge status={tenant.status} />
-                  </div>
 
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">{t.colStudents}</dt>
-                      <dd className="font-medium tabular-nums">{tenant.students}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">{t.colEnrollments}</dt>
-                      <dd className="font-medium tabular-nums">{tenant.enrollments}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">{t.colOpenAlerts}</dt>
-                      <dd className={`font-medium tabular-nums ${tenant.openAlerts > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>
-                        {tenant.openAlerts}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">{t.colSenceErrors}</dt>
-                      <dd className={`font-medium tabular-nums ${tenant.senceErrors7d > 0 ? "text-red-600 dark:text-red-400" : ""}`}>
-                        {tenant.senceErrors7d}
-                      </dd>
-                    </div>
-                    <div className="col-span-2 flex justify-between gap-2">
-                      <dt className="text-muted-foreground">{t.colLastActivity}</dt>
-                      <dd className="font-medium">{formatDate(tenant.lastEnrollmentAt)}</dd>
-                    </div>
-                  </dl>
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">{t.colStudents}</dt>
+                        <dd className="font-medium tabular-nums">{tenant.students}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">{t.colEnrollments}</dt>
+                        <dd className="font-medium tabular-nums">{tenant.enrollments}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">{t.colOpenAlerts}</dt>
+                        <dd className={`font-medium tabular-nums ${tenant.openAlerts > 0 ? "text-warning" : ""}`}>
+                          {tenant.openAlerts}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">{t.colSenceErrors}</dt>
+                        <dd className={`font-medium tabular-nums ${tenant.senceErrors7d > 0 ? "text-destructive" : ""}`}>
+                          {tenant.senceErrors7d}
+                        </dd>
+                      </div>
+                      <div className="col-span-2 flex justify-between gap-2">
+                        <dt className="text-muted-foreground">{t.colLastActivity}</dt>
+                        <dd className="font-medium">{formatDate(tenant.lastEnrollmentAt)}</dd>
+                      </div>
+                    </dl>
 
-                  <div className="flex flex-col gap-2 border-t pt-2">
-                    <Link
-                      href="/superadmin/tenants"
-                      className="inline-flex min-h-11 w-fit items-center rounded-md border px-3 text-xs"
-                    >
-                      {t.manage}
-                    </Link>
-                    <TenantSupportDetail tenantId={tenant.tenantId} />
-                  </div>
+                    <div className="flex flex-col gap-2 border-t pt-2">
+                      <ManageLink size="default" />
+                      <TenantSupportDetail tenantId={tenant.tenantId} size="default" />
+                    </div>
+                  </Card>
                 </li>
               ))}
             </ul>
 
             {/* Escritorio (1440 px): tabla. `overflow-x-auto` acota el scroll a
                 la tabla — el body nunca scrollea en horizontal (RNF-6). */}
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th scope="col" className="p-2 font-medium">{t.colTenant}</th>
-                    <th scope="col" className="p-2 font-medium">{t.colPlan}</th>
-                    <th scope="col" className="p-2 font-medium">{t.colStatus}</th>
-                    <th scope="col" className="p-2 text-right font-medium">{t.colStudents}</th>
-                    <th scope="col" className="p-2 text-right font-medium">{t.colEnrollments}</th>
-                    <th scope="col" className="p-2 text-right font-medium">{t.colOpenAlerts}</th>
-                    <th scope="col" className="p-2 text-right font-medium">{t.colSenceErrors}</th>
-                    <th scope="col" className="p-2 font-medium">{t.colLastActivity}</th>
-                    <th scope="col" className="p-2 font-medium">{t.manage}</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t.colTenant}</TableHead>
+                    <TableHead>{t.colPlan}</TableHead>
+                    <TableHead>{t.colStatus}</TableHead>
+                    <TableHead className="text-right">{t.colStudents}</TableHead>
+                    <TableHead className="text-right">{t.colEnrollments}</TableHead>
+                    <TableHead className="text-right">{t.colOpenAlerts}</TableHead>
+                    <TableHead className="text-right">{t.colSenceErrors}</TableHead>
+                    <TableHead>{t.colLastActivity}</TableHead>
+                    <TableHead>{t.manage}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {tenants.map((tenant) => (
-                    <tr key={tenant.tenantId} className="border-b align-top">
-                      <td className="p-2">
+                    <TableRow key={tenant.tenantId} className="align-top">
+                      <TableCell>
                         <span className="font-medium">{tenant.name}</span>
                         <br />
                         <code className="text-muted-foreground font-mono text-xs">{tenant.slug}</code>
-                      </td>
-                      <td className="p-2">{PLAN_LABEL[tenant.plan] ?? tenant.plan}</td>
-                      <td className="p-2"><StatusBadge status={tenant.status} /></td>
-                      <td className="p-2 text-right tabular-nums">{tenant.students}</td>
-                      <td className="p-2 text-right tabular-nums">{tenant.enrollments}</td>
-                      <td className={`p-2 text-right tabular-nums ${tenant.openAlerts > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>
+                      </TableCell>
+                      <TableCell>{PLAN_LABEL[tenant.plan] ?? tenant.plan}</TableCell>
+                      <TableCell><StatusBadge status={tenant.status} /></TableCell>
+                      <TableCell className="text-right tabular-nums">{tenant.students}</TableCell>
+                      <TableCell className="text-right tabular-nums">{tenant.enrollments}</TableCell>
+                      <TableCell className={`text-right tabular-nums ${tenant.openAlerts > 0 ? "text-warning" : ""}`}>
                         {tenant.openAlerts}
-                      </td>
-                      <td className={`p-2 text-right tabular-nums ${tenant.senceErrors7d > 0 ? "text-red-600 dark:text-red-400" : ""}`}>
+                      </TableCell>
+                      <TableCell className={`text-right tabular-nums ${tenant.senceErrors7d > 0 ? "text-destructive" : ""}`}>
                         {tenant.senceErrors7d}
-                      </td>
-                      <td className="p-2 whitespace-nowrap">{formatDate(tenant.lastEnrollmentAt)}</td>
-                      <td className="p-2">
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDate(tenant.lastEnrollmentAt)}</TableCell>
+                      <TableCell>
                         <div className="flex flex-col gap-2">
-                          <Link
-                            href="/superadmin/tenants"
-                            className="inline-flex min-h-11 w-fit items-center rounded-md border px-3 text-xs"
-                          >
-                            {t.manage}
-                          </Link>
-                          <TenantSupportDetail tenantId={tenant.tenantId} />
+                          <ManageLink size="sm" />
+                          <TenantSupportDetail tenantId={tenant.tenantId} size="sm" />
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </>
         )}

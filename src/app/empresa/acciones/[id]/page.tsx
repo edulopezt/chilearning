@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { esCL } from "@/i18n/es-CL";
+import { cn } from "@/lib/utils";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getCompanyActionPanel } from "@/modules/portal-empresa/company-portal-service";
 import type { CompanyPanelRow } from "@/modules/portal-empresa/domain/company";
@@ -27,16 +33,8 @@ function CertCell({ row }: { row: CompanyPanelRow }) {
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       <span className="break-all">{row.certificateFolio}</span>
-      {row.certificateStatus === "issued" && (
-        <span className="rounded bg-green-100 px-2 py-0.5 font-sans text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-          {t.certIssued}
-        </span>
-      )}
-      {row.certificateStatus === "revoked" && (
-        <span className="rounded bg-red-100 px-2 py-0.5 font-sans text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-200">
-          {t.certRevoked}
-        </span>
-      )}
+      {row.certificateStatus === "issued" && <Badge variant="success">{t.certIssued}</Badge>}
+      {row.certificateStatus === "revoked" && <Badge variant="destructive">{t.certRevoked}</Badge>}
     </span>
   );
 }
@@ -79,69 +77,68 @@ export default async function CompanyActionPage({ params }: { params: Promise<{ 
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="flex-1" />
-        <a
-          href={`/api/empresa/reportes/${panel.actionId}`}
-          className="min-h-11 rounded-md border px-4 py-2 text-sm font-medium underline-offset-2 hover:underline"
-        >
+        <a href={`/api/empresa/reportes/${panel.actionId}`} className={cn(buttonVariants({ variant: "outline" }))}>
           {t.download}
         </a>
       </div>
       <p className="text-muted-foreground text-xs">{t.runNote}</p>
 
       {panel.rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t.empty}</p>
+        <EmptyState title={t.empty} />
       ) : (
         <>
           {/* ≥sm: tabla */}
-          <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-3">{t.colWorker}</th>
-                  <th className="py-2 pr-3">{t.colRun}</th>
-                  <th className="py-2 pr-3">{t.colProgress}</th>
-                  <th className="py-2 pr-3">{t.colAttendance}</th>
-                  <th className="py-2 pr-3">{t.colGrade}</th>
-                  <th className="py-2">{t.colCertificate}</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="hidden sm:block">
+            <Table className="min-w-[44rem]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t.colWorker}</TableHead>
+                  <TableHead>{t.colRun}</TableHead>
+                  <TableHead>{t.colProgress}</TableHead>
+                  <TableHead>{t.colAttendance}</TableHead>
+                  <TableHead>{t.colGrade}</TableHead>
+                  <TableHead>{t.colCertificate}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {panel.rows.map((row) => (
-                  <tr key={row.enrollmentId} className="border-b last:border-0">
-                    <td className="py-2 pr-3">{row.nombre}</td>
-                    <td className="py-2 pr-3 font-mono text-xs">{row.runMasked}</td>
-                    <td className="py-2 pr-3">{row.progressPct}%</td>
-                    <td className="py-2 pr-3">{row.exento ? t.becario : row.attendanceDays}</td>
-                    <td className="py-2 pr-3">{gradeLabel(row)}</td>
-                    <td className="py-2 font-mono text-xs">
+                  <TableRow key={row.enrollmentId}>
+                    <TableCell>{row.nombre}</TableCell>
+                    <TableCell className="font-mono text-xs">{row.runMasked}</TableCell>
+                    <TableCell>{row.progressPct}%</TableCell>
+                    <TableCell>{row.exento ? t.becario : row.attendanceDays}</TableCell>
+                    <TableCell>{gradeLabel(row)}</TableCell>
+                    <TableCell className="font-mono text-xs">
                       <CertCell row={row} />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {/* <sm: tarjetas */}
           <ul className="flex flex-col gap-2 sm:hidden">
             {panel.rows.map((row) => (
-              <li key={row.enrollmentId} className="flex flex-col gap-1 rounded-md border p-3 text-sm">
-                <p className="font-medium break-words">{row.nombre}</p>
-                <p className="text-muted-foreground font-mono text-xs">{row.runMasked}</p>
-                <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
-                  <dt className="text-muted-foreground text-xs">{t.colProgress}</dt>
-                  <dd className="text-xs">{row.progressPct}%</dd>
-                  <dt className="text-muted-foreground text-xs">{t.colAttendance}</dt>
-                  <dd className="text-xs">
-                    {row.exento ? t.becario : `${row.attendanceDays} ${t.days}`}
-                  </dd>
-                  <dt className="text-muted-foreground text-xs">{t.colGrade}</dt>
-                  <dd className="text-xs">{row.grade === null ? t.noGrade : gradeLabel(row)}</dd>
-                  <dt className="text-muted-foreground text-xs">{t.colCertificate}</dt>
-                  <dd className="font-mono text-xs">
-                    <CertCell row={row} />
-                  </dd>
-                </dl>
+              <li key={row.enrollmentId}>
+                <Card className="gap-1 p-3 text-sm">
+                  <p className="font-medium break-words">{row.nombre}</p>
+                  <p className="text-muted-foreground font-mono text-xs">{row.runMasked}</p>
+                  <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
+                    <dt className="text-muted-foreground text-xs">{t.colProgress}</dt>
+                    <dd className="text-xs">{row.progressPct}%</dd>
+                    <dt className="text-muted-foreground text-xs">{t.colAttendance}</dt>
+                    <dd className="text-xs">
+                      {row.exento ? t.becario : `${row.attendanceDays} ${t.days}`}
+                    </dd>
+                    <dt className="text-muted-foreground text-xs">{t.colGrade}</dt>
+                    <dd className="text-xs">{row.grade === null ? t.noGrade : gradeLabel(row)}</dd>
+                    <dt className="text-muted-foreground text-xs">{t.colCertificate}</dt>
+                    <dd className="font-mono text-xs">
+                      <CertCell row={row} />
+                    </dd>
+                  </dl>
+                </Card>
               </li>
             ))}
           </ul>

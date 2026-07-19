@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
@@ -39,25 +41,24 @@ export default async function SupervisorPortalPage() {
       </header>
 
       {actions.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t.empty}</p>
+        <EmptyState title={t.empty} />
       ) : (
         <ul className="flex flex-col gap-3">
           {actions.map((a) => (
             <li key={a.actionId}>
-              <Link
-                href={`/supervisor/acciones/${a.actionId}`}
-                className="flex min-h-11 flex-col gap-1 rounded-md border p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-              >
-                <span className="font-medium">{a.courseName}</span>
-                <span className="text-muted-foreground text-sm">
-                  <span className="font-mono">{a.codigoAccion}</span>
-                  {" · "}
-                  {a.enrolled} {t.enrolled}
-                  {" · "}
-                  {a.startsOn ?? "—"} → {a.endsOn ?? "—"}
-                  {" · "}
-                  {a.environment === "rce" ? esCL.actions.envProd : esCL.actions.envTest}
-                </span>
+              <Link href={`/supervisor/acciones/${a.actionId}`} className="block">
+                <Card className="gap-1 p-3 transition-colors hover:bg-accent/50">
+                  <span className="font-medium">{a.courseName}</span>
+                  <span className="text-sm text-muted-foreground">
+                    <span className="font-mono">{a.codigoAccion}</span>
+                    {" · "}
+                    {a.enrolled} {t.enrolled}
+                    {" · "}
+                    {a.startsOn ?? "—"} → {a.endsOn ?? "—"}
+                    {" · "}
+                    {a.environment === "rce" ? esCL.actions.envProd : esCL.actions.envTest}
+                  </span>
+                </Card>
               </Link>
             </li>
           ))}

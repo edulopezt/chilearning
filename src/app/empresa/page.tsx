@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { esCL } from "@/i18n/es-CL";
 import { formatExpiryDate } from "@/modules/certificados/domain/expiry-report";
 import { getPrincipal } from "@/modules/core/auth/session";
@@ -46,23 +48,22 @@ export default async function CompanyPortalPage() {
       </header>
 
       {actions.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t.empty}</p>
+        <EmptyState title={t.empty} />
       ) : (
         <ul className="flex flex-col gap-3">
           {actions.map((a) => (
             <li key={a.actionId}>
-              <Link
-                href={`/empresa/acciones/${a.actionId}`}
-                className="flex min-h-11 flex-col gap-1 rounded-md border p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-              >
-                <span className="font-medium">{a.courseName}</span>
-                <span className="text-muted-foreground text-sm">
-                  <span className="font-mono">{a.codigoAccion}</span>
-                  {" · "}
-                  {a.workers} {t.workers}
-                  {" · "}
-                  {a.startsOn ?? "—"} → {a.endsOn ?? "—"}
-                </span>
+              <Link href={`/empresa/acciones/${a.actionId}`} className="block">
+                <Card className="gap-1 p-3 transition-colors hover:bg-accent/50">
+                  <span className="font-medium">{a.courseName}</span>
+                  <span className="text-muted-foreground text-sm">
+                    <span className="font-mono">{a.codigoAccion}</span>
+                    {" · "}
+                    {a.workers} {t.workers}
+                    {" · "}
+                    {a.startsOn ?? "—"} → {a.endsOn ?? "—"}
+                  </span>
+                </Card>
               </Link>
             </li>
           ))}
@@ -76,34 +77,30 @@ export default async function CompanyPortalPage() {
         <h2 className="text-lg font-semibold">{t.expiryTitle}</h2>
         <p className="text-muted-foreground text-sm">{t.expiryIntro}</p>
         {expirations.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.expiryEmpty}</p>
+          <EmptyState title={t.expiryEmpty} />
         ) : (
           <ul className="flex flex-col gap-2">
             {expirations.map((row) => (
-              <li key={row.certificateId} className="rounded-md border p-3 text-sm">
-                {/* Móvil: apilado; ≥sm: una fila. Sin scroll horizontal (RNF-6). */}
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-medium break-words">{row.studentName}</span>
-                    <span className="text-muted-foreground text-xs">
-                      <span className="font-mono">{row.runMasked}</span>
-                      {" · "}
-                      {row.courseName}
+              <li key={row.certificateId}>
+                <Card className="gap-1 p-3 text-sm">
+                  {/* Móvil: apilado; ≥sm: una fila. Sin scroll horizontal (RNF-6). */}
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium break-words">{row.studentName}</span>
+                      <span className="text-muted-foreground text-xs">
+                        <span className="font-mono">{row.runMasked}</span>
+                        {" · "}
+                        {row.courseName}
+                      </span>
+                    </div>
+                    <span className="text-sm sm:text-right">
+                      {t.expiryColExpiresOn} {formatExpiryDate(row.expiresAt)}
+                      <span className="block text-xs">
+                        <DaysLeft daysLeft={row.daysLeft} />
+                      </span>
                     </span>
                   </div>
-                  <span className="text-sm sm:text-right">
-                    {t.expiryColExpiresOn} {formatExpiryDate(row.expiresAt)}
-                    <span className="block text-xs">
-                      {row.daysLeft < 0 ? (
-                        <span className="font-medium text-red-600">{t.expiryExpired}</span>
-                      ) : (
-                        <span className={row.daysLeft <= 30 ? "font-medium text-amber-600" : "text-muted-foreground"}>
-                          {row.daysLeft} {t.days}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                </div>
+                </Card>
               </li>
             ))}
           </ul>
@@ -111,5 +108,15 @@ export default async function CompanyPortalPage() {
         <p className="text-muted-foreground text-xs">{t.runNote}</p>
       </section>
     </main>
+  );
+}
+
+/** Días restantes; lo ya vencido se marca, no se muestra como número negativo. */
+function DaysLeft({ daysLeft }: { daysLeft: number }) {
+  if (daysLeft < 0) return <span className="font-medium text-destructive">{t.expiryExpired}</span>;
+  return (
+    <span className={daysLeft <= 30 ? "font-medium text-warning" : "text-muted-foreground"}>
+      {daysLeft} {t.days}
+    </span>
   );
 }
