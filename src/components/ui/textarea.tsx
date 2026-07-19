@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { useCharacterCount } from "@/components/ui/use-character-count"
 
 export interface TextareaProps extends React.ComponentProps<"textarea"> {
   /** Muestra el contador de caracteres (UX-STANDARDS.md §5). Default: `true` si hay `maxLength`. */
@@ -19,11 +20,7 @@ function Textarea({
   onChange,
   ...props
 }: TextareaProps) {
-  const isControlled = value !== undefined
-  const [uncontrolledLength, setUncontrolledLength] = React.useState(
-    () => String(defaultValue ?? "").length
-  )
-  const length = isControlled ? String(value ?? "").length : uncontrolledLength
+  const { length, trackLength } = useCharacterCount(value, defaultValue)
   const shouldShowCount = (showCount ?? maxLength != null) && maxLength != null
 
   return (
@@ -34,7 +31,7 @@ function Textarea({
         value={value}
         defaultValue={defaultValue}
         onChange={(event) => {
-          if (!isControlled) setUncontrolledLength(event.target.value.length)
+          trackLength(event.target.value)
           onChange?.(event)
         }}
         className={cn(

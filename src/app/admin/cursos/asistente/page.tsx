@@ -94,7 +94,7 @@ export default async function CourseWizardIndexPage() {
                           <Link href={`/admin/cursos/asistente/${d.id}`} className="text-sm underline underline-offset-4">
                             {t.resume}
                           </Link>
-                          <DiscardButton draftId={d.id} />
+                          <DiscardButton draftId={d.id} size="sm" />
                         </span>
                       </TableCell>
                     </TableRow>

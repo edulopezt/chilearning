@@ -96,7 +96,7 @@ export default async function StudentComunicacionPage() {
             <FieldControl render={<Input name="title" required placeholder={t.threadTitleLabel} />} />
           </FieldRoot>
           <FieldRoot>
-            <FieldControl render={<Textarea name="body" required rows={2} placeholder={t.postBodyLabel} />} />
+            <FieldControl render={<Textarea name="body" required rows={2} maxLength={20000} placeholder={t.postBodyLabel} />} />
           </FieldRoot>
           <Button type="submit" variant="outline" className="self-start">
             {t.newThread}
@@ -125,7 +125,7 @@ export default async function StudentComunicacionPage() {
             <FieldControl render={<Input name="subject" required placeholder={t.subjectLabel} />} />
           </FieldRoot>
           <FieldRoot>
-            <FieldControl render={<Textarea name="body" required rows={2} placeholder={t.postBodyLabel} />} />
+            <FieldControl render={<Textarea name="body" required rows={2} maxLength={20000} placeholder={t.postBodyLabel} />} />
           </FieldRoot>
           <Button type="submit" variant="outline" className="self-start">
             {t.newMessage}

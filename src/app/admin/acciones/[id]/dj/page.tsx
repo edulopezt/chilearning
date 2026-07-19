@@ -5,7 +5,7 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { getChecklist } from "@/modules/dj/dj-service";
-import { DJ_STATES } from "@/modules/dj/domain/state-machine";
+import { DJ_STATES, type DjState } from "@/modules/dj/domain/state-machine";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -20,6 +20,15 @@ import { ensureChecklistAction, setDjStateAction } from "./actions";
 export const dynamic = "force-dynamic";
 
 const t = esCL.dj;
+
+const STATE_VARIANT: Record<DjState, "success" | "destructive" | "secondary"> = {
+  pendiente_emitir: "secondary",
+  pendiente_validacion: "secondary",
+  emitida: "success",
+  aprobado_reemision: "success",
+  rechazado_reemision: "destructive",
+  anulada: "destructive",
+};
 
 /** Checklist de DJ por acción (task 3.3, HU-5.6). Staff-only: otec_admin/coordinator
  *  gestionan, instructor lee. Sin supervisor (cumplimiento SENCE interno, ver 3.12). */
@@ -62,7 +71,7 @@ export default async function DjPage({ params }: { params: Promise<{ id: string 
                   <p className="text-xs text-muted-foreground">{r.run || "—"}</p>
                 </div>
                 <div className="flex flex-col gap-0.5 sm:items-end">
-                  <Badge variant="secondary">{t.states[r.state]}</Badge>
+                  <Badge variant={STATE_VARIANT[r.state]}>{t.states[r.state]}</Badge>
                   {r.settlementDeadline ? (
                     <span className={`text-xs ${r.overdue ? "font-semibold text-destructive" : "text-muted-foreground"}`}>
                       {r.overdue ? `${t.overdue} · ${r.settlementDeadline}` : r.settlementDeadline}

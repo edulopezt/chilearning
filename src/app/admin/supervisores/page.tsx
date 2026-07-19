@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 const t = esCL.supervisorGrants;
 
 const STATUS_LABEL = { active: t.statusActive, expired: t.statusExpired, revoked: t.statusRevoked } as const;
-const STATUS_VARIANT = { active: "success", expired: "warning", revoked: "secondary" } as const;
+const STATUS_VARIANT = { active: "success", expired: "warning", revoked: "destructive" } as const;
 
 /** Gestión de fiscalizadores (task 3.11, HU-12.1/12.2). Staff: admin/coordinador. */
 export default async function SupervisoresPage() {

@@ -8,8 +8,19 @@ import { cloneCourseAction } from "./actions";
 
 const t = esCL.courses;
 
-/** Botón de clonado de curso (task 2.8): copia completa en borrador. */
-export function CloneButton({ courseId }: { courseId: string }) {
+/**
+ * Botón de clonado de curso (task 2.8): copia completa en borrador.
+ *
+ * `size`: "sm" en la fila de tabla de escritorio (contexto denso); "default"
+ * (44px, RNF-6) en la tarjeta móvil, donde es una vía táctil directa.
+ */
+export function CloneButton({
+  courseId,
+  size = "default",
+}: {
+  courseId: string;
+  size?: "default" | "sm";
+}) {
   const [pending, start] = useTransition();
   const [error, setError] = useState(false);
 
@@ -18,7 +29,7 @@ export function CloneButton({ courseId }: { courseId: string }) {
       <Button
         type="button"
         variant="ghost"
-        size="sm"
+        size={size}
         loading={pending}
         onClick={() =>
           start(async () => {

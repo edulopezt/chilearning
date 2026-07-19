@@ -7,6 +7,7 @@ import { listCourses } from "@/modules/academico/course-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -60,36 +61,29 @@ export default async function CoursesPage() {
         {courses.length === 0 ? (
           <EmptyState icon={<BookOpenIcon />} title={esCL.courses.empty} />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{esCL.courses.colName}</TableHead>
-                <TableHead>{esCL.courses.colModality}</TableHead>
-                <TableHead>{esCL.courses.colHours}</TableHead>
-                <TableHead>{esCL.courses.colStatus}</TableHead>
-                <TableHead>{esCL.courses.colValidity}</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Móvil: tarjetas. ≥sm: tabla. Sin scroll horizontal (RNF-6). */}
+            <ul className="flex flex-col gap-3 sm:hidden">
               {courses.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    {c.name}
-                    {c.sence ? <span className="text-muted-foreground"> · SENCE</span> : null}
-                  </TableCell>
-                  <TableCell>{MODALITY_LABEL[c.modality] ?? c.modality}</TableCell>
-                  <TableCell>{c.hours}</TableCell>
-                  <TableCell>
-                    <Badge variant={c.status === "published" ? "success" : "secondary"}>
+                <li key={c.id}>
+                  <Card className="gap-2 p-3 text-sm">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium break-words">
+                        {c.name}
+                        {c.sence ? <span className="text-muted-foreground"> · SENCE</span> : null}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {MODALITY_LABEL[c.modality] ?? c.modality} · {c.hours} h
+                      </span>
+                    </div>
+                    <Badge
+                      variant={c.status === "published" ? "success" : "secondary"}
+                      className="w-fit"
+                    >
                       {STATUS_LABEL[c.status] ?? c.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
                     <ValidityForm courseId={c.id} validityMonths={c.validity_months} />
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
                       <Link href={`/admin/cursos/${c.id}/lecciones`} className="text-sm underline underline-offset-4">
                         {esCL.lessons.title}
                       </Link>
@@ -97,12 +91,58 @@ export default async function CoursesPage() {
                         {esCL.communication.title}
                       </Link>
                       <CloneButton courseId={c.id} />
-                    </span>
-                  </TableCell>
-                </TableRow>
+                    </div>
+                  </Card>
+                </li>
               ))}
-            </TableBody>
-          </Table>
+            </ul>
+
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{esCL.courses.colName}</TableHead>
+                    <TableHead>{esCL.courses.colModality}</TableHead>
+                    <TableHead>{esCL.courses.colHours}</TableHead>
+                    <TableHead>{esCL.courses.colStatus}</TableHead>
+                    <TableHead>{esCL.courses.colValidity}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {courses.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell>
+                        {c.name}
+                        {c.sence ? <span className="text-muted-foreground"> · SENCE</span> : null}
+                      </TableCell>
+                      <TableCell>{MODALITY_LABEL[c.modality] ?? c.modality}</TableCell>
+                      <TableCell>{c.hours}</TableCell>
+                      <TableCell>
+                        <Badge variant={c.status === "published" ? "success" : "secondary"}>
+                          {STATUS_LABEL[c.status] ?? c.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <ValidityForm courseId={c.id} validityMonths={c.validity_months} size="sm" />
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex flex-wrap items-center gap-3">
+                          <Link href={`/admin/cursos/${c.id}/lecciones`} className="text-sm underline underline-offset-4">
+                            {esCL.lessons.title}
+                          </Link>
+                          <Link href={`/admin/cursos/${c.id}/comunicacion`} className="text-sm underline underline-offset-4">
+                            {esCL.communication.title}
+                          </Link>
+                          <CloneButton courseId={c.id} size="sm" />
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </section>
 

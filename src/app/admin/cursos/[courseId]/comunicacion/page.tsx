@@ -51,7 +51,7 @@ export default async function AdminComunicacionPage({ params }: { params: Promis
                   <form action={publishAnnouncementAction}>
                     <input type="hidden" name="announcementId" value={a.id} />
                     <input type="hidden" name="courseId" value={courseId} />
-                    <Button type="submit" variant="ghost" size="sm">{t.publish}</Button>
+                    <Button type="submit" variant="ghost">{t.publish}</Button>
                   </form>
                 ) : null}
               </Card>
@@ -64,7 +64,7 @@ export default async function AdminComunicacionPage({ params }: { params: Promis
             <FieldControl name="title" required placeholder={t.annTitleLabel} />
           </FieldRoot>
           <FieldRoot>
-            <FieldControl name="body" required placeholder={t.annBodyLabel} render={<Textarea rows={2} />} />
+            <FieldControl name="body" required placeholder={t.annBodyLabel} render={<Textarea rows={2} maxLength={20000} />} />
           </FieldRoot>
           <Button type="submit" className="self-start">{t.newAnnouncement}</Button>
         </form>

@@ -63,7 +63,7 @@ export default async function TareasPage({
                     <input type="hidden" name="assignmentId" value={a.id} />
                     <input type="hidden" name="courseId" value={courseId} />
                     <input type="hidden" name="publish" value={a.status === "published" ? "false" : "true"} />
-                    <Button type="submit" variant="ghost" size="sm">
+                    <Button type="submit" variant="ghost">
                       {a.status === "published" ? t.unpublish : t.publish}
                     </Button>
                   </form>

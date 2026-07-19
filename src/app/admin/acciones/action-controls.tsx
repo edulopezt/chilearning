@@ -12,13 +12,18 @@ const t = esCL.actions;
 /**
  * Controles por acción (task 2.8): un borrador enlaza a la página de activación
  * (donde se ponen código nuevo + fechas); una activa puede re-ejecutarse.
+ *
+ * `size`: "sm" en la fila de tabla de escritorio (contexto denso); "default"
+ * (44px, RNF-6) en la tarjeta móvil, donde es una vía táctil directa.
  */
 export function ActionControls({
   actionId,
   status,
+  size = "default",
 }: {
   actionId: string;
   status: "draft" | "active";
+  size?: "default" | "sm";
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -36,7 +41,7 @@ export function ActionControls({
       <Button
         type="button"
         variant="ghost"
-        size="sm"
+        size={size}
         loading={pending}
         onClick={() =>
           start(async () => {

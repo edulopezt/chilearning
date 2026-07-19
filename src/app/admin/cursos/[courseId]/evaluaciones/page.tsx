@@ -69,7 +69,7 @@ export default async function EvaluacionesPage({
                     <input type="hidden" name="quizId" value={q.id} />
                     <input type="hidden" name="courseId" value={courseId} />
                     <input type="hidden" name="publish" value={q.status === "published" ? "false" : "true"} />
-                    <Button type="submit" variant="ghost" size="sm">
+                    <Button type="submit" variant="ghost">
                       {q.status === "published" ? t.unpublish : t.publish}
                     </Button>
                   </form>
@@ -77,7 +77,7 @@ export default async function EvaluacionesPage({
                     <form action={deleteQuizAction}>
                       <input type="hidden" name="quizId" value={q.id} />
                       <input type="hidden" name="courseId" value={courseId} />
-                      <Button type="submit" variant="ghost" size="sm" className="text-destructive">
+                      <Button type="submit" variant="ghost" className="text-destructive">
                         {t.deleteQuiz}
                       </Button>
                     </form>

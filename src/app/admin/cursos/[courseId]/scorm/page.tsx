@@ -11,6 +11,7 @@ import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -90,37 +91,66 @@ export default async function ScormPage({ params }: { params: Promise<{ courseId
         {packages.length === 0 ? (
           <EmptyState icon={<PackageIcon />} title={t.empty} />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t.colTitle}</TableHead>
-                <TableHead>{t.colVersion}</TableHead>
-                <TableHead>{t.colStatus}</TableHead>
-                <TableHead>{t.colSize}</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Tabla ≥sm, tarjetas <sm (RNF-6) */}
+            <ul className="flex flex-col gap-2 sm:hidden">
               {packages.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>{p.title}</TableCell>
-                  <TableCell className="font-mono">{p.scorm_version ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant={p.status === "ready" ? "success" : p.status === "error" ? "destructive" : "secondary"}>
-                      {STATUS_LABEL[p.status] ?? p.status}
-                    </Badge>
+                <li key={p.id}>
+                  <Card className="gap-1 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium break-words">{p.title}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{p.scorm_version ?? "—"}</span>
+                      </div>
+                      <Badge variant={p.status === "ready" ? "success" : p.status === "error" ? "destructive" : "secondary"}>
+                        {STATUS_LABEL[p.status] ?? p.status}
+                      </Badge>
+                    </div>
                     {p.status === "error" && p.error_code ? (
-                      <p className="mt-1 text-xs text-destructive">{ERROR_LABEL[p.error_code] ?? p.error_code}</p>
+                      <p className="text-xs text-destructive">{ERROR_LABEL[p.error_code] ?? p.error_code}</p>
                     ) : null}
-                  </TableCell>
-                  <TableCell>{formatSize(p.file_size)}</TableCell>
-                  <TableCell>
-                    <PackageRowActions courseId={courseId} pkg={p} />
-                  </TableCell>
-                </TableRow>
+                    <span className="text-xs text-muted-foreground">{formatSize(p.file_size)}</span>
+                    <div className="mt-1 flex justify-end">
+                      <PackageRowActions courseId={courseId} pkg={p} />
+                    </div>
+                  </Card>
+                </li>
               ))}
-            </TableBody>
-          </Table>
+            </ul>
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t.colTitle}</TableHead>
+                    <TableHead>{t.colVersion}</TableHead>
+                    <TableHead>{t.colStatus}</TableHead>
+                    <TableHead>{t.colSize}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {packages.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.title}</TableCell>
+                      <TableCell className="font-mono">{p.scorm_version ?? "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant={p.status === "ready" ? "success" : p.status === "error" ? "destructive" : "secondary"}>
+                          {STATUS_LABEL[p.status] ?? p.status}
+                        </Badge>
+                        {p.status === "error" && p.error_code ? (
+                          <p className="mt-1 text-xs text-destructive">{ERROR_LABEL[p.error_code] ?? p.error_code}</p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>{formatSize(p.file_size)}</TableCell>
+                      <TableCell>
+                        <PackageRowActions courseId={courseId} pkg={p} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </section>
 

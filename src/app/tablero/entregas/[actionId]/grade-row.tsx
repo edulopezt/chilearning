@@ -82,7 +82,6 @@ export function GradeRow({
           <Button
             type="button"
             variant="link"
-            size="sm"
             loading={downloading}
             onClick={() =>
               startDownload(async () => {

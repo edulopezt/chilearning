@@ -9,6 +9,9 @@ import { getStudentCourseView } from "@/modules/academico/course-view";
 import { computeLock } from "@/modules/academico/domain/attendance-lock";
 import { canSelfMark } from "@/modules/academico/domain/live-session";
 import { enrollmentGroupLabel } from "@/modules/academico/domain/enrollment-group";
+// Excepción documentada al aislamiento de src/modules/sence/ (CLAUDE.md): studentMessageForCodes
+// es la tabla de traducción de errores SENCE al alumno (nunca códigos crudos) — es la fuga de
+// presentación que la propia regla permite explícitamente, no una violación.
 import { studentMessageForCodes } from "@/modules/sence/errors";
 import { listMySessions } from "@/modules/academico/live-session-service";
 import { summarizeProgress } from "@/modules/academico/domain/progress";

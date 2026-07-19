@@ -20,7 +20,7 @@ import { discardDraftAction } from "./actions";
 const t = esCL.wizard;
 
 /** Descarta un borrador (AlertDialog de confirmación + Server Action, igual que PackageRowActions). */
-export function DiscardButton({ draftId }: { draftId: string }) {
+export function DiscardButton({ draftId, size = "default" }: { draftId: string; size?: "default" | "sm" }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState(false);
 
@@ -37,7 +37,7 @@ export function DiscardButton({ draftId }: { draftId: string }) {
       <AlertDialog>
         <AlertDialogTrigger
           render={
-            <Button type="button" variant="ghost" size="sm" loading={pending} className="text-destructive">
+            <Button type="button" variant="ghost" size={size} loading={pending} className="text-destructive">
               {pending ? t.discarding : t.discard}
             </Button>
           }

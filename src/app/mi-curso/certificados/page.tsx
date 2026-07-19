@@ -54,7 +54,7 @@ export default async function MisCertificadosPage() {
                 {c.status === "revoked" ? (
                   <Badge variant="destructive">{t.revoked}</Badge>
                 ) : (
-                  <a href={`/api/certificados/${c.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                  <a href={`/api/certificados/${c.id}`} className={cn(buttonVariants({ variant: "outline", size: "default" }))}>
                     {t.download}
                   </a>
                 )}

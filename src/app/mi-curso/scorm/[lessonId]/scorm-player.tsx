@@ -240,7 +240,7 @@ function SaveIndicator({
     return (
       <div className="flex items-center gap-2 text-warning">
         <span>{esCL.scorm.saveError}</span>
-        <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={onRetry}>
+        <Button type="button" variant="link" onClick={onRetry}>
           {esCL.scorm.retrySave}
         </Button>
       </div>

@@ -44,7 +44,7 @@ export default async function StudentForoThreadPage({ params }: { params: Promis
       <form action={addPostAction} className="flex flex-col gap-3 border-t pt-3">
         <input type="hidden" name="threadId" value={threadId} />
         <FieldRoot>
-          <FieldControl render={<Textarea name="body" required rows={3} placeholder={t.postBodyLabel} />} />
+          <FieldControl render={<Textarea name="body" required rows={3} maxLength={20000} placeholder={t.postBodyLabel} />} />
         </FieldRoot>
         <Button type="submit" className="self-start">
           {t.send}

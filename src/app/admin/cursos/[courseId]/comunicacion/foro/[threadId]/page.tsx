@@ -41,7 +41,7 @@ export default async function StaffForoThreadPage({ params }: { params: Promise<
             <input type="hidden" name="courseId" value={courseId} />
             <input type="hidden" name="threadId" value={threadId} />
             <input type="hidden" name="resolved" value={view.thread.resolved ? "false" : "true"} />
-            <Button type="submit" variant="outline" size="sm">{view.thread.resolved ? t.reopen : t.markResolved}</Button>
+            <Button type="submit" variant="outline">{view.thread.resolved ? t.reopen : t.markResolved}</Button>
           </form>
         }
       />
@@ -66,7 +66,7 @@ export default async function StaffForoThreadPage({ params }: { params: Promise<
           <AiDraftButton threadId={threadId} generateDraft={generateForumDraftAction} placeholder={t.postBodyLabel} />
         ) : (
           <FieldRoot>
-            <FieldControl name="body" required placeholder={t.postBodyLabel} render={<Textarea rows={3} />} />
+            <FieldControl name="body" required placeholder={t.postBodyLabel} render={<Textarea rows={3} maxLength={20000} />} />
           </FieldRoot>
         )}
         <Button type="submit" className="self-start">{t.reply}</Button>

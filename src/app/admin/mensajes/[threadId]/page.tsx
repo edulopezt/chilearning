@@ -53,7 +53,7 @@ export default async function StaffMessageThreadPage({ params }: { params: Promi
           <AiDraftButton threadId={threadId} generateDraft={generateMessageDraftAction} placeholder={t.postBodyLabel} />
         ) : (
           <FieldRoot>
-            <FieldControl name="body" required placeholder={t.postBodyLabel} render={<Textarea rows={3} />} />
+            <FieldControl name="body" required placeholder={t.postBodyLabel} render={<Textarea rows={3} maxLength={20000} />} />
           </FieldRoot>
         )}
         <Button type="submit" className="self-start">{t.reply}</Button>

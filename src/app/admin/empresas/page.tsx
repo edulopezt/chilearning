@@ -67,7 +67,7 @@ export default async function EmpresasPage() {
                               <RevokeMemberForm memberId={m.id} />
                             </div>
                           ) : (
-                            <Badge variant="secondary">{t.revoked}</Badge>
+                            <Badge variant="destructive">{t.revoked}</Badge>
                           )}
                         </li>
                       ))}

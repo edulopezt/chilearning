@@ -61,7 +61,7 @@ export default async function EncuestaPage({
                     <input type="hidden" name="surveyId" value={s.id} />
                     <input type="hidden" name="courseId" value={courseId} />
                     <input type="hidden" name="publish" value={s.status === "published" ? "false" : "true"} />
-                    <Button type="submit" variant="ghost" size="sm">
+                    <Button type="submit" variant="ghost">
                       {s.status === "published" ? t.unpublish : t.publish}
                     </Button>
                   </form>
