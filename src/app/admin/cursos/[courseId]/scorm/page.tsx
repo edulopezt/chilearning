@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PackageIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
@@ -8,6 +9,11 @@ import { listScormPackages, type ScormPackageRow } from "@/modules/contenido/sco
 import { listScormResults, type ScormResultRow } from "@/modules/contenido/scorm-runtime-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize, type Principal } from "@/modules/core/domain/rbac";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PackageRowActions } from "./package-row-actions";
 import { UploadForm } from "./upload-form";
 
@@ -61,7 +67,7 @@ export default async function ScormPage({ params }: { params: Promise<{ courseId
       <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 p-6">
         <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
         <p className="text-muted-foreground">{t.flagDisabled}</p>
-        <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline">
+        <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline underline-offset-4">
           ← {esCL.lessons.title}
         </Link>
       </main>
@@ -72,65 +78,49 @@ export default async function ScormPage({ params }: { params: Promise<{ courseId
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-      </header>
+      <PageHeader title={t.title} description={t.intro} />
 
       {/* RNF-6: aviso FIJO y siempre visible — la responsividad interna del
           paquete depende de la herramienta de autor, no de Chilearning. */}
-      <div
-        role="note"
-        className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
-      >
-        {t.responsiveWarning}
-      </div>
+      <Alert variant="warning">
+        <AlertDescription>{t.responsiveWarning}</AlertDescription>
+      </Alert>
 
       <section className="flex flex-col gap-3">
         {packages.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.empty}</p>
+          <EmptyState icon={<PackageIcon />} title={t.empty} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-3">{t.colTitle}</th>
-                  <th className="py-2 pr-3">{t.colVersion}</th>
-                  <th className="py-2 pr-3">{t.colStatus}</th>
-                  <th className="py-2 pr-3">{t.colSize}</th>
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {packages.map((p) => (
-                  <tr key={p.id} className="border-b last:border-0 align-middle">
-                    <td className="py-2 pr-3">{p.title}</td>
-                    <td className="py-2 pr-3 font-mono">{p.scorm_version ?? "—"}</td>
-                    <td className="py-2 pr-3">
-                      <span
-                        className={
-                          p.status === "ready"
-                            ? "text-green-700 dark:text-green-400"
-                            : p.status === "error"
-                              ? "text-red-600"
-                              : "text-muted-foreground"
-                        }
-                      >
-                        {STATUS_LABEL[p.status] ?? p.status}
-                      </span>
-                      {p.status === "error" && p.error_code ? (
-                        <p className="text-xs text-red-600">{ERROR_LABEL[p.error_code] ?? p.error_code}</p>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-3">{formatSize(p.file_size)}</td>
-                    <td className="py-2">
-                      <PackageRowActions courseId={courseId} pkg={p} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t.colTitle}</TableHead>
+                <TableHead>{t.colVersion}</TableHead>
+                <TableHead>{t.colStatus}</TableHead>
+                <TableHead>{t.colSize}</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {packages.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>{p.title}</TableCell>
+                  <TableCell className="font-mono">{p.scorm_version ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={p.status === "ready" ? "success" : p.status === "error" ? "destructive" : "secondary"}>
+                      {STATUS_LABEL[p.status] ?? p.status}
+                    </Badge>
+                    {p.status === "error" && p.error_code ? (
+                      <p className="mt-1 text-xs text-destructive">{ERROR_LABEL[p.error_code] ?? p.error_code}</p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{formatSize(p.file_size)}</TableCell>
+                  <TableCell>
+                    <PackageRowActions courseId={courseId} pkg={p} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
 
@@ -152,7 +142,7 @@ export default async function ScormPage({ params }: { params: Promise<{ courseId
         </section>
       ) : null}
 
-      <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline">
+      <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline underline-offset-4">
         ← {esCL.lessons.title}
       </Link>
     </main>
@@ -165,32 +155,32 @@ async function PackageResults({ principal, pkg }: { principal: Principal; pkg: S
     <div className="flex flex-col gap-2">
       <h3 className="font-medium">{pkg.title}</h3>
       {results.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t.resultsEmpty}</p>
+        <p className="text-sm text-muted-foreground">{t.resultsEmpty}</p>
       ) : (
         <>
           {/* Tabla ≥sm, tarjetas <sm (RNF-6) */}
-          <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[32rem] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-3">{t.studentCol}</th>
-                  <th className="py-2 pr-3">{t.statusCol}</th>
-                  <th className="py-2 pr-3">{t.scoreCol}</th>
-                  <th className="py-2">{t.updatedCol}</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t.studentCol}</TableHead>
+                  <TableHead>{t.statusCol}</TableHead>
+                  <TableHead>{t.scoreCol}</TableHead>
+                  <TableHead>{t.updatedCol}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {results.map((r) => (
                   <ResultRow key={r.enrollmentId} r={r} />
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <ul className="flex flex-col gap-2 sm:hidden">
             {results.map((r) => (
               <li key={r.enrollmentId} className="flex flex-col gap-1 rounded-lg border p-3 text-sm">
                 <span className="font-medium">{r.studentName}</span>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-muted-foreground">
                   {r.lessonStatus ?? "—"} · {t.scoreCol}: {r.scoreRaw ?? "—"} ·{" "}
                   {new Date(r.updatedAt).toLocaleString("es-CL")}
                 </span>
@@ -205,11 +195,11 @@ async function PackageResults({ principal, pkg }: { principal: Principal; pkg: S
 
 function ResultRow({ r }: { r: ScormResultRow }) {
   return (
-    <tr className="border-b last:border-0">
-      <td className="py-2 pr-3">{r.studentName}</td>
-      <td className="py-2 pr-3">{r.lessonStatus ?? "—"}</td>
-      <td className="py-2 pr-3">{r.scoreRaw ?? "—"}</td>
-      <td className="py-2">{new Date(r.updatedAt).toLocaleString("es-CL")}</td>
-    </tr>
+    <TableRow>
+      <TableCell>{r.studentName}</TableCell>
+      <TableCell>{r.lessonStatus ?? "—"}</TableCell>
+      <TableCell>{r.scoreRaw ?? "—"}</TableCell>
+      <TableCell>{new Date(r.updatedAt).toLocaleString("es-CL")}</TableCell>
+    </TableRow>
   );
 }

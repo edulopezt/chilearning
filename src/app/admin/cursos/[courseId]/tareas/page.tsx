@@ -1,10 +1,16 @@
 import Link from "next/link";
+import { FileTextIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { listAssignmentsByCourse } from "@/modules/evaluacion/assignment-service";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { AssignmentForm } from "./assignment-form";
 import { publishAssignmentAction } from "./actions";
 
@@ -36,39 +42,32 @@ export default async function TareasPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-      </header>
+      <PageHeader title={t.title} description={t.intro} />
 
       <section className="flex flex-col gap-2">
         {assignments.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.empty}</p>
+          <EmptyState icon={<FileTextIcon />} title={t.empty} />
         ) : (
           <ul className="flex flex-col gap-2">
             {assignments.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
-                <span className="flex-1 font-medium">{a.title}</span>
-                <span className="text-muted-foreground text-sm">
-                  {a.due_at ? new Date(a.due_at).toLocaleString("es-CL") : "—"}
-                </span>
-                <span
-                  className={`rounded px-2 py-0.5 text-xs ${
-                    a.status === "published"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                  }`}
-                >
-                  {a.status === "published" ? t.statusPublished : t.statusDraft}
-                </span>
-                <form action={publishAssignmentAction}>
-                  <input type="hidden" name="assignmentId" value={a.id} />
-                  <input type="hidden" name="courseId" value={courseId} />
-                  <input type="hidden" name="publish" value={a.status === "published" ? "false" : "true"} />
-                  <button type="submit" className="text-sm underline">
-                    {a.status === "published" ? t.unpublish : t.publish}
-                  </button>
-                </form>
+              <li key={a.id}>
+                <Card className="flex-row flex-wrap items-center gap-3 p-3">
+                  <span className="flex-1 font-medium">{a.title}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {a.due_at ? new Date(a.due_at).toLocaleString("es-CL") : "—"}
+                  </span>
+                  <Badge variant={a.status === "published" ? "success" : "secondary"}>
+                    {a.status === "published" ? t.statusPublished : t.statusDraft}
+                  </Badge>
+                  <form action={publishAssignmentAction}>
+                    <input type="hidden" name="assignmentId" value={a.id} />
+                    <input type="hidden" name="courseId" value={courseId} />
+                    <input type="hidden" name="publish" value={a.status === "published" ? "false" : "true"} />
+                    <Button type="submit" variant="ghost" size="sm">
+                      {a.status === "published" ? t.unpublish : t.publish}
+                    </Button>
+                  </form>
+                </Card>
               </li>
             ))}
           </ul>
@@ -80,14 +79,14 @@ export default async function TareasPage({
         <AssignmentForm courseId={courseId} />
       </section>
 
-      <p className="flex gap-4">
-        <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline">
+      <p className="flex flex-wrap gap-4">
+        <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline underline-offset-4">
           ← {t.lessonsLink}
         </Link>
-        <Link href={`/admin/cursos/${courseId}/evaluaciones`} className="text-sm underline">
+        <Link href={`/admin/cursos/${courseId}/evaluaciones`} className="text-sm underline underline-offset-4">
           {t.quizzesLink} →
         </Link>
-        <Link href={`/admin/cursos/${courseId}/encuesta`} className="text-sm underline">
+        <Link href={`/admin/cursos/${courseId}/encuesta`} className="text-sm underline underline-offset-4">
           {esCL.surveys.title} →
         </Link>
       </p>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LayersIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
@@ -6,6 +7,11 @@ import { tenantGuard } from "@/lib/tenant-guard";
 import { listLessons } from "@/modules/academico/lesson-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LessonRowActions } from "./lesson-row-actions";
 import { NewLessonForm } from "./new-lesson-form";
 
@@ -45,73 +51,70 @@ export default async function LessonsPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.lessons.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {(course?.name as string) ?? ""} · {esCL.lessons.intro}
-        </p>
-        <span className="mt-1 flex gap-4 text-sm">
-          <Link href={`/admin/cursos/${courseId}/evaluaciones`} className="underline">
-            {esCL.quizzes.title} →
-          </Link>
-          <Link href={`/admin/cursos/${courseId}/tareas`} className="underline">
-            {esCL.assignments.title} →
-          </Link>
-          <Link href={`/admin/cursos/${courseId}/scorm`} className="underline">
-            {esCL.scorm.title} →
-          </Link>
-        </span>
-      </header>
+      <PageHeader
+        title={esCL.lessons.title}
+        description={
+          <>
+            {(course?.name as string) ?? ""} · {esCL.lessons.intro}
+            <span className="mt-1 flex flex-wrap gap-4">
+              <Link href={`/admin/cursos/${courseId}/evaluaciones`} className="underline underline-offset-4">
+                {esCL.quizzes.title} →
+              </Link>
+              <Link href={`/admin/cursos/${courseId}/tareas`} className="underline underline-offset-4">
+                {esCL.assignments.title} →
+              </Link>
+              <Link href={`/admin/cursos/${courseId}/scorm`} className="underline underline-offset-4">
+                {esCL.scorm.title} →
+              </Link>
+            </span>
+          </>
+        }
+      />
 
       {/* Cierre del asistente guiado (task 5.10): el curso llega aquí recién generado, en borrador. */}
       {wizard === "ok" ? (
-        <p
-          role="status"
-          className="rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300"
-        >
-          {esCL.wizard.generatedOk}
-        </p>
+        <Alert variant="success" role="status">
+          <AlertDescription>{esCL.wizard.generatedOk}</AlertDescription>
+        </Alert>
       ) : null}
 
       <section className="flex flex-col gap-3">
         {lessons.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{esCL.lessons.empty}</p>
+          <EmptyState icon={<LayersIcon />} title={esCL.lessons.empty} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-2">{esCL.lessons.colOrder}</th>
-                  <th className="py-2 pr-3">{esCL.lessons.colTitle}</th>
-                  <th className="py-2 pr-3">{esCL.lessons.colKind}</th>
-                  <th className="py-2 pr-3">{esCL.lessons.colStatus}</th>
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {lessons.map((l, i) => (
-                  <tr key={l.id} className="border-b last:border-0 align-middle">
-                    <td className="py-2 pr-2 font-mono">{i + 1}</td>
-                    <td className="py-2 pr-3">{l.title}</td>
-                    <td className="py-2 pr-3">{KIND_LABEL[l.kind] ?? l.kind}</td>
-                    <td className="py-2 pr-3">
-                      <span className={l.status === "published" ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}>
-                        {l.status === "published" ? esCL.lessons.statusPublished : esCL.lessons.statusDraft}
-                      </span>
-                    </td>
-                    <td className="py-2">
-                      <LessonRowActions
-                        courseId={courseId}
-                        lesson={l}
-                        isFirst={i === 0}
-                        isLast={i === lessons.length - 1}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{esCL.lessons.colOrder}</TableHead>
+                <TableHead>{esCL.lessons.colTitle}</TableHead>
+                <TableHead>{esCL.lessons.colKind}</TableHead>
+                <TableHead>{esCL.lessons.colStatus}</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lessons.map((l, i) => (
+                <TableRow key={l.id}>
+                  <TableCell className="font-mono">{i + 1}</TableCell>
+                  <TableCell>{l.title}</TableCell>
+                  <TableCell>{KIND_LABEL[l.kind] ?? l.kind}</TableCell>
+                  <TableCell>
+                    <Badge variant={l.status === "published" ? "success" : "secondary"}>
+                      {l.status === "published" ? esCL.lessons.statusPublished : esCL.lessons.statusDraft}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <LessonRowActions
+                      courseId={courseId}
+                      lesson={l}
+                      isFirst={i === 0}
+                      isLast={i === lessons.length - 1}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
 

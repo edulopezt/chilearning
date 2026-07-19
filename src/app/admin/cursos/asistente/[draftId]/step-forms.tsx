@@ -4,6 +4,13 @@ import { useActionState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
 import type { WizardState } from "@/modules/academico/domain/course-wizard";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   saveAprendizajesStepAction,
   saveCompletitudStepAction,
@@ -25,27 +32,24 @@ import {
 
 const t = esCL.wizard;
 const tc = esCL.courses;
-const inputCls = "min-h-11 rounded-md border px-3 text-base";
-const textareaCls = "rounded-md border p-3 font-mono text-sm";
-const btn =
-  "min-h-11 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900";
 
 function ValidationList({ state }: { state: StepFormState }) {
   if (state.status !== "error") return null;
   const entries = Object.entries(state.errors);
   if (entries.length === 0) return null;
   return (
-    <div
-      role="alert"
-      className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
-    >
-      <p className="font-medium">{t.validationTitle}</p>
-      <ul className="list-disc pl-5">
-        {entries.map(([field, message]) => (
-          <li key={field}>{message}</li>
-        ))}
-      </ul>
-    </div>
+    <Alert variant="destructive" role="alert">
+      <div className="flex flex-col gap-1">
+        <AlertTitle>{t.validationTitle}</AlertTitle>
+        <AlertDescription>
+          <ul className="list-disc pl-5">
+            {entries.map(([field, message]) => (
+              <li key={field}>{message}</li>
+            ))}
+          </ul>
+        </AlertDescription>
+      </div>
+    </Alert>
   );
 }
 
@@ -57,62 +61,54 @@ export function DatosStepForm({ draftId, state }: { draftId: string; state: Wiza
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      {hasSeed ? <p className="text-muted-foreground text-sm">{t.seedHint}</p> : null}
-      <label className="flex flex-col gap-1 text-sm">
-        {tc.nameLabel}
-        <input name="name" required defaultValue={datos?.name ?? state.datosSeed.name ?? ""} className={inputCls} />
-      </label>
+      {hasSeed ? <p className="text-sm text-muted-foreground">{t.seedHint}</p> : null}
+      <FieldRoot>
+        <FieldLabel>{tc.nameLabel}</FieldLabel>
+        <FieldControl name="name" required defaultValue={datos?.name ?? state.datosSeed.name ?? ""} />
+      </FieldRoot>
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          {tc.modalityLabel}
-          <select name="modality" defaultValue={datos?.modality ?? "elearning"} className={inputCls}>
-            <option value="elearning">{tc.modElearning}</option>
-            <option value="blended">{tc.modBlended}</option>
-            <option value="presential">{tc.modPresential}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {tc.hoursLabel}
-          <input
-            name="hours"
-            type="number"
-            min={0}
-            defaultValue={datos?.hours ?? state.datosSeed.hours ?? 0}
-            className={inputCls}
-          />
-        </label>
+        <FieldRoot>
+          <FieldLabel>{tc.modalityLabel}</FieldLabel>
+          <Select name="modality" defaultValue={datos?.modality ?? "elearning"}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="elearning">{tc.modElearning}</SelectItem>
+              <SelectItem value="blended">{tc.modBlended}</SelectItem>
+              <SelectItem value="presential">{tc.modPresential}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{tc.hoursLabel}</FieldLabel>
+          <FieldControl name="hours" type="number" min={0} defaultValue={datos?.hours ?? state.datosSeed.hours ?? 0} />
+        </FieldRoot>
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input name="sence" type="checkbox" value="true" defaultChecked={datos?.sence ?? false} className="size-4" />
+      <Label>
+        <Checkbox name="sence" value="true" defaultChecked={datos?.sence ?? false} />
         {tc.senceLabel}
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        {tc.codSenceLabel}
-        <input
-          name="codSence"
-          inputMode="numeric"
-          maxLength={10}
-          defaultValue={datos?.codSence ?? ""}
-          className={`${inputCls} font-mono`}
-        />
-        <span className="text-muted-foreground text-xs">{tc.codSenceHint}</span>
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        {esCL.certExpiry.validityLabel}
-        <input
+      </Label>
+      <FieldRoot>
+        <FieldLabel>{tc.codSenceLabel}</FieldLabel>
+        <FieldControl name="codSence" inputMode="numeric" maxLength={10} defaultValue={datos?.codSence ?? ""} className="font-mono" />
+        <FieldDescription>{tc.codSenceHint}</FieldDescription>
+      </FieldRoot>
+      <FieldRoot className="max-w-32">
+        <FieldLabel>{esCL.certExpiry.validityLabel}</FieldLabel>
+        <FieldControl
           name="validityMonths"
           type="number"
           min={1}
           max={120}
           placeholder="—"
           defaultValue={datos?.validityMonths ?? ""}
-          className={`${inputCls} w-32`}
         />
-      </label>
+      </FieldRoot>
       <ValidationList state={formState} />
-      <button type="submit" disabled={pending} className={btn}>
+      <Button type="submit" loading={pending} className="self-start">
         {t.saveAndContinue}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -127,21 +123,20 @@ export function EstructuraStepForm({ draftId, state }: { draftId: string; state:
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        {t.estructuraLabel}
-        <span className="text-muted-foreground text-xs">{t.estructuraHint}</span>
-        <textarea
+      <FieldRoot>
+        <FieldLabel>{t.estructuraLabel}</FieldLabel>
+        <FieldDescription>{t.estructuraHint}</FieldDescription>
+        <FieldControl
           name="modules"
-          rows={8}
           defaultValue={defaultValue}
           placeholder={t.estructuraPlaceholder}
-          className={textareaCls}
+          render={<Textarea rows={8} className="font-mono text-sm" />}
         />
-      </label>
+      </FieldRoot>
       <ValidationList state={formState} />
-      <button type="submit" disabled={pending} className={btn}>
+      <Button type="submit" loading={pending} className="self-start">
         {t.saveAndContinue}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -156,14 +151,14 @@ export function AprendizajesStepForm({ draftId, state }: { draftId: string; stat
   const [formState, formAction, pending] = useActionState<StepFormState, FormData>(action, { status: "idle" });
 
   if (modules.length === 0) {
-    return <p className="text-muted-foreground text-sm">{t.noModulesYet}</p>;
+    return <p className="text-sm text-muted-foreground">{t.noModulesYet}</p>;
   }
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <p className="text-muted-foreground text-sm">{t.aprendizajesHint}</p>
+      <p className="text-sm text-muted-foreground">{t.aprendizajesHint}</p>
       {state.outcomesSeed.length > 0 ? (
-        <div className="rounded-md border p-3 text-sm">
+        <div className="rounded-lg border p-3 text-sm">
           <p className="font-medium">{t.outcomesSeedTitle}</p>
           <ul className="list-disc pl-5">
             {state.outcomesSeed.map((o, i) => (
@@ -173,20 +168,21 @@ export function AprendizajesStepForm({ draftId, state }: { draftId: string; stat
         </div>
       ) : null}
       {modules.map((m) => (
-        <label key={m.id} className="flex flex-col gap-1 text-sm">
-          {t.aprendizajesLabelFor} «{m.title}»
-          <textarea
+        <FieldRoot key={m.id}>
+          <FieldLabel>
+            {t.aprendizajesLabelFor} «{m.title}»
+          </FieldLabel>
+          <FieldControl
             name={`outcomes_${m.id}`}
-            rows={4}
             defaultValue={(state.aprendizajes[m.id] ?? []).join("\n")}
-            className="rounded-md border p-3 text-sm"
+            render={<Textarea rows={4} />}
           />
-        </label>
+        </FieldRoot>
       ))}
       <ValidationList state={formState} />
-      <button type="submit" disabled={pending} className={btn}>
+      <Button type="submit" loading={pending} className="self-start">
         {t.saveAndContinue}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -199,25 +195,24 @@ export function ContenidoStepForm({ draftId, state }: { draftId: string; state: 
   return (
     <form action={formAction} className="flex flex-col gap-3">
       {state.estructura.modules.length > 0 ? (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {t.moduleIdsHint} {state.estructura.modules.map((m) => `${m.id} (${m.title})`).join(", ")}
         </p>
       ) : null}
-      <label className="flex flex-col gap-1 text-sm">
-        {t.contenidoLabel}
-        <span className="text-muted-foreground text-xs">{t.contenidoHint}</span>
-        <textarea
+      <FieldRoot>
+        <FieldLabel>{t.contenidoLabel}</FieldLabel>
+        <FieldDescription>{t.contenidoHint}</FieldDescription>
+        <FieldControl
           name="lessons"
-          rows={8}
           defaultValue={defaultValue}
           placeholder={t.contenidoPlaceholder}
-          className={textareaCls}
+          render={<Textarea rows={8} className="font-mono text-sm" />}
         />
-      </label>
+      </FieldRoot>
       <ValidationList state={formState} />
-      <button type="submit" disabled={pending} className={btn}>
+      <Button type="submit" loading={pending} className="self-start">
         {t.saveAndContinue}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -230,41 +225,34 @@ export function EvaluacionesStepForm({ draftId, state }: { draftId: string; stat
   return (
     <form action={formAction} className="flex flex-col gap-5">
       {state.estructura.modules.length > 0 ? (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {t.moduleIdsHint} {state.estructura.modules.map((m) => `${m.id} (${m.title})`).join(", ")}
         </p>
       ) : null}
-      <label className="flex flex-col gap-1 text-sm">
-        {t.quizzesLabel}
-        <span className="text-muted-foreground text-xs">{t.quizzesHint}</span>
-        <textarea
+      <FieldRoot>
+        <FieldLabel>{t.quizzesLabel}</FieldLabel>
+        <FieldDescription>{t.quizzesHint}</FieldDescription>
+        <FieldControl
           name="quizzes"
-          rows={6}
           defaultValue={defaultQuizzes}
           placeholder={t.quizzesPlaceholder}
-          className={textareaCls}
+          render={<Textarea rows={6} className="font-mono text-sm" />}
         />
-      </label>
+      </FieldRoot>
       <fieldset className="flex flex-col gap-3 rounded-md border p-4">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            name="surveyEnabled"
-            type="checkbox"
-            value="true"
-            defaultChecked={state.evaluaciones.survey.enabled}
-            className="size-4"
-          />
+        <Label>
+          <Checkbox name="surveyEnabled" value="true" defaultChecked={state.evaluaciones.survey.enabled} />
           {t.surveyEnabledLabel}
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.surveyTitleLabel}
-          <input name="surveyTitle" defaultValue={state.evaluaciones.survey.title} className={inputCls} />
-        </label>
+        </Label>
+        <FieldRoot>
+          <FieldLabel>{t.surveyTitleLabel}</FieldLabel>
+          <FieldControl name="surveyTitle" defaultValue={state.evaluaciones.survey.title} />
+        </FieldRoot>
       </fieldset>
       <ValidationList state={formState} />
-      <button type="submit" disabled={pending} className={btn}>
+      <Button type="submit" loading={pending} className="self-start">
         {t.saveAndContinue}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -278,42 +266,23 @@ export function CompletitudStepForm({ draftId, state }: { draftId: string; state
     <form action={formAction} className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-3 rounded-md border p-4">
         <legend className="px-1 text-sm font-medium">{tc.rulesTitle}</legend>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            name="requireAllLessons"
-            type="checkbox"
-            value="true"
-            defaultChecked={rules?.requireAllLessons ?? true}
-            className="size-4"
-          />
+        <Label>
+          <Checkbox name="requireAllLessons" value="true" defaultChecked={rules?.requireAllLessons ?? true} />
           {tc.requireAllLessons}
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            name="requireSurvey"
-            type="checkbox"
-            value="true"
-            defaultChecked={rules?.requireSurvey ?? false}
-            className="size-4"
-          />
+        </Label>
+        <Label>
+          <Checkbox name="requireSurvey" value="true" defaultChecked={rules?.requireSurvey ?? false} />
           {tc.requireSurvey}
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {tc.minAttendance}
-          <input
-            name="minAttendancePct"
-            type="number"
-            min={0}
-            max={100}
-            defaultValue={rules?.minAttendancePct ?? 0}
-            className={`${inputCls} w-32`}
-          />
-        </label>
+        </Label>
+        <FieldRoot className="max-w-32">
+          <FieldLabel>{tc.minAttendance}</FieldLabel>
+          <FieldControl name="minAttendancePct" type="number" min={0} max={100} defaultValue={rules?.minAttendancePct ?? 0} />
+        </FieldRoot>
       </fieldset>
       <ValidationList state={formState} />
-      <button type="submit" disabled={pending} className={btn}>
+      <Button type="submit" loading={pending} className="self-start">
         {t.saveAndContinue}
-      </button>
+      </Button>
     </form>
   );
 }

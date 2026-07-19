@@ -4,6 +4,8 @@ import { useActionState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
 import type { MutationResult } from "@/modules/academico/course-service";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { updateCourseValidityAction } from "./actions";
 
 const t = esCL.courses;
@@ -35,7 +37,7 @@ export function ValidityForm({
     <form action={formAction} className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
         <input type="hidden" name="courseId" value={courseId} />
-        <input
+        <Input
           name="validityMonths"
           type="number"
           min={1}
@@ -43,22 +45,18 @@ export function ValidityForm({
           defaultValue={validityMonths ?? ""}
           placeholder="—"
           aria-label={esCL.certExpiry.validityLabel}
-          className="min-h-11 w-20 rounded-md border px-2 text-sm"
+          className="h-9 w-20 text-sm"
         />
-        <button
-          type="submit"
-          disabled={pending}
-          className="min-h-11 rounded-md border px-3 text-xs font-medium disabled:opacity-60"
-        >
+        <Button type="submit" variant="outline" size="sm" loading={pending}>
           {t.validitySave}
-        </button>
+        </Button>
       </div>
       {state?.ok ? (
-        <span role="status" className="text-xs text-green-700 dark:text-green-400">
+        <span role="status" className="text-xs text-success">
           {t.validitySaved}
         </span>
       ) : null}
-      {error ? <span className="text-xs text-red-600">{error}</span> : null}
+      {error ? <span className="text-xs text-destructive">{error}</span> : null}
     </form>
   );
 }

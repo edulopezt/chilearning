@@ -5,6 +5,11 @@ import { useActionState, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import type { LessonKind } from "@/modules/academico/domain/lesson";
 import type { LessonMutationResult } from "@/modules/academico/lesson-service";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { FieldControl, FieldError, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { createLessonAction } from "./actions";
 
 const t = esCL.lessons;
@@ -35,61 +40,70 @@ export function NewLessonForm({ courseId }: { courseId: string }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1 text-sm">
-        {t.titleLabel}
-        <input name="title" required maxLength={200} className="min-h-11 rounded-md border px-3 text-base" />
-        {errors.title ? <span className="text-xs text-red-600">{errors.title}</span> : null}
-      </label>
+      <FieldRoot invalid={!!errors.title}>
+        <FieldLabel>{t.titleLabel}</FieldLabel>
+        <FieldControl name="title" required maxLength={200} />
+        {errors.title ? <FieldError>{errors.title}</FieldError> : null}
+      </FieldRoot>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.kindLabel}
-          <select
-            name="kind"
-            value={kind}
-            onChange={(e) => setKind(e.target.value as LessonKind)}
-            className="min-h-11 rounded-md border px-3 text-base"
-          >
-            <option value="text">{t.kindText}</option>
-            <option value="video">{t.kindVideo}</option>
-            <option value="file">{t.kindFile}</option>
-            <option value="embed">{t.kindEmbed}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.statusLabel}
-          <select name="status" defaultValue="draft" className="min-h-11 rounded-md border px-3 text-base">
-            <option value="draft">{t.statusDraft}</option>
-            <option value="published">{t.statusPublished}</option>
-          </select>
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.kindLabel}</FieldLabel>
+          <Select value={kind} onValueChange={(v) => setKind(v as LessonKind)} name="kind">
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="text">{t.kindText}</SelectItem>
+              <SelectItem value="video">{t.kindVideo}</SelectItem>
+              <SelectItem value="file">{t.kindFile}</SelectItem>
+              <SelectItem value="embed">{t.kindEmbed}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.statusLabel}</FieldLabel>
+          <Select name="status" defaultValue="draft">
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">{t.statusDraft}</SelectItem>
+              <SelectItem value="published">{t.statusPublished}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {CONTENT_LABEL[kind]}
+      <FieldRoot invalid={!!errors.content}>
+        <FieldLabel>{CONTENT_LABEL[kind]}</FieldLabel>
         {kind === "text" ? (
-          <textarea name="content" required rows={5} className="rounded-md border px-3 py-2 text-base" />
+          <FieldControl name="content" required render={<Textarea rows={5} />} />
         ) : (
-          <input
+          <FieldControl
             name="content"
             required
             placeholder={kind === "video" ? "dQw4w9WgXcQ  ó  https://vz-…/play.m3u8" : "https://…"}
-            className="min-h-11 rounded-md border px-3 font-mono text-sm"
+            className="font-mono text-sm"
           />
         )}
-        {errors.content ? <span className="text-xs text-red-600">{errors.content}</span> : null}
-      </label>
+        {errors.content ? <FieldError>{errors.content}</FieldError> : null}
+      </FieldRoot>
 
-      {state?.ok ? <p role="status" className="text-sm text-green-700 dark:text-green-400">{t.saved}</p> : null}
-      {state && !state.ok && "error" in state ? <p role="alert" className="text-sm text-red-600">{t.genericError}</p> : null}
+      {state?.ok ? (
+        <Alert variant="success" role="status" className="w-auto">
+          <AlertDescription>{t.saved}</AlertDescription>
+        </Alert>
+      ) : null}
+      {state && !state.ok && "error" in state ? (
+        <Alert variant="destructive" role="alert" className="w-auto">
+          <AlertDescription>{t.genericError}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="min-h-11 w-full rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 sm:w-auto dark:bg-white dark:text-neutral-900"
-      >
+      <Button type="submit" loading={pending} className="w-full sm:w-auto">
         {t.save}
-      </button>
+      </Button>
     </form>
   );
 }

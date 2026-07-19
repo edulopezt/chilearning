@@ -1,46 +1,72 @@
 "use client";
 
 import { useState } from "react";
+import { RotateCcwIcon, Trash2Icon } from "lucide-react";
 
 import { esCL } from "@/i18n/es-CL";
 import type { ScormPackageRow } from "@/modules/contenido/scorm-service";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { createScormLessonAction, deleteScormAction, retryScormAction } from "./actions";
 
 const t = esCL.scorm;
 
 export function PackageRowActions({ courseId, pkg }: { courseId: string; pkg: ScormPackageRow }) {
   const [lessonTitle, setLessonTitle] = useState(pkg.title);
-  const btn = "inline-flex min-h-11 items-center justify-center rounded border px-2 text-sm disabled:opacity-30";
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {pkg.status === "error" ? (
-        <button className={btn} onClick={() => retryScormAction(courseId, pkg.id)}>
+        <Button variant="outline" size="sm" onClick={() => retryScormAction(courseId, pkg.id)}>
+          <RotateCcwIcon />
           {t.retry}
-        </button>
+        </Button>
       ) : null}
       {pkg.status === "ready" ? (
         <span className="flex items-center gap-1">
-          <input
+          <Input
             value={lessonTitle}
             onChange={(e) => setLessonTitle(e.target.value)}
             aria-label={t.titleLabel}
-            className="min-h-11 w-32 rounded border px-2 text-sm"
+            className="h-9 w-32 text-sm"
           />
-          <button className={btn} onClick={() => createScormLessonAction(courseId, pkg.id, lessonTitle)}>
+          <Button variant="outline" size="sm" onClick={() => createScormLessonAction(courseId, pkg.id, lessonTitle)}>
             {t.createLesson}
-          </button>
+          </Button>
         </span>
       ) : null}
-      <button
-        className={`${btn} text-red-600`}
-        title={t.remove}
-        onClick={() => {
-          if (confirm(`${t.deleteConfirm} — ${pkg.title}`)) deleteScormAction(courseId, pkg.id);
-        }}
-      >
-        🗑
-      </button>
+      <AlertDialog>
+        <AlertDialogTrigger
+          render={
+            <Button variant="ghost" size="icon-sm" aria-label={t.remove} title={t.remove} className="text-destructive">
+              <Trash2Icon />
+            </Button>
+          }
+        />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteConfirm}</AlertDialogTitle>
+            <AlertDialogDescription>{pkg.title}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{esCL.common.cancel}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => deleteScormAction(courseId, pkg.id)}>
+              {t.remove}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

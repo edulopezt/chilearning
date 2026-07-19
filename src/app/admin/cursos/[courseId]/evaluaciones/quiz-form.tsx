@@ -3,6 +3,13 @@
 import { useActionState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FieldControl, FieldError, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { createQuizAction, updateQuizAction, type QuizActionState } from "./actions";
 
 const t = esCL.quizzes;
@@ -43,79 +50,100 @@ export function QuizForm({
       <input type="hidden" name="courseId" value={courseId} />
       {defaults?.quizId ? <input type="hidden" name="quizId" value={defaults.quizId} /> : null}
 
-      <Field label={t.titleLabel} error={err("title")}>
-        <input name="title" defaultValue={defaults?.title ?? ""} required className="input" />
-      </Field>
-      <Field label={t.descriptionLabel}>
-        <textarea name="description" defaultValue={defaults?.description ?? ""} className="input" rows={2} />
-      </Field>
+      <FieldRoot invalid={!!err("title")}>
+        <FieldLabel>{t.titleLabel}</FieldLabel>
+        <FieldControl name="title" defaultValue={defaults?.title ?? ""} required />
+        {err("title") ? <FieldError>{err("title")}</FieldError> : null}
+      </FieldRoot>
+      <FieldRoot>
+        <FieldLabel>{t.descriptionLabel}</FieldLabel>
+        <FieldControl name="description" defaultValue={defaults?.description ?? ""} render={<Textarea rows={2} />} />
+      </FieldRoot>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t.timeLimitLabel} error={err("timeLimitMinutes")}>
-          <input name="timeLimitMinutes" type="number" min={1} max={600} defaultValue={defaults?.timeLimitMinutes ?? ""} className="input" />
-        </Field>
-        <Field label={t.maxAttemptsLabel} error={err("maxAttempts")}>
-          <input name="maxAttempts" type="number" min={1} max={50} defaultValue={defaults?.maxAttempts ?? ""} className="input" />
-        </Field>
-        <Field label={t.scoringLabel}>
-          <select name="attemptScoring" defaultValue={defaults?.attemptScoring ?? "best"} className="input">
-            <option value="best">{t.scoringBest}</option>
-            <option value="last">{t.scoringLast}</option>
-            <option value="average">{t.scoringAverage}</option>
-          </select>
-        </Field>
-        <Field label={t.passingLabel} error={err("passingPct")}>
-          <input name="passingPct" type="number" min={1} max={99} defaultValue={defaults?.passingPct ?? 60} className="input" />
-        </Field>
-        <Field label={t.poolLabel} error={err("poolSize")}>
-          <input name="poolSize" type="number" min={1} defaultValue={defaults?.poolSize ?? ""} className="input" />
-        </Field>
-        <Field label={t.weightLabel} error={err("weight")}>
-          <input name="weight" type="number" min={0} step="0.5" defaultValue={defaults?.weight ?? 1} className="input" />
-        </Field>
-        <Field label={t.reviewLabel}>
-          <select name="reviewPolicy" defaultValue={defaults?.reviewPolicy ?? "after_submit"} className="input">
-            <option value="never">{t.reviewNever}</option>
-            <option value="after_submit">{t.reviewAfterSubmit}</option>
-            <option value="after_close">{t.reviewAfterClose}</option>
-          </select>
-        </Field>
+        <FieldRoot invalid={!!err("timeLimitMinutes")}>
+          <FieldLabel>{t.timeLimitLabel}</FieldLabel>
+          <FieldControl
+            name="timeLimitMinutes"
+            type="number"
+            min={1}
+            max={600}
+            defaultValue={defaults?.timeLimitMinutes ?? ""}
+          />
+          {err("timeLimitMinutes") ? <FieldError>{err("timeLimitMinutes")}</FieldError> : null}
+        </FieldRoot>
+        <FieldRoot invalid={!!err("maxAttempts")}>
+          <FieldLabel>{t.maxAttemptsLabel}</FieldLabel>
+          <FieldControl name="maxAttempts" type="number" min={1} max={50} defaultValue={defaults?.maxAttempts ?? ""} />
+          {err("maxAttempts") ? <FieldError>{err("maxAttempts")}</FieldError> : null}
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.scoringLabel}</FieldLabel>
+          <Select name="attemptScoring" defaultValue={defaults?.attemptScoring ?? "best"}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="best">{t.scoringBest}</SelectItem>
+              <SelectItem value="last">{t.scoringLast}</SelectItem>
+              <SelectItem value="average">{t.scoringAverage}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
+        <FieldRoot invalid={!!err("passingPct")}>
+          <FieldLabel>{t.passingLabel}</FieldLabel>
+          <FieldControl name="passingPct" type="number" min={1} max={99} defaultValue={defaults?.passingPct ?? 60} />
+          {err("passingPct") ? <FieldError>{err("passingPct")}</FieldError> : null}
+        </FieldRoot>
+        <FieldRoot invalid={!!err("poolSize")}>
+          <FieldLabel>{t.poolLabel}</FieldLabel>
+          <FieldControl name="poolSize" type="number" min={1} defaultValue={defaults?.poolSize ?? ""} />
+          {err("poolSize") ? <FieldError>{err("poolSize")}</FieldError> : null}
+        </FieldRoot>
+        <FieldRoot invalid={!!err("weight")}>
+          <FieldLabel>{t.weightLabel}</FieldLabel>
+          <FieldControl name="weight" type="number" min={0} step="0.5" defaultValue={defaults?.weight ?? 1} />
+          {err("weight") ? <FieldError>{err("weight")}</FieldError> : null}
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.reviewLabel}</FieldLabel>
+          <Select name="reviewPolicy" defaultValue={defaults?.reviewPolicy ?? "after_submit"}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="never">{t.reviewNever}</SelectItem>
+              <SelectItem value="after_submit">{t.reviewAfterSubmit}</SelectItem>
+              <SelectItem value="after_close">{t.reviewAfterClose}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="shuffleQuestions" defaultChecked={defaults?.shuffleQuestions ?? true} className="min-h-5 min-w-5" />
+      <Label>
+        <Checkbox name="shuffleQuestions" value="true" defaultChecked={defaults?.shuffleQuestions ?? true} />
         {t.shuffleQuestions}
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="shuffleChoices" defaultChecked={defaults?.shuffleChoices ?? true} className="min-h-5 min-w-5" />
+      </Label>
+      <Label>
+        <Checkbox name="shuffleChoices" value="true" defaultChecked={defaults?.shuffleChoices ?? true} />
         {t.shuffleChoices}
-      </label>
+      </Label>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className="min-h-11 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900">
+        <Button type="submit" loading={pending}>
           {t.save}
-        </button>
-        {state.status === "ok" ? <span className="text-sm text-green-700 dark:text-green-400">{t.saved}</span> : null}
-        {state.status === "error" ? <span role="alert" className="text-sm text-red-600">{t.genericError}</span> : null}
+        </Button>
+        {state.status === "ok" ? (
+          <Alert variant="success" role="status" className="w-auto py-2">
+            <AlertDescription>{t.saved}</AlertDescription>
+          </Alert>
+        ) : null}
+        {state.status === "error" ? (
+          <Alert variant="destructive" role="alert" className="w-auto py-2">
+            <AlertDescription>{t.genericError}</AlertDescription>
+          </Alert>
+        ) : null}
       </div>
     </form>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      {label}
-      {children}
-      {error ? <span className="text-xs text-red-600">{error}</span> : null}
-    </label>
   );
 }

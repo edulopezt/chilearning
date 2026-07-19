@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 const t = esCL.communication;
 
@@ -55,17 +57,12 @@ export function AiDraftButton({
 
   return (
     <>
-      <textarea ref={textareaRef} name="body" required rows={rows} placeholder={placeholder} className="input" />
+      <Textarea ref={textareaRef} name="body" required rows={rows} placeholder={placeholder} />
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => void handleClick()}
-          disabled={loading}
-          className="min-h-11 rounded-md border px-3 text-sm disabled:opacity-60"
-        >
+        <Button type="button" variant="outline" size="sm" loading={loading} onClick={() => void handleClick()}>
           {loading ? t.aiDraftLoading : t.aiDraftButton}
-        </button>
-        {error && <span className="text-xs text-red-600">{t.aiDraftError}</span>}
+        </Button>
+        {error && <span className="text-xs text-destructive">{t.aiDraftError}</span>}
       </div>
     </>
   );

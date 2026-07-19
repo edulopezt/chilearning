@@ -1,8 +1,17 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { XIcon } from "lucide-react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FieldControl, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { createQuestionAction, type QuizActionState } from "./actions";
 
 const t = esCL.quizzes;
@@ -58,150 +67,151 @@ export function QuestionEditor({ courseId, quizId }: { courseId: string; quizId:
         fd.set("body", JSON.stringify(body));
         return formAction(fd);
       }}
-      className="flex flex-col gap-4 rounded-md border p-4"
+      className="flex flex-col gap-4 rounded-lg border p-4"
     >
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="quizId" value={quizId} />
       <input type="hidden" name="kind" value={kind} />
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.questionKindLabel}
-          <select
-            value={kind}
-            onChange={(e) => setKind(e.target.value as Kind)}
-            className="input"
-          >
-            <option value="multiple_choice">{t.kindMc}</option>
-            <option value="true_false">{t.kindTf}</option>
-            <option value="matching">{t.kindMatching}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.pointsLabel}
-          <input name="points" type="number" min={0.5} step="0.5" defaultValue={1} className="input w-24" />
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.questionKindLabel}</FieldLabel>
+          <Select value={kind} onValueChange={(v) => setKind(v as Kind)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="multiple_choice">{t.kindMc}</SelectItem>
+              <SelectItem value="true_false">{t.kindTf}</SelectItem>
+              <SelectItem value="matching">{t.kindMatching}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.pointsLabel}</FieldLabel>
+          <FieldControl name="points" type="number" min={0.5} step="0.5" defaultValue={1} className="w-24" />
+        </FieldRoot>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t.promptLabel}
-        <textarea name="prompt" required rows={2} className="input" />
-      </label>
+      <FieldRoot>
+        <FieldLabel>{t.promptLabel}</FieldLabel>
+        <FieldControl name="prompt" required render={<Textarea rows={2} />} />
+      </FieldRoot>
 
       {kind === "multiple_choice" ? (
         <fieldset className="flex flex-col gap-2">
-          {choices.map((c, i) => (
-            <div key={c.id} className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="mc-correct"
-                checked={c.correct}
-                onChange={() =>
-                  setChoices((prev) => prev.map((x, j) => ({ ...x, correct: j === i })))
-                }
-                aria-label={t.correctLabel}
-                className="min-h-5 min-w-5"
-              />
-              <input
-                value={c.text}
-                onChange={(e) =>
-                  setChoices((prev) => prev.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))
-                }
-                placeholder={`${t.choiceLabel} ${i + 1}`}
-                className="input flex-1"
-              />
-              {choices.length > 2 ? (
-                <button
-                  type="button"
-                  onClick={() => setChoices((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-sm text-red-600"
-                >
-                  ✕
-                </button>
-              ) : null}
-            </div>
-          ))}
+          <RadioGroup
+            value={choices.find((c) => c.correct)?.id}
+            onValueChange={(id) =>
+              setChoices((prev) => prev.map((x) => ({ ...x, correct: x.id === id })))
+            }
+            className="gap-2"
+          >
+            {choices.map((c, i) => (
+              <div key={c.id} className="flex items-center gap-2">
+                <RadioGroupItem value={c.id} aria-label={t.correctLabel} />
+                <Input
+                  value={c.text}
+                  onChange={(e) =>
+                    setChoices((prev) => prev.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))
+                  }
+                  placeholder={`${t.choiceLabel} ${i + 1}`}
+                  className="flex-1"
+                />
+                {choices.length > 2 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="✕"
+                    onClick={() => setChoices((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-destructive"
+                  >
+                    <XIcon />
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+          </RadioGroup>
           {choices.length < 8 ? (
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
+              className="h-auto self-start p-0"
               onClick={() =>
                 setChoices((prev) => [...prev, { id: `c${prev.length + 1}`, text: "", correct: false }])
               }
-              className="self-start text-sm underline"
             >
               {t.addChoice}
-            </button>
+            </Button>
           ) : null}
         </fieldset>
       ) : null}
 
       {kind === "true_false" ? (
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={tfCorrect}
-            onChange={(e) => setTfCorrect(e.target.checked)}
-            className="min-h-5 min-w-5"
-          />
+        <Label>
+          <Checkbox checked={tfCorrect} onCheckedChange={setTfCorrect} />
           {t.tfCorrectLabel}
-        </label>
+        </Label>
       ) : null}
 
       {kind === "matching" ? (
         <fieldset className="flex flex-col gap-2">
           {pairs.map((p, i) => (
             <div key={p.id} className="flex items-center gap-2">
-              <input
+              <Input
                 value={p.left}
                 onChange={(e) =>
                   setPairs((prev) => prev.map((x, j) => (j === i ? { ...x, left: e.target.value } : x)))
                 }
                 placeholder={t.pairLeft}
-                className="input flex-1"
+                className="flex-1"
               />
               <span aria-hidden>→</span>
-              <input
+              <Input
                 value={p.right}
                 onChange={(e) =>
                   setPairs((prev) => prev.map((x, j) => (j === i ? { ...x, right: e.target.value } : x)))
                 }
                 placeholder={t.pairRight}
-                className="input flex-1"
+                className="flex-1"
               />
               {pairs.length > 2 ? (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="✕"
                   onClick={() => setPairs((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-sm text-red-600"
+                  className="text-destructive"
                 >
-                  ✕
-                </button>
+                  <XIcon />
+                </Button>
               ) : null}
             </div>
           ))}
           {pairs.length < 10 ? (
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
+              className="h-auto self-start p-0"
               onClick={() =>
                 setPairs((prev) => [...prev, { id: `p${prev.length + 1}`, left: "", right: "" }])
               }
-              className="self-start text-sm underline"
             >
               {t.addPair}
-            </button>
+            </Button>
           ) : null}
         </fieldset>
       ) : null}
 
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="min-h-11 rounded-md border px-4 font-medium disabled:opacity-60"
-        >
+        <Button type="submit" variant="outline" loading={pending}>
           {t.addQuestion}
-        </button>
-        {fieldErr ? <span role="alert" className="text-sm text-red-600">{fieldErr}</span> : null}
+        </Button>
+        {fieldErr ? <span role="alert" className="text-sm text-destructive">{fieldErr}</span> : null}
       </div>
     </form>
   );
