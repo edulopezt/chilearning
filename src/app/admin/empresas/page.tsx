@@ -4,8 +4,12 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { listCompanies } from "@/modules/portal-empresa/company-service";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { CreateCompanyForm, InviteForm } from "./invite-form";
-import { revokeCompanyMemberAction } from "./actions";
+import { RevokeMemberForm } from "./revoke-member-form";
 
 export const dynamic = "force-dynamic";
 
@@ -27,59 +31,49 @@ export default async function EmpresasPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-      </header>
+      <PageHeader title={t.title} description={t.intro} />
 
       <CreateCompanyForm />
       <InviteForm companies={companies.map((c) => ({ id: c.id, razonSocial: c.razonSocial, rut: c.rut }))} />
 
-      <section className="flex flex-col gap-2">
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.listHeading}</h2>
         {companies.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.empty}</p>
+          <EmptyState title={t.empty} />
         ) : (
           <ul className="flex flex-col gap-3">
             {companies.map((c) => (
-              <li key={c.id} className="flex flex-col gap-2 rounded-md border p-3 text-sm">
-                <div className="flex flex-col gap-0.5">
-                  <p className="font-medium break-words">{c.razonSocial}</p>
-                  <p className="text-muted-foreground text-xs">
-                    <span className="font-mono">{c.rut}</span>
-                    {" · "}
-                    {c.activeMembers} {t.members}
-                    {" · "}
-                    {c.enrollments} {t.workers}
-                  </p>
-                </div>
+              <li key={c.id}>
+                <Card className="gap-3 p-4">
+                  <div className="flex flex-col gap-0.5">
+                    <p className="font-medium break-words">{c.razonSocial}</p>
+                    <p className="text-muted-foreground text-xs">
+                      <span className="font-mono">{c.rut}</span>
+                      {" · "}
+                      {c.activeMembers} {t.members}
+                      {" · "}
+                      {c.enrollments} {t.workers}
+                    </p>
+                  </div>
 
-                {c.members.length > 0 ? (
-                  <ul className="flex flex-col gap-1 border-t pt-2">
-                    {c.members.map((m) => (
-                      <li key={m.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                        <span className="flex-1 break-all">{m.email}</span>
-                        {m.revokedAt === null ? (
-                          <>
-                            <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-200">
-                              {t.memberActive}
-                            </span>
-                            <form action={revokeCompanyMemberAction}>
-                              <input type="hidden" name="memberId" value={m.id} />
-                              <button type="submit" className="min-h-11 rounded-md border px-3 text-xs text-red-600">
-                                {t.revoke}
-                              </button>
-                            </form>
-                          </>
-                        ) : (
-                          <span className="rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                            {t.revoked}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
+                  {c.members.length > 0 ? (
+                    <ul className="flex flex-col gap-2 border-t pt-3">
+                      {c.members.map((m) => (
+                        <li key={m.id} className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:gap-3">
+                          <span className="flex-1 break-all">{m.email}</span>
+                          {m.revokedAt === null ? (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="success">{t.memberActive}</Badge>
+                              <RevokeMemberForm memberId={m.id} />
+                            </div>
+                          ) : (
+                            <Badge variant="secondary">{t.revoked}</Badge>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </Card>
               </li>
             ))}
           </ul>

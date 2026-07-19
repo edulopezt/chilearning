@@ -6,16 +6,20 @@ import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { listMyThreads } from "@/modules/comunicacion/message-service";
 import type { Sla } from "@/modules/comunicacion/domain/communication";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
 const t = esCL.communication;
 
-const SLA_BADGE: Record<Sla, { label: string; cls: string }> = {
-  answered: { label: t.slaAnswered, cls: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300" },
-  green: { label: t.slaGreen, cls: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  amber: { label: t.slaAmber, cls: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
-  red: { label: t.slaRed, cls: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+const SLA_BADGE: Record<Sla, { label: string; variant: React.ComponentProps<typeof Badge>["variant"] }> = {
+  answered: { label: t.slaAnswered, variant: "secondary" },
+  green: { label: t.slaGreen, variant: "success" },
+  amber: { label: t.slaAmber, variant: "warning" },
+  red: { label: t.slaRed, variant: "destructive" },
 };
 
 /** Bandeja de mensajes del staff con semáforo de tiempo de respuesta (HU-9.3). */
@@ -29,18 +33,20 @@ export default async function StaffInboxPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
-      <h1 className="text-2xl font-bold tracking-tight">{t.inboxTitle}</h1>
+      <PageHeader title={t.inboxTitle} />
       {threads.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t.inboxEmpty}</p>
+        <EmptyState title={t.inboxEmpty} />
       ) : (
         <ul className="flex flex-col gap-2">
           {threads.map((th) => {
             const badge = SLA_BADGE[th.sla];
             return (
-              <li key={th.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <Link href={`/admin/mensajes/${th.id}`} className="flex-1 font-medium underline">{th.subject}</Link>
-                <span className={`rounded px-2 py-0.5 text-xs ${badge.cls}`}>{badge.label}</span>
-                <span className="text-xs text-muted-foreground">{new Date(th.lastMessageAt).toLocaleDateString("es-CL")}</span>
+              <li key={th.id}>
+                <Card className="flex-row items-center gap-3 p-3">
+                  <Link href={`/admin/mensajes/${th.id}`} className="flex-1 font-medium underline">{th.subject}</Link>
+                  <Badge variant={badge.variant}>{badge.label}</Badge>
+                  <span className="text-xs text-muted-foreground">{new Date(th.lastMessageAt).toLocaleDateString("es-CL")}</span>
+                </Card>
               </li>
             );
           })}

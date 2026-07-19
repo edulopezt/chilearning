@@ -2,6 +2,11 @@
 
 import { useActionState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
 import { esCL } from "@/i18n/es-CL";
 import type { ExpiryConfigResult } from "@/modules/certificados/expiry-config-service";
 import { updateExpiryConfigAction } from "./actions";
@@ -31,40 +36,31 @@ export function ExpiryConfigForm({
         {isDefault ? <p className="text-muted-foreground text-xs">{t.configDefaultNote}</p> : null}
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t.configOffsets}
-        <input
-          name="offsetsDays"
-          defaultValue={offsetsDays.join(", ")}
-          inputMode="numeric"
-          className="min-h-11 w-full max-w-xs rounded-md border px-3 text-base"
-        />
-        <span className="text-muted-foreground text-xs">{t.configOffsetsHint}</span>
-      </label>
+      <FieldRoot className="max-w-xs">
+        <FieldLabel>{t.configOffsets}</FieldLabel>
+        <FieldControl name="offsetsDays" defaultValue={offsetsDays.join(", ")} inputMode="numeric" />
+        <FieldDescription>{t.configOffsetsHint}</FieldDescription>
+      </FieldRoot>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input name="enabled" type="checkbox" defaultChecked={enabled} className="size-4" />
+      <Label>
+        <Checkbox name="enabled" value="true" defaultChecked={enabled} />
         {t.configEnabled}
-      </label>
+      </Label>
 
       {state?.ok ? (
-        <p role="status" className="text-sm text-green-700 dark:text-green-400">
-          {t.configSaved}
-        </p>
+        <Alert variant="success" role="status">
+          <AlertDescription>{t.configSaved}</AlertDescription>
+        </Alert>
       ) : null}
       {state && !state.ok ? (
-        <p role="alert" className="text-sm text-red-600">
-          {state.error === "invalid_offsets" ? t.configOffsetsError : t.configError}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{state.error === "invalid_offsets" ? t.configOffsetsError : t.configError}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="min-h-11 w-full rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 sm:w-auto dark:bg-white dark:text-neutral-900"
-      >
+      <Button type="submit" loading={pending} className="w-full sm:w-auto">
         {t.configSave}
-      </button>
+      </Button>
     </form>
   );
 }

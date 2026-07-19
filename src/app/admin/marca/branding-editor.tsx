@@ -5,6 +5,12 @@ import { useActionState, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { checkBrandColor } from "@/modules/core/domain/contrast";
 import type { SaveBrandingResult } from "@/modules/core/branding-service";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { saveBrandingAction } from "./actions";
 
 const t = esCL.branding;
@@ -28,25 +34,21 @@ function ContrastBadge({
   const check = checkBrandColor(color);
   if (!check) return null;
   return (
-    <span className="flex flex-wrap items-center gap-2 text-xs">
+    <span className="flex flex-wrap items-center gap-2">
       {check.ok ? (
-        <span className="text-green-700 dark:text-green-400">
+        <Badge variant="success">
           {t.contrastOk} ({t.ratio} {check.ratio.toFixed(1)}:1)
-        </span>
+        </Badge>
       ) : (
         <>
-          <span className="text-amber-700 dark:text-amber-400">
+          <Badge variant="warning">
             {t.contrastWarn} ({t.ratio} {check.ratio.toFixed(1)}:1)
-          </span>
+          </Badge>
           {check.suggestion ? (
-            <button
-              type="button"
-              onClick={() => onApply(check.suggestion!)}
-              className="inline-flex items-center gap-1 rounded border px-2 py-0.5"
-            >
+            <Button type="button" variant="outline" onClick={() => onApply(check.suggestion!)}>
               <span className="inline-block size-3 rounded-full border" style={{ background: check.suggestion }} />
               {t.applySuggestion}
-            </button>
+            </Button>
           ) : null}
         </>
       )}
@@ -69,48 +71,83 @@ export function BrandingEditor({ initial }: { initial: Initial }) {
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <form action={formAction} className="flex flex-col gap-5">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.nameLabel}
-          <input name="name" required value={name} onChange={(e) => setName(e.target.value)} className="min-h-11 rounded-md border px-3 text-base" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.rutLabel}
-          <input name="rut" defaultValue={initial.rut} placeholder="76111111-6" className="min-h-11 rounded-md border px-3 text-base" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.logoLabel}
-          <input name="logoUrl" value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://…/logo.png" className="min-h-11 rounded-md border px-3 text-base" />
-          <span className="text-muted-foreground text-xs">{t.logoHint}</span>
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.nameLabel}</FieldLabel>
+          <FieldControl name="name" required value={name} onChange={(e) => setName(e.target.value)} />
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.rutLabel}</FieldLabel>
+          <FieldControl name="rut" defaultValue={initial.rut} placeholder="76111111-6" />
+        </FieldRoot>
+        <FieldRoot>
+          <FieldLabel>{t.logoLabel}</FieldLabel>
+          <FieldControl
+            name="logoUrl"
+            value={logo}
+            onChange={(e) => setLogo(e.target.value)}
+            placeholder="https://…/logo.png"
+          />
+          <FieldDescription>{t.logoHint}</FieldDescription>
+        </FieldRoot>
 
         <div className="flex flex-col gap-2">
-          <label className="flex items-center justify-between gap-3 text-sm">
+          <Label className="flex items-center justify-between gap-3 font-normal">
             {t.primaryLabel}
             <span className="flex items-center gap-2">
-              <input value={primary} onChange={(e) => setPrimary(e.target.value)} name="primaryColor" className="w-24 rounded-md border px-2 py-1 font-mono text-xs" />
-              <input type="color" aria-label={t.primaryLabel} value={/^#[0-9a-fA-F]{6}$/.test(primary) ? primary : "#1e3a8a"} onChange={(e) => setPrimary(e.target.value)} className="size-9 rounded" />
+              <Input
+                value={primary}
+                onChange={(e) => setPrimary(e.target.value)}
+                name="primaryColor"
+                className="w-24 px-2 font-mono text-xs"
+              />
+              <input
+                type="color"
+                aria-label={t.primaryLabel}
+                value={/^#[0-9a-fA-F]{6}$/.test(primary) ? primary : "#1e3a8a"}
+                onChange={(e) => setPrimary(e.target.value)}
+                className="h-11 w-14 cursor-pointer rounded-md border border-input p-1"
+              />
             </span>
-          </label>
+          </Label>
           <ContrastBadge color={primary} onApply={setPrimary} />
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="flex items-center justify-between gap-3 text-sm">
+          <Label className="flex items-center justify-between gap-3 font-normal">
             {t.accentLabel}
             <span className="flex items-center gap-2">
-              <input value={accent} onChange={(e) => setAccent(e.target.value)} name="accentColor" className="w-24 rounded-md border px-2 py-1 font-mono text-xs" />
-              <input type="color" aria-label={t.accentLabel} value={/^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#0ea5e9"} onChange={(e) => setAccent(e.target.value)} className="size-9 rounded" />
+              <Input
+                value={accent}
+                onChange={(e) => setAccent(e.target.value)}
+                name="accentColor"
+                className="w-24 px-2 font-mono text-xs"
+              />
+              <input
+                type="color"
+                aria-label={t.accentLabel}
+                value={/^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#0ea5e9"}
+                onChange={(e) => setAccent(e.target.value)}
+                className="h-11 w-14 cursor-pointer rounded-md border border-input p-1"
+              />
             </span>
-          </label>
+          </Label>
           <ContrastBadge color={accent} onApply={setAccent} />
         </div>
 
-        {state?.ok ? <p role="status" className="text-sm text-green-700 dark:text-green-400">{t.saved}</p> : null}
-        {state && !state.ok && "error" in state ? <p role="alert" className="text-sm text-red-600">{t.genericError}</p> : null}
+        {state?.ok ? (
+          <Alert variant="success" role="status">
+            <AlertDescription>{t.saved}</AlertDescription>
+          </Alert>
+        ) : null}
+        {state && !state.ok && "error" in state ? (
+          <Alert variant="destructive" role="alert">
+            <AlertDescription>{t.genericError}</AlertDescription>
+          </Alert>
+        ) : null}
 
-        <button type="submit" disabled={pending} className="min-h-11 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 sm:w-auto dark:bg-white dark:text-neutral-900">
+        <Button type="submit" loading={pending} className="sm:w-auto">
           {t.save}
-        </button>
+        </Button>
       </form>
 
       <aside className="flex flex-col gap-3">
@@ -127,7 +164,11 @@ export function BrandingEditor({ initial }: { initial: Initial }) {
           <div className="flex flex-col gap-3 p-4">
             <p className="font-medium">{t.previewCourse}</p>
             <p className="text-muted-foreground text-sm">{t.previewBody}</p>
-            <button type="button" className="min-h-11 w-fit rounded-md px-4 font-medium" style={{ background: primary, color: primaryText }}>
+            <button
+              type="button"
+              className="inline-flex h-11 w-fit items-center justify-center rounded-lg px-4 text-sm font-medium transition-colors"
+              style={{ background: primary, color: primaryText }}
+            >
               {t.previewButton}
             </button>
             <span className="text-sm font-medium" style={{ color: accent }}>

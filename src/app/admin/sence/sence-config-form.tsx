@@ -2,6 +2,10 @@
 
 import { useActionState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { esCL } from "@/i18n/es-CL";
 import type { SaveResult, SenceEnvironment } from "@/modules/core/sence-config";
 import { saveSenceConfigAction } from "./actions";
@@ -29,67 +33,56 @@ export function SenceConfigForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1 text-sm">
-        {esCL.senceAdmin.rutLabel}
-        <input
-          name="rutOtec"
-          required
-          defaultValue={initialRut}
-          placeholder="76111111-6"
-          className="min-h-11 rounded-md border px-3 text-base"
-        />
-        <span className="text-muted-foreground text-xs">{esCL.senceAdmin.rutHint}</span>
-      </label>
+      <FieldRoot>
+        <FieldLabel>{esCL.senceAdmin.rutLabel}</FieldLabel>
+        <FieldControl name="rutOtec" required defaultValue={initialRut} placeholder="76111111-6" />
+        <FieldDescription>{esCL.senceAdmin.rutHint}</FieldDescription>
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {esCL.senceAdmin.environmentLabel}
-        <select
-          name="environment"
-          defaultValue={initialEnvironment}
-          className="min-h-11 rounded-md border px-3 text-base"
-        >
-          <option value="rcetest">{esCL.senceAdmin.envTest}</option>
-          <option value="rce">{esCL.senceAdmin.envProd}</option>
-        </select>
-      </label>
+      <FieldRoot>
+        <FieldLabel>{esCL.senceAdmin.environmentLabel}</FieldLabel>
+        <Select name="environment" defaultValue={initialEnvironment}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="rcetest">{esCL.senceAdmin.envTest}</SelectItem>
+            <SelectItem value="rce">{esCL.senceAdmin.envProd}</SelectItem>
+          </SelectContent>
+        </Select>
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {esCL.senceAdmin.tokenLabel}
-        <input
+      <FieldRoot>
+        <FieldLabel>{esCL.senceAdmin.tokenLabel}</FieldLabel>
+        <FieldControl
           name="token"
           type="password"
           autoComplete="off"
           placeholder={tokenConfigured ? "••••••••••••••••" : ""}
-          className="min-h-11 rounded-md border px-3 font-mono text-base"
+          className="font-mono"
         />
-        <span className="text-muted-foreground text-xs">
-          {tokenConfigured
-            ? esCL.senceAdmin.tokenHintConfigured
-            : esCL.senceAdmin.tokenHintNew}
-        </span>
-        <span className={tokenConfigured ? "text-xs text-green-700 dark:text-green-400" : "text-muted-foreground text-xs"}>
+        <FieldDescription>
+          {tokenConfigured ? esCL.senceAdmin.tokenHintConfigured : esCL.senceAdmin.tokenHintNew}
+        </FieldDescription>
+        <span className={tokenConfigured ? "text-xs text-success" : "text-xs text-muted-foreground"}>
           {tokenConfigured ? esCL.senceAdmin.tokenConfigured : esCL.senceAdmin.tokenMissing}
         </span>
-      </label>
+      </FieldRoot>
 
       {state?.ok ? (
-        <p role="status" className="text-sm text-green-700 dark:text-green-400">
-          {esCL.senceAdmin.saved}
-        </p>
+        <Alert variant="success" role="status">
+          <AlertDescription>{esCL.senceAdmin.saved}</AlertDescription>
+        </Alert>
       ) : null}
       {state && !state.ok ? (
-        <p role="alert" className="text-sm text-red-600">
-          {ERROR_TEXT[state.error] ?? esCL.senceAdmin.errorForbidden}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{ERROR_TEXT[state.error] ?? esCL.senceAdmin.errorForbidden}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="min-h-11 w-full rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 sm:w-auto dark:bg-white dark:text-neutral-900"
-      >
+      <Button type="submit" loading={pending} className="w-full sm:w-auto">
         {esCL.senceAdmin.save}
-      </button>
+      </Button>
     </form>
   );
 }

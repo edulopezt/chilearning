@@ -4,6 +4,7 @@ import { esCL } from "@/i18n/es-CL";
 import { getBrandingState } from "@/modules/core/branding-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { PageHeader } from "@/components/ui/page-header";
 import { BrandingEditor } from "./branding-editor";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +26,7 @@ export default async function BrandingPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.branding.title}</h1>
-        <p className="text-muted-foreground text-sm">{esCL.branding.intro}</p>
-      </header>
+      <PageHeader title={esCL.branding.title} description={esCL.branding.intro} />
       <BrandingEditor
         initial={{
           primaryColor: state?.branding.primaryColor ?? "#1e3a8a",

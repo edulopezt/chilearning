@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/page-header";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
@@ -25,10 +26,7 @@ export default async function SenceAdminPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.senceAdmin.title}</h1>
-        <p className="text-muted-foreground text-sm">{esCL.senceAdmin.intro}</p>
-      </header>
+      <PageHeader title={esCL.senceAdmin.title} description={esCL.senceAdmin.intro} />
       <SenceConfigForm
         initialRut={status?.rutOtec ?? ""}
         initialEnvironment={status?.environment ?? "rcetest"}

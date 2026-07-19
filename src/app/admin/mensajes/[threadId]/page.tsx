@@ -7,6 +7,13 @@ import { authorize } from "@/modules/core/domain/rbac";
 import { getThread } from "@/modules/comunicacion/message-service";
 import { aiClientFromEnv } from "@/modules/tutor-ia/ai-client";
 import { AiDraftButton } from "@/components/ai-draft-button";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { FieldControl, FieldRoot } from "@/components/ui/field";
+import { PageHeader } from "@/components/ui/page-header";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { generateMessageDraftAction, staffSendMessageAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -27,12 +34,16 @@ export default async function StaffMessageThreadPage({ params }: { params: Promi
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-4 p-4 sm:p-6">
-      <h1 className="text-xl font-bold">{view.thread.subject}</h1>
+      <PageHeader title={view.thread.subject} />
       <ul className="flex flex-col gap-3">
         {view.messages.map((m) => (
-          <li key={m.id} className={`rounded-lg border p-3 ${m.senderIsStaff ? "bg-blue-50 dark:bg-blue-950" : ""}`}>
-            <p className="mb-1 text-xs text-muted-foreground">{m.senderIsStaff ? t.staffBadge : ""} · {new Date(m.createdAt).toLocaleString("es-CL")}</p>
-            <p className="whitespace-pre-wrap text-sm">{m.body}</p>
+          <li key={m.id}>
+            <Card className={cn("p-3", m.senderIsStaff && "bg-accent/40")}>
+              <p className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                {m.senderIsStaff ? <Badge variant="outline">{t.staffBadge}</Badge> : null} · {new Date(m.createdAt).toLocaleString("es-CL")}
+              </p>
+              <p className="whitespace-pre-wrap text-sm">{m.body}</p>
+            </Card>
           </li>
         ))}
       </ul>
@@ -41,11 +52,13 @@ export default async function StaffMessageThreadPage({ params }: { params: Promi
         {aiConfigured ? (
           <AiDraftButton threadId={threadId} generateDraft={generateMessageDraftAction} placeholder={t.postBodyLabel} />
         ) : (
-          <textarea name="body" required rows={3} placeholder={t.postBodyLabel} className="input" />
+          <FieldRoot>
+            <FieldControl name="body" required placeholder={t.postBodyLabel} render={<Textarea rows={3} />} />
+          </FieldRoot>
         )}
-        <button type="submit" className="min-h-11 self-start rounded-md bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">{t.reply}</button>
+        <Button type="submit" className="self-start">{t.reply}</Button>
       </form>
-      <Link href="/admin/mensajes" className="text-sm underline">← {t.inboxTitle}</Link>
+      <Link href="/admin/mensajes" className="text-sm underline underline-offset-4">← {t.inboxTitle}</Link>
     </main>
   );
 }
