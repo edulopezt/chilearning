@@ -67,7 +67,7 @@ export interface ContrastCheck {
   suggestion: string | null;
 }
 
-function scaleToward(c: Rgb, target: Rgb, t: number): Rgb {
+export function scaleToward(c: Rgb, target: Rgb, t: number): Rgb {
   return {
     r: c.r + (target.r - c.r) * t,
     g: c.g + (target.g - c.g) * t,
