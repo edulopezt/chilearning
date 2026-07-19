@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import Link from "next/link";
+import { CheckIcon, LockIcon, PaperclipIcon } from "lucide-react";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
@@ -16,6 +17,13 @@ import { listStudentAssignments } from "@/modules/evaluacion/assignment-service"
 import { listStudentSurveys } from "@/modules/evaluacion/survey-service";
 import { hasCurrentConsent } from "@/modules/core/privacy-service";
 import { resolveTutorContext } from "@/modules/tutor-ia/tutor-chat-service";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 import { LessonComplete } from "./lesson-complete";
 import { LiveSessionMark } from "./live-session-mark";
 import { SessionCountdown } from "./session-countdown";
@@ -87,22 +95,20 @@ export default async function MiCursoPage() {
         {(() => {
           const group = view.exento ? null : enrollmentGroupLabel(false, view.codSence);
           return group ? (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               {esCL.course.groupLabel} <strong>{group}</strong>
             </p>
           ) : null;
         })()}
-        {view.exento ? (
-          <p className="text-sm text-green-700 dark:text-green-400">{esCL.course.exento}</p>
-        ) : null}
+        {view.exento ? <p className="text-sm text-success">{esCL.course.exento}</p> : null}
         <div className="flex flex-wrap gap-4">
-          <Link href="/mi-curso/certificados" className="text-sm underline">
+          <Link href="/mi-curso/certificados" className="text-sm underline underline-offset-4">
             {esCL.certificateStudent.sectionTitle} →
           </Link>
-          <Link href="/mi-curso/comunicacion" className="text-sm underline">
+          <Link href="/mi-curso/comunicacion" className="text-sm underline underline-offset-4">
             {esCL.communication.title} →
           </Link>
-          <Link href="/mis-datos" className="text-sm underline">
+          <Link href="/mis-datos" className="text-sm underline underline-offset-4">
             {esCL.dataRights.title} →
           </Link>
         </div>
@@ -110,60 +116,49 @@ export default async function MiCursoPage() {
 
       {/* Tutor IA (task 5.8b, HU-11.1): oculto por completo si no está disponible. */}
       {tutorGate.ok ? (
-        <section className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4">
+        <Card className="flex-row flex-wrap items-center justify-between gap-2 p-4">
           <p className="text-sm font-medium">{esCL.tutorIA.studentLinkBanner}</p>
-          <Link href="/mi-curso/tutor" className="text-sm font-medium underline">
+          <Link href="/mi-curso/tutor" className="text-sm font-medium underline underline-offset-4">
             {esCL.tutorIA.studentLinkCta}
           </Link>
-        </section>
+        </Card>
       ) : null}
 
       {/* Barra de estado de asistencia */}
       {!view.exento && view.attendanceLock ? (
-        <section className="rounded-lg border p-4">
+        <Card className="p-4">
           {/* Mensaje es-CL cuando SENCE devolvió un error (H4-R-010, I-9): el alumno
               ve QUÉ pasó y qué hacer, nunca el código crudo ni JSON técnico. Se muestra
               para CUALQUIER `error` (aun sin códigos parseables): `studentMessageForCodes`
               resuelve la lista vacía al mensaje `fallback` seguro (4-ojos LOW). */}
           {view.session?.status === "error" ? (
-            <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
-              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                {esCL.course.attendanceProblem}
-              </p>
-              <p className="text-sm text-amber-800 dark:text-amber-300">
-                {studentMessageForCodes(view.session.errorCodes)}
-              </p>
-            </div>
+            <Alert variant="warning" role="alert" className="mb-3">
+              <AlertTitle>{esCL.course.attendanceProblem}</AlertTitle>
+              <AlertDescription>{studentMessageForCodes(view.session.errorCodes)}</AlertDescription>
+            </Alert>
           ) : null}
 
           {lock.action === "register" ? (
             <div className="flex flex-col gap-3">
               <p className="font-medium">{esCL.course.lockedTitle}</p>
-              <p className="text-muted-foreground text-sm">{esCL.course.lockedBody}</p>
+              <p className="text-sm text-muted-foreground">{esCL.course.lockedBody}</p>
               {view.session?.status === "expirada" ? (
-                <p className="text-sm text-amber-700 dark:text-amber-400">{esCL.course.expired}</p>
+                <p className="text-sm text-warning">{esCL.course.expired}</p>
               ) : null}
               <form method="POST" action="/api/sence/start">
                 <input type="hidden" name="enrollmentId" value={view.enrollmentId} />
-                <button
-                  type="submit"
-                  className="min-h-11 w-full rounded-md bg-neutral-900 px-4 font-medium text-white sm:w-auto dark:bg-white dark:text-neutral-900"
-                >
+                <button type="submit" className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}>
                   {esCL.course.register}
                 </button>
               </form>
             </div>
           ) : null}
 
-          {lock.action === "waiting" ? (
-            <p className="text-sm">{esCL.course.waiting}</p>
-          ) : null}
+          {lock.action === "waiting" ? <p className="text-sm">{esCL.course.waiting}</p> : null}
 
           {lock.action === "close" && view.session ? (
             <div className="flex flex-col gap-3">
-              <p className="font-medium text-green-700 dark:text-green-400">
-                {esCL.course.sessionActive}
-              </p>
+              <p className="font-medium text-success">{esCL.course.sessionActive}</p>
               {view.session.expiresAtMs != null ? (
                 <SessionCountdown
                   expiresAtMs={view.session.expiresAtMs}
@@ -176,40 +171,38 @@ export default async function MiCursoPage() {
                 <input type="hidden" name="sessionId" value={view.session.id} />
                 <button
                   type="submit"
-                  className="min-h-11 w-full rounded-md border px-4 text-sm font-medium sm:w-auto"
+                  className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")}
                 >
                   {esCL.course.close}
                 </button>
               </form>
             </div>
           ) : null}
-        </section>
+        </Card>
       ) : null}
 
       {/* Sesiones en vivo (task 5.4, spec §7-R3): asistencia INTERNA, no SENCE.
           Se muestra SIEMPRE (no depende del candado), disclaimer incluido. */}
-      <section className="flex flex-col gap-3 rounded-lg border p-4">
+      <Card className="gap-3 p-4">
         <h2 className="text-lg font-semibold">{esCL.liveSessions.sectionTitleStudent}</h2>
-        <p className="text-xs text-amber-700 dark:text-amber-400">{esCL.liveSessions.disclaimer}</p>
+        <p className="text-xs text-warning">{esCL.liveSessions.disclaimer}</p>
         {upcomingSessions.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{esCL.liveSessions.emptyStudent}</p>
+          <p className="text-sm text-muted-foreground">{esCL.liveSessions.emptyStudent}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {upcomingSessions.map((s) => (
-              <li key={s.id} className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+              <li
+                key={s.id}
+                className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center"
+              >
                 <div className="flex-1">
                   <p className="font-medium">{s.title}</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     {esCL.liveSessions.providers[s.provider]} · {new Date(s.startsAtMs).toLocaleString("es-CL")} →{" "}
                     {new Date(s.endsAtMs).toLocaleString("es-CL")}
                   </p>
                 </div>
-                <a
-                  href={s.meetingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
-                >
+                <a href={s.meetingUrl} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants())}>
                   {esCL.liveSessions.join}
                 </a>
                 <LiveSessionMark sessionId={s.id} canMark={canSelfMark(s.startsAtMs, s.endsAtMs, serverNowMs)} />
@@ -217,32 +210,32 @@ export default async function MiCursoPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Card>
 
       {/* Progreso del alumno (task 1.5) */}
-      {lock.unlocked && view.lessons.length > 0 ? (() => {
-        const p = summarizeProgress(view.lessons, completedSet);
-        return (
-          <section className="flex flex-col gap-2 rounded-lg border p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">{esCL.course.progressLabel}</span>
-              <span className="text-muted-foreground">
-                {p.completed} {esCL.course.progressOf} {p.total} {esCL.course.lessonsWord} · {p.percent}%
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
-              <div className="h-full rounded-full bg-green-600 transition-all" style={{ width: `${p.percent}%` }} />
-            </div>
-            {p.done ? (
-              <p className="text-sm text-green-700 dark:text-green-400">{esCL.course.courseDone}</p>
-            ) : p.resumeLessonId ? (
-              <a href={`#leccion-${p.resumeLessonId}`} className="text-sm font-medium underline">
-                {esCL.course.resume}
-              </a>
-            ) : null}
-          </section>
-        );
-      })() : null}
+      {lock.unlocked && view.lessons.length > 0
+        ? (() => {
+            const p = summarizeProgress(view.lessons, completedSet);
+            return (
+              <Card className="gap-2 p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{esCL.course.progressLabel}</span>
+                  <span className="text-muted-foreground">
+                    {p.completed} {esCL.course.progressOf} {p.total} {esCL.course.lessonsWord} · {p.percent}%
+                  </span>
+                </div>
+                <Progress value={p.percent} />
+                {p.done ? (
+                  <p className="text-sm text-success">{esCL.course.courseDone}</p>
+                ) : p.resumeLessonId ? (
+                  <a href={`#leccion-${p.resumeLessonId}`} className="text-sm font-medium underline underline-offset-4">
+                    {esCL.course.resume}
+                  </a>
+                ) : null}
+              </Card>
+            );
+          })()
+        : null}
 
       {/* Contenido del curso (candado) */}
       <section aria-labelledby="lessons-title" className="flex flex-col gap-4">
@@ -252,68 +245,68 @@ export default async function MiCursoPage() {
         {lock.unlocked ? (
           <ol className="flex flex-col gap-4">
             {view.lessons.map((lesson) => (
-              <li key={lesson.id} id={`leccion-${lesson.id}`} className="scroll-mt-4 rounded-lg border p-4">
-                <h3 className="mb-2 font-medium">
-                  {lesson.position}. {lesson.title}
-                </h3>
-                {lesson.kind === "video" || lesson.kind === "embed" ? (
-                  <div className="aspect-video w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
-                    <iframe
-                      className="h-full w-full"
-                      src={
-                        lesson.content.startsWith("http")
-                          ? lesson.content
-                          : `https://www.youtube-nocookie.com/embed/${encodeURIComponent(lesson.content)}`
-                      }
-                      title={lesson.title}
-                      allowFullScreen
-                    />
-                  </div>
-                ) : lesson.kind === "file" ? (
-                  <a
-                    href={lesson.content}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center gap-2 rounded-md border px-4 text-sm font-medium"
-                  >
-                    📎 {esCL.course.openFile}
-                  </a>
-                ) : lesson.kind === "scorm" ? (
-                  // El reproductor SCORM vive en su PROPIA página (el iframe
-                  // necesita bastante alto): aquí solo un enlace de entrada.
-                  <Link
-                    href={`/mi-curso/scorm/${lesson.id}`}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
-                  >
-                    {esCL.scorm.openLesson}
-                  </Link>
-                ) : (
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{lesson.content}</p>
-                )}
-                {lesson.kind === "scorm" ? (
-                  // Completitud/nota SCORM las fija el reproductor (CMI), no
-                  // un botón manual: badge puramente informativo.
-                  completedSet.has(lesson.id) ? (
-                    <p className="mt-3 text-sm text-green-700 dark:text-green-400">
-                      ✓ {esCL.scorm.completedBadge}
-                      {view.scormScoreByLesson[lesson.id] != null
-                        ? ` · ${esCL.scorm.scoreLabel}: ${view.scormScoreByLesson[lesson.id]}`
-                        : ""}
-                    </p>
-                  ) : null
-                ) : (
-                  <LessonComplete lessonId={lesson.id} completed={completedSet.has(lesson.id)} />
-                )}
+              <li key={lesson.id} id={`leccion-${lesson.id}`} className="scroll-mt-4">
+                <Card className="p-4">
+                  <h3 className="mb-2 font-medium">
+                    {lesson.position}. {lesson.title}
+                  </h3>
+                  {lesson.kind === "video" || lesson.kind === "embed" ? (
+                    <div className="aspect-video w-full overflow-hidden rounded-md bg-muted">
+                      <iframe
+                        className="h-full w-full"
+                        src={
+                          lesson.content.startsWith("http")
+                            ? lesson.content
+                            : `https://www.youtube-nocookie.com/embed/${encodeURIComponent(lesson.content)}`
+                        }
+                        title={lesson.title}
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : lesson.kind === "file" ? (
+                    <a
+                      href={lesson.content}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(buttonVariants({ variant: "outline" }))}
+                    >
+                      <PaperclipIcon className="size-4" aria-hidden="true" />
+                      {esCL.course.openFile}
+                    </a>
+                  ) : lesson.kind === "scorm" ? (
+                    // El reproductor SCORM vive en su PROPIA página (el iframe
+                    // necesita bastante alto): aquí solo un enlace de entrada.
+                    <Link href={`/mi-curso/scorm/${lesson.id}`} className={cn(buttonVariants())}>
+                      {esCL.scorm.openLesson}
+                    </Link>
+                  ) : (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{lesson.content}</p>
+                  )}
+                  {lesson.kind === "scorm" ? (
+                    // Completitud/nota SCORM las fija el reproductor (CMI), no
+                    // un botón manual: badge puramente informativo.
+                    completedSet.has(lesson.id) ? (
+                      <p className="mt-3 flex items-center gap-1.5 text-sm text-success">
+                        <CheckIcon className="size-4" aria-hidden="true" />
+                        {esCL.scorm.completedBadge}
+                        {view.scormScoreByLesson[lesson.id] != null
+                          ? ` · ${esCL.scorm.scoreLabel}: ${view.scormScoreByLesson[lesson.id]}`
+                          : ""}
+                      </p>
+                    ) : null
+                  ) : (
+                    <LessonComplete lessonId={lesson.id} completed={completedSet.has(lesson.id)} />
+                  )}
+                </Card>
               </li>
             ))}
           </ol>
         ) : (
-          <div
-            aria-hidden="true"
-            className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground"
-          >
-            🔒 {esCL.course.lockedTitle}
-          </div>
+          <EmptyState
+            icon={<LockIcon />}
+            title={esCL.course.lockedTitle}
+            description={esCL.course.lockedBody}
+          />
         )}
       </section>
 
@@ -324,22 +317,20 @@ export default async function MiCursoPage() {
           <ul className="flex flex-col gap-3">
             {quizzes.map((q) => (
               <li key={q.quizId}>
-                <Link
-                  href={`/mi-curso/quiz/${q.quizId}`}
-                  className="flex flex-col gap-1 rounded-lg border p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                >
-                  <span className="font-medium">{q.title}</span>
-                  {q.description ? (
-                    <span className="text-muted-foreground text-sm">{q.description}</span>
-                  ) : null}
-                  <span className="text-muted-foreground text-sm">
-                    {q.attemptsUsed}
-                    {q.maxAttempts !== null ? `/${q.maxAttempts}` : ""}{" "}
-                    {esCL.quizStudent.attemptsUsed}
-                    {" · "}
-                    {esCL.quizStudent.bestGrade}:{" "}
-                    <strong>{q.officialGrade !== null ? q.officialGrade.toFixed(1) : esCL.quizStudent.noGrade}</strong>
-                  </span>
+                <Link href={`/mi-curso/quiz/${q.quizId}`} className="block">
+                  <Card className="gap-1 p-4 transition-colors hover:bg-accent/50">
+                    <span className="font-medium">{q.title}</span>
+                    {q.description ? (
+                      <span className="text-sm text-muted-foreground">{q.description}</span>
+                    ) : null}
+                    <span className="text-sm text-muted-foreground">
+                      {q.attemptsUsed}
+                      {q.maxAttempts !== null ? `/${q.maxAttempts}` : ""} {esCL.quizStudent.attemptsUsed}
+                      {" · "}
+                      {esCL.quizStudent.bestGrade}:{" "}
+                      <strong>{q.officialGrade !== null ? q.officialGrade.toFixed(1) : esCL.quizStudent.noGrade}</strong>
+                    </span>
+                  </Card>
                 </Link>
               </li>
             ))}
@@ -354,26 +345,25 @@ export default async function MiCursoPage() {
           <ul className="flex flex-col gap-3">
             {assignments.map((a) => (
               <li key={a.assignmentId}>
-                <Link
-                  href={`/mi-curso/tarea/${a.assignmentId}`}
-                  className="flex flex-col gap-1 rounded-lg border p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                >
-                  <span className="font-medium">{a.title}</span>
-                  <span className="text-muted-foreground text-sm">
-                    {a.dueAt
-                      ? `${esCL.assignmentStudent.due}: ${new Date(a.dueAt).toLocaleDateString("es-CL")}`
-                      : esCL.assignmentStudent.noDue}
-                    {" · "}
-                    {a.grade !== null ? (
-                      <>
-                        {esCL.assignmentStudent.yourGrade}: <strong>{a.grade.toFixed(1)}</strong>
-                      </>
-                    ) : a.submissionCount > 0 ? (
-                      esCL.assignmentStudent.pending
-                    ) : (
-                      esCL.assignmentStudent.notSubmitted
-                    )}
-                  </span>
+                <Link href={`/mi-curso/tarea/${a.assignmentId}`} className="block">
+                  <Card className="gap-1 p-4 transition-colors hover:bg-accent/50">
+                    <span className="font-medium">{a.title}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {a.dueAt
+                        ? `${esCL.assignmentStudent.due}: ${new Date(a.dueAt).toLocaleDateString("es-CL")}`
+                        : esCL.assignmentStudent.noDue}
+                      {" · "}
+                      {a.grade !== null ? (
+                        <>
+                          {esCL.assignmentStudent.yourGrade}: <strong>{a.grade.toFixed(1)}</strong>
+                        </>
+                      ) : a.submissionCount > 0 ? (
+                        esCL.assignmentStudent.pending
+                      ) : (
+                        esCL.assignmentStudent.notSubmitted
+                      )}
+                    </span>
+                  </Card>
                 </Link>
               </li>
             ))}
@@ -388,20 +378,13 @@ export default async function MiCursoPage() {
           <ul className="flex flex-col gap-3">
             {surveys.map((s) => (
               <li key={s.surveyId}>
-                <Link
-                  href={`/mi-curso/encuesta/${s.surveyId}`}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                >
-                  <span className="font-medium">{s.title}</span>
-                  <span
-                    className={`rounded px-2 py-0.5 text-xs ${
-                      s.alreadySubmitted
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                        : "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-                    }`}
-                  >
-                    {s.alreadySubmitted ? esCL.surveyStudent.done : esCL.surveyStudent.pending}
-                  </span>
+                <Link href={`/mi-curso/encuesta/${s.surveyId}`} className="block">
+                  <Card className="flex-row items-center justify-between gap-3 p-4 transition-colors hover:bg-accent/50">
+                    <span className="font-medium">{s.title}</span>
+                    <Badge variant={s.alreadySubmitted ? "success" : "warning"}>
+                      {s.alreadySubmitted ? esCL.surveyStudent.done : esCL.surveyStudent.pending}
+                    </Badge>
+                  </Card>
                 </Link>
               </li>
             ))}

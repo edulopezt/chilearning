@@ -19,7 +19,7 @@ export function DownloadLink({ submissionId, label }: { submissionId: string; la
           else setError(true);
         })
       }
-      className="text-sm underline disabled:opacity-60"
+      className="text-sm underline underline-offset-4 disabled:opacity-60"
     >
       {error ? "—" : label}
     </button>

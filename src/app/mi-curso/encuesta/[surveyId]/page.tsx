@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getStudentSurvey } from "@/modules/evaluacion/survey-service";
+import { Card } from "@/components/ui/card";
 import { SurveyAnswerForm } from "./survey-answer-form";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export default async function StudentSurveyPage({
       {!view ? (
         <div className="flex flex-1 flex-col justify-center gap-4">
           <p className="text-muted-foreground">{t.notAvailable}</p>
-          <Link href="/mi-curso" className="text-sm underline">
+          <Link href="/mi-curso" className="text-sm underline underline-offset-4">
             {t.backToCourse}
           </Link>
         </div>
@@ -35,19 +36,17 @@ export default async function StudentSurveyPage({
         <>
           <header className="flex flex-col gap-1">
             <h1 className="text-2xl font-bold tracking-tight">{view.survey.title}</h1>
-            <p className="text-muted-foreground text-sm">{view.survey.intro || t.intro}</p>
-            {view.survey.anonymous ? (
-              <p className="text-sm text-green-700 dark:text-green-400">{t.anonymousNote}</p>
-            ) : null}
+            <p className="text-sm text-muted-foreground">{view.survey.intro || t.intro}</p>
+            {view.survey.anonymous ? <p className="text-sm text-success">{t.anonymousNote}</p> : null}
           </header>
 
           {view.alreadySubmitted ? (
-            <div className="flex flex-col gap-4 rounded-lg border p-6 text-center">
-              <p className="text-lg font-medium text-green-700 dark:text-green-400">{t.alreadyDone}</p>
-              <Link href="/mi-curso" className="text-sm underline">
+            <Card className="items-center gap-4 p-6 text-center">
+              <p className="text-lg font-medium text-success">{t.alreadyDone}</p>
+              <Link href="/mi-curso" className="text-sm underline underline-offset-4">
                 {t.backToCourse}
               </Link>
-            </div>
+            </Card>
           ) : (
             <SurveyAnswerForm surveyId={view.survey.id} questions={view.survey.questions} />
           )}

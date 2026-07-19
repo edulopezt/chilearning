@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getAttemptReview, getStudentQuizState } from "@/modules/evaluacion/attempt-service";
+import { Card } from "@/components/ui/card";
 import { StartAttemptButton } from "./start-button";
 import { AttemptRunner } from "./attempt-runner";
 
@@ -69,18 +70,18 @@ export default async function StudentQuizPage({
   return (
     <Shell>
       {lastFinished ? (
-        <section className="flex flex-col gap-2 rounded-md border p-4">
+        <Card className="gap-2 p-4">
           <h2 className="text-lg font-semibold">{t.resultTitle}</h2>
           {lastFinished.status === "expired" ? (
-            <p className="text-sm text-amber-700 dark:text-amber-400">{t.expiredNote}</p>
+            <p className="text-sm text-warning">{t.expiredNote}</p>
           ) : null}
           <p className="text-3xl font-bold">
             {t.yourGrade}: {lastFinished.grade?.toFixed(1) ?? "—"}
           </p>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             {t.yourScore}: {lastFinished.score ?? 0} / {lastFinished.maxScore}
           </p>
-        </section>
+        </Card>
       ) : null}
 
       {review?.ok ? (
@@ -89,14 +90,14 @@ export default async function StudentQuizPage({
           {review.attempt.snapshot.map((q, i) => {
             const key = review.answerKey[q.id];
             return (
-              <div key={q.id} className="rounded-md border p-3 text-sm">
+              <Card key={q.id} className="p-3 text-sm">
                 <p className="font-medium">
                   {i + 1}. {q.prompt}
                 </p>
                 <p className="text-muted-foreground">
                   {t.correctAnswer}: <CorrectAnswer question={q} keyEntry={key} />
                 </p>
-              </div>
+              </Card>
             );
           })}
         </section>
@@ -108,11 +109,11 @@ export default async function StudentQuizPage({
           label={state.attempts.length > 0 ? t.continue : t.start}
         />
       ) : START_DENIED[state.canStart.reason] ? (
-        <p className="text-muted-foreground text-sm">{START_DENIED[state.canStart.reason]}</p>
+        <p className="text-sm text-muted-foreground">{START_DENIED[state.canStart.reason]}</p>
       ) : null}
 
       <p>
-        <Link href="/mi-curso" className="text-sm underline">
+        <Link href="/mi-curso" className="text-sm underline underline-offset-4">
           ← {t.backToCourse}
         </Link>
       </p>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getMyOptOuts, type OptOutChannel } from "@/modules/comunicacion/automation-service";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { toggleOptOutAction } from "./actions";
@@ -42,20 +43,20 @@ export default async function PreferencesPage() {
         {channels.map((c) => {
           const isOut = optOuts.has(c.key);
           return (
-            <li key={c.key} className="flex flex-wrap items-center gap-3 rounded-md border p-4 text-sm">
-              <div className="flex-1">
-                <p className="font-medium">{c.label}</p>
-                <p className={isOut ? "text-amber-700 dark:text-amber-400" : "text-green-700 dark:text-green-400"}>
-                  {isOut ? t.optedOut : t.receiving}
-                </p>
-              </div>
-              <form action={toggleOptOutAction}>
-                <input type="hidden" name="channel" value={c.key} />
-                <input type="hidden" name="optedOut" value={isOut ? "false" : "true"} />
-                <button type="submit" className="min-h-11 rounded-md border px-4 text-sm font-medium">
-                  {isOut ? t.resubscribe : t.unsubscribe}
-                </button>
-              </form>
+            <li key={c.key}>
+              <Card className="flex-row flex-wrap items-center gap-3 p-4 text-sm">
+                <div className="flex-1">
+                  <p className="font-medium">{c.label}</p>
+                  <p className={isOut ? "text-warning" : "text-success"}>{isOut ? t.optedOut : t.receiving}</p>
+                </div>
+                <form action={toggleOptOutAction}>
+                  <input type="hidden" name="channel" value={c.key} />
+                  <input type="hidden" name="optedOut" value={isOut ? "false" : "true"} />
+                  <Button type="submit" variant="outline" size="sm">
+                    {isOut ? t.resubscribe : t.unsubscribe}
+                  </Button>
+                </form>
+              </Card>
             </li>
           );
         })}

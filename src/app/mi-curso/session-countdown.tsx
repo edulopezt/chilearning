@@ -35,7 +35,7 @@ export function SessionCountdown({
   }, [remaining, router]);
 
   if (remaining === 0) {
-    return <p className="text-sm text-amber-700 dark:text-amber-400">{expiredLabel}</p>;
+    return <p className="text-sm text-warning">{expiredLabel}</p>;
   }
 
   const totalSeconds = Math.floor(remaining / 1000);

@@ -19,7 +19,7 @@ export default async function TutorPage() {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center gap-4 p-6 text-center">
         <p className="text-muted-foreground">{esCL.tutorIA.unavailable[gate.reason]}</p>
-        <Link href="/mi-curso" className="text-sm font-medium underline">
+        <Link href="/mi-curso" className="text-sm font-medium underline underline-offset-4">
           {esCL.tutorIA.backToCourse}
         </Link>
       </main>
@@ -30,7 +30,7 @@ export default async function TutorPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-4 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{esCL.tutorIA.title}</h1>
-        <Link href="/mi-curso" className="text-sm underline">
+        <Link href="/mi-curso" className="text-sm underline underline-offset-4">
           {esCL.tutorIA.backToCourse}
         </Link>
       </header>

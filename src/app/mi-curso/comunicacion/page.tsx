@@ -8,6 +8,12 @@ import { listPublishedAnnouncements } from "@/modules/comunicacion/announcement-
 import { listCalendar } from "@/modules/comunicacion/calendar-service";
 import { listThreads } from "@/modules/comunicacion/forum-service";
 import { listMyThreads } from "@/modules/comunicacion/message-service";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { FieldControl, FieldRoot } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { createThreadAction, startMessageAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -35,12 +41,16 @@ export default async function StudentComunicacionPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.announcementsTitle}</h2>
-        {announcements.length === 0 ? <p className="text-muted-foreground text-sm">{t.annEmpty}</p> : (
+        {announcements.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t.annEmpty}</p>
+        ) : (
           <ul className="flex flex-col gap-2">
             {announcements.map((a) => (
-              <li key={a.id} className="rounded-lg border p-3">
-                <p className="font-medium">{a.title}</p>
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>
+              <li key={a.id}>
+                <Card className="gap-1 p-3">
+                  <p className="font-medium">{a.title}</p>
+                  <p className="text-sm whitespace-pre-wrap text-muted-foreground">{a.body}</p>
+                </Card>
               </li>
             ))}
           </ul>
@@ -49,7 +59,9 @@ export default async function StudentComunicacionPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.calendarTitle}</h2>
-        {(calendar ?? []).length === 0 ? <p className="text-muted-foreground text-sm">{t.calEmpty}</p> : (
+        {(calendar ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t.calEmpty}</p>
+        ) : (
           <ul className="flex flex-col gap-1">
             {(calendar ?? []).map((c, i) => (
               <li key={i} className="flex items-center gap-2 rounded-md border p-2 text-sm">
@@ -64,44 +76,66 @@ export default async function StudentComunicacionPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.forumTitle}</h2>
-        {(threads ?? []).length === 0 ? <p className="text-muted-foreground text-sm">{t.forumEmpty}</p> : (
+        {(threads ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t.forumEmpty}</p>
+        ) : (
           <ul className="flex flex-col gap-2">
             {(threads ?? []).map((th) => (
               <li key={th.id} className="flex items-center gap-2 rounded-md border p-3">
-                <Link href={`/mi-curso/comunicacion/foro/${th.id}`} className="flex-1 underline">{th.title}</Link>
-                {th.resolved ? <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-200">{t.resolved}</span> : null}
+                <Link href={`/mi-curso/comunicacion/foro/${th.id}`} className="flex-1 underline underline-offset-4">
+                  {th.title}
+                </Link>
+                {th.resolved ? <Badge variant="success">{t.resolved}</Badge> : null}
               </li>
             ))}
           </ul>
         )}
-        <form action={createThreadAction} className="flex flex-col gap-2 border-t pt-3">
+        <form action={createThreadAction} className="flex flex-col gap-3 border-t pt-3">
           <input type="hidden" name="courseId" value={courseId} />
-          <input name="title" required placeholder={t.threadTitleLabel} className="input" />
-          <textarea name="body" required rows={2} placeholder={t.postBodyLabel} className="input" />
-          <button type="submit" className="min-h-11 self-start rounded-md border px-4 text-sm font-medium">{t.newThread}</button>
+          <FieldRoot>
+            <FieldControl render={<Input name="title" required placeholder={t.threadTitleLabel} />} />
+          </FieldRoot>
+          <FieldRoot>
+            <FieldControl render={<Textarea name="body" required rows={2} placeholder={t.postBodyLabel} />} />
+          </FieldRoot>
+          <Button type="submit" variant="outline" className="self-start">
+            {t.newThread}
+          </Button>
         </form>
       </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.messagesTitle}</h2>
-        {messages.length === 0 ? <p className="text-muted-foreground text-sm">{t.messageEmpty}</p> : (
+        {messages.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t.messageEmpty}</p>
+        ) : (
           <ul className="flex flex-col gap-2">
             {messages.map((m) => (
               <li key={m.id} className="flex items-center gap-2 rounded-md border p-3">
-                <Link href={`/mi-curso/comunicacion/mensaje/${m.id}`} className="flex-1 underline">{m.subject}</Link>
+                <Link href={`/mi-curso/comunicacion/mensaje/${m.id}`} className="flex-1 underline underline-offset-4">
+                  {m.subject}
+                </Link>
               </li>
             ))}
           </ul>
         )}
-        <form action={startMessageAction} className="flex flex-col gap-2 border-t pt-3">
+        <form action={startMessageAction} className="flex flex-col gap-3 border-t pt-3">
           <input type="hidden" name="courseId" value={courseId} />
-          <input name="subject" required placeholder={t.subjectLabel} className="input" />
-          <textarea name="body" required rows={2} placeholder={t.postBodyLabel} className="input" />
-          <button type="submit" className="min-h-11 self-start rounded-md border px-4 text-sm font-medium">{t.newMessage}</button>
+          <FieldRoot>
+            <FieldControl render={<Input name="subject" required placeholder={t.subjectLabel} />} />
+          </FieldRoot>
+          <FieldRoot>
+            <FieldControl render={<Textarea name="body" required rows={2} placeholder={t.postBodyLabel} />} />
+          </FieldRoot>
+          <Button type="submit" variant="outline" className="self-start">
+            {t.newMessage}
+          </Button>
         </form>
       </section>
 
-      <Link href="/mi-curso" className="text-sm underline">← {t.backToCourse}</Link>
+      <Link href="/mi-curso" className="text-sm underline underline-offset-4">
+        ← {t.backToCourse}
+      </Link>
     </main>
   );
 }

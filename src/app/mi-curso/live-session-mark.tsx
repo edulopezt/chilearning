@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Button } from "@/components/ui/button";
 import { selfMarkAttendanceAction } from "./actions";
 
 const t = esCL.liveSessions;
@@ -17,14 +18,16 @@ export function LiveSessionMark({ sessionId, canMark }: { sessionId: string; can
   const [msg, setMsg] = useState<string | null>(null);
 
   if (!canMark) {
-    return <span className="text-muted-foreground text-xs">{t.markAttendanceOutsideWindow}</span>;
+    return <span className="text-xs text-muted-foreground">{t.markAttendanceOutsideWindow}</span>;
   }
 
   return (
     <span className="flex flex-col items-start gap-1">
-      <button
+      <Button
         type="button"
-        disabled={pending}
+        variant="outline"
+        size="sm"
+        loading={pending}
         onClick={() =>
           start(async () => {
             setMsg(null);
@@ -40,12 +43,11 @@ export function LiveSessionMark({ sessionId, canMark }: { sessionId: string; can
             }
           })
         }
-        className="min-h-11 rounded-md border px-4 text-sm font-medium disabled:opacity-60"
       >
         {t.markAttendance}
-      </button>
+      </Button>
       {msg ? (
-        <span role="status" className="text-muted-foreground text-xs">
+        <span role="status" className="text-xs text-muted-foreground">
           {msg}
         </span>
       ) : null}

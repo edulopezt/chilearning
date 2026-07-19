@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
 import type { QuestionSnapshot } from "@/modules/evaluacion/domain/grading";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { saveAnswersAction, submitAttemptAction } from "./actions";
 
 const t = esCL.quizStudent;
@@ -84,9 +87,11 @@ export function AttemptRunner({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">{saved ? t.autosaved : "…"}</span>
+        <span role="status" className="text-muted-foreground">
+          {saved ? t.autosaved : "…"}
+        </span>
         {remaining !== null ? (
-          <span className={`font-mono font-semibold ${remaining < 60_000 ? "text-red-600" : ""}`}>
+          <span className={cn("font-mono font-semibold", remaining < 60_000 && "text-destructive")}>
             {t.timeLeft}: {formatMs(remaining)}
           </span>
         ) : null}
@@ -94,26 +99,23 @@ export function AttemptRunner({
 
       <ol className="flex flex-col gap-6">
         {snapshot.map((q, i) => (
-          <li key={q.id} className="flex flex-col gap-3 rounded-md border p-4">
-            <p className="font-medium">
-              {i + 1}. {q.prompt}{" "}
-              <span className="text-muted-foreground text-xs">
-                ({q.points} {t.points})
-              </span>
-            </p>
-            <QuestionInput question={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />
+          <li key={q.id}>
+            <Card className="gap-3 p-4">
+              <p className="font-medium">
+                {i + 1}. {q.prompt}{" "}
+                <span className="text-xs text-muted-foreground">
+                  ({q.points} {t.points})
+                </span>
+              </p>
+              <QuestionInput question={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />
+            </Card>
           </li>
         ))}
       </ol>
 
-      <button
-        type="button"
-        onClick={() => void doSubmit()}
-        disabled={submitting}
-        className="min-h-11 self-start rounded-md bg-neutral-900 px-5 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-      >
+      <Button type="button" size="lg" onClick={() => void doSubmit()} loading={submitting} className="self-start">
         {submitting ? t.submitting : t.submit}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -137,7 +139,7 @@ function QuestionInput({
               name={question.id}
               checked={value === c.id}
               onChange={() => onChange(c.id)}
-              className="min-h-5 min-w-5"
+              className="size-5 accent-primary"
             />
             {c.text}
           </label>
@@ -150,11 +152,23 @@ function QuestionInput({
     return (
       <div className="flex gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <input type="radio" name={question.id} checked={value === true} onChange={() => onChange(true)} className="min-h-5 min-w-5" />
+          <input
+            type="radio"
+            name={question.id}
+            checked={value === true}
+            onChange={() => onChange(true)}
+            className="size-5 accent-primary"
+          />
           {t.tfTrue}
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="radio" name={question.id} checked={value === false} onChange={() => onChange(false)} className="min-h-5 min-w-5" />
+          <input
+            type="radio"
+            name={question.id}
+            checked={value === false}
+            onChange={() => onChange(false)}
+            className="size-5 accent-primary"
+          />
           {t.tfFalse}
         </label>
       </div>
