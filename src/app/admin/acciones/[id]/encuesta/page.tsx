@@ -5,6 +5,10 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { getSurveyResults } from "@/modules/evaluacion/survey-service";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { PageHeader } from "@/components/ui/page-header";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +39,7 @@ export default async function EncuestaResultadosPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {view.courseName} · {view.code}
-        </p>
-      </header>
+      <PageHeader title={t.title} description={`${view.courseName} · ${view.code}`} />
 
       {view.surveys.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t.noSurveys}</p>
@@ -57,9 +56,9 @@ export default async function EncuestaResultadosPage({
               {s.aggregate.total === 0 ? (
                 <p className="text-muted-foreground text-sm">{t.noResponses}</p>
               ) : s.suppressed ? (
-                <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  {t.suppressed}
-                </p>
+                <Alert variant="warning">
+                  <AlertDescription>{t.suppressed}</AlertDescription>
+                </Alert>
               ) : (
                 <ul className="flex flex-col gap-4">
                   {s.aggregate.questions.map((q) => (
@@ -75,8 +74,8 @@ export default async function EncuestaResultadosPage({
                             return (
                               <div key={value} className="flex items-center gap-2">
                                 <span className="w-6 text-right tabular-nums">{value}</span>
-                                <div className="h-3 flex-1 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-700">
-                                  <div className="h-full rounded bg-blue-600" style={{ width: `${pct}%` }} />
+                                <div className="h-3 flex-1 overflow-hidden rounded bg-muted">
+                                  <div className="h-full rounded bg-primary" style={{ width: `${pct}%` }} />
                                 </div>
                                 <span className="w-16 text-right tabular-nums text-muted-foreground">
                                   {count} · {pct}%
@@ -92,8 +91,8 @@ export default async function EncuestaResultadosPage({
                             return (
                               <li key={c.optionId} className="flex items-center gap-2">
                                 <span className="flex-1">{c.text}</span>
-                                <div className="h-3 w-32 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-700">
-                                  <div className="h-full rounded bg-blue-600" style={{ width: `${pct}%` }} />
+                                <div className="h-3 w-32 overflow-hidden rounded bg-muted">
+                                  <div className="h-full rounded bg-primary" style={{ width: `${pct}%` }} />
                                 </div>
                                 <span className="w-16 text-right tabular-nums text-muted-foreground">
                                   {c.count} · {pct}%
@@ -107,7 +106,7 @@ export default async function EncuestaResultadosPage({
                           <p className="text-muted-foreground text-xs">{t.textAnswers} ({q.n})</p>
                           <ul className="flex flex-col gap-1">
                             {q.texts.map((text, i) => (
-                              <li key={i} className="rounded bg-neutral-50 p-2 dark:bg-neutral-900">
+                              <li key={i} className="rounded bg-muted p-2">
                                 {text}
                               </li>
                             ))}
@@ -126,17 +125,17 @@ export default async function EncuestaResultadosPage({
       <div className="flex flex-wrap gap-3 border-t pt-4">
         <a
           href={`/api/reportes/encuesta/${actionId}?formato=xlsx`}
-          className="inline-flex min-h-11 items-center rounded-md border px-4 text-sm font-medium"
+          className={cn(buttonVariants({ variant: "outline" }))}
         >
           {t.exportXlsx}
         </a>
         <a
           href={`/api/reportes/encuesta/${actionId}?formato=csv`}
-          className="inline-flex min-h-11 items-center rounded-md border px-4 text-sm font-medium"
+          className={cn(buttonVariants({ variant: "outline" }))}
         >
           {t.exportCsv}
         </a>
-        <Link href="/admin/acciones" className="inline-flex min-h-11 items-center text-sm underline">
+        <Link href="/admin/acciones" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
           {t.backToAction}
         </Link>
       </div>

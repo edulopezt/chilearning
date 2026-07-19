@@ -6,6 +6,7 @@ export const esCL = {
   common: {
     appName: "Chilearning",
     close: "Cerrar",
+    cancel: "Cancelar",
   },
   /**
    * Landing comercial PROVISIONAL (task 5.6). La marca definitiva es decisión

@@ -6,6 +6,11 @@ import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { getExpediente } from "@/modules/reportes/expediente-service";
 import { DOC_TYPE_LABEL } from "@/modules/reportes/domain/expediente";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { UploadForm } from "./upload-form";
 import { markDefinitiveAction } from "./actions";
 
@@ -26,26 +31,25 @@ export default async function ExpedientePage({ params }: { params: Promise<{ id:
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-      </header>
+      <PageHeader title={t.title} description={t.intro} />
 
       {/* Checklist de completitud */}
       <section className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <h2 className="flex-1 text-lg font-semibold">{t.checklist}</h2>
-          <span className={`rounded px-2 py-0.5 text-xs ${view.completeness.complete ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"}`}>
+          <Badge variant={view.completeness.complete ? "success" : "warning"}>
             {view.completeness.complete ? t.complete : `${t.incomplete} (${view.completeness.done}/${view.completeness.total})`}
-          </span>
+          </Badge>
         </div>
         <ul className="flex flex-col gap-1 text-sm">
           {view.checklist.map((c) => (
-            <li key={c.docType} className="flex items-center gap-2 rounded-md border p-2">
-              <span className="flex-1">{DOC_TYPE_LABEL[c.docType]}</span>
-              <span className={c.present ? "text-green-700 dark:text-green-400" : "text-red-600"}>
-                {c.present ? `✓ ${t.present} (${c.count})` : `✕ ${t.missing}`}
-              </span>
+            <li key={c.docType}>
+              <Card className="flex-row items-center gap-2 p-2">
+                <span className="flex-1">{DOC_TYPE_LABEL[c.docType]}</span>
+                <span className={c.present ? "text-success" : "text-destructive"}>
+                  {c.present ? `✓ ${t.present} (${c.count})` : `✕ ${t.missing}`}
+                </span>
+              </Card>
             </li>
           ))}
         </ul>
@@ -55,28 +59,30 @@ export default async function ExpedientePage({ params }: { params: Promise<{ id:
       <section className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <h2 className="flex-1 text-lg font-semibold">{t.documents}</h2>
-          <a href={`/api/reportes/expediente/${actionId}`} className="inline-flex min-h-11 items-center rounded-md border px-4 text-sm font-medium">
+          <Button variant="outline" render={<a href={`/api/reportes/expediente/${actionId}`} />}>
             {t.downloadZip}
-          </a>
+          </Button>
         </div>
         {view.documents.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.empty}</p>
+          <EmptyState title={t.empty} />
         ) : (
           <ul className="flex flex-col gap-2">
             {view.documents.map((d) => (
-              <li key={d.id} className="flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm">
-                <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs dark:bg-neutral-800">{DOC_TYPE_LABEL[d.docType]}</span>
-                <span className="flex-1 font-medium">{d.title}</span>
-                {d.documentDate ? <span className="text-xs text-muted-foreground">{d.documentDate}</span> : null}
-                {d.isDefinitive ? (
-                  <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-200">{t.definitiveBadge}</span>
-                ) : (
-                  <form action={markDefinitiveAction}>
-                    <input type="hidden" name="actionId" value={actionId} />
-                    <input type="hidden" name="documentId" value={d.id} />
-                    <button type="submit" className="min-h-11 text-xs underline">{t.markDefinitive}</button>
-                  </form>
-                )}
+              <li key={d.id}>
+                <Card className="flex-row flex-wrap items-center gap-2 p-3 text-sm">
+                  <Badge variant="outline">{DOC_TYPE_LABEL[d.docType]}</Badge>
+                  <span className="flex-1 font-medium">{d.title}</span>
+                  {d.documentDate ? <span className="text-xs text-muted-foreground">{d.documentDate}</span> : null}
+                  {d.isDefinitive ? (
+                    <Badge>{t.definitiveBadge}</Badge>
+                  ) : (
+                    <form action={markDefinitiveAction}>
+                      <input type="hidden" name="actionId" value={actionId} />
+                      <input type="hidden" name="documentId" value={d.id} />
+                      <Button type="submit" variant="ghost" size="xs">{t.markDefinitive}</Button>
+                    </form>
+                  )}
+                </Card>
               </li>
             ))}
           </ul>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/page-header";
 import { esCL } from "@/i18n/es-CL";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { getPrincipal } from "@/modules/core/auth/session";
@@ -53,15 +54,20 @@ export default async function ActivateActionPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.activateTitle}</h1>
-        <p className="text-muted-foreground text-sm">{t.activateIntro}</p>
-        {originCode ? (
-          <p className="text-muted-foreground text-sm">
-            {t.activateOrigin} <span className="font-mono">{originCode}</span>
-          </p>
-        ) : null}
-      </header>
+      <PageHeader
+        title={t.activateTitle}
+        description={
+          <>
+            {t.activateIntro}
+            {originCode ? (
+              <>
+                <br />
+                {t.activateOrigin} <span className="font-mono">{originCode}</span>
+              </>
+            ) : null}
+          </>
+        }
+      />
 
       <ActivateForm
         actionId={action.id as string}

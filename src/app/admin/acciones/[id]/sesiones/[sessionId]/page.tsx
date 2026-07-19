@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FieldControl, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
@@ -46,19 +53,21 @@ export default async function LiveSessionRosterPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{session.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {t.providers[session.provider]} · {new Date(session.startsAtMs).toLocaleString("es-CL")} →{" "}
-          {new Date(session.endsAtMs).toLocaleString("es-CL")}
-        </p>
-      </header>
+      <PageHeader
+        title={session.title}
+        description={
+          <>
+            {t.providers[session.provider]} · {new Date(session.startsAtMs).toLocaleString("es-CL")} →{" "}
+            {new Date(session.endsAtMs).toLocaleString("es-CL")}
+          </>
+        }
+      />
 
       {/* Banner PERMANENTE y visible (hard rule de esta tarea): esta asistencia
           es interna, no SENCE. */}
-      <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        {t.disclaimer}
-      </div>
+      <Alert variant="warning">
+        <AlertDescription className="font-medium">{t.disclaimer}</AlertDescription>
+      </Alert>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
@@ -69,49 +78,63 @@ export default async function LiveSessionRosterPage({
         </div>
 
         {roster.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.rosterEmpty}</p>
+          <EmptyState title={t.rosterEmpty} />
         ) : (
           <ul className="flex flex-col gap-2">
             {roster.map((r) => (
-              <li key={r.enrollmentId} className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="flex-1">
-                  <p className="font-medium">{r.apellidos} {r.nombres}</p>
-                  {r.source ? (
-                    <span className="text-muted-foreground text-xs">
-                      {r.source === "self" ? t.originSelf : t.originManual}
-                    </span>
+              <li key={r.enrollmentId}>
+                <Card className="gap-2 p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+                  <div className="flex-1">
+                    <p className="font-medium">{r.apellidos} {r.nombres}</p>
+                    {r.source ? (
+                      <span className="text-muted-foreground text-xs">
+                        {r.source === "self" ? t.originSelf : t.originManual}
+                      </span>
+                    ) : null}
+                  </div>
+                  {canManage ? (
+                    <form action={markAttendanceAction} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="actionId" value={actionId} />
+                      <input type="hidden" name="sessionId" value={sessionId} />
+                      <input type="hidden" name="enrollmentId" value={r.enrollmentId} />
+                      <Label className="min-h-11">
+                        <input
+                          type="radio"
+                          name="present"
+                          value="true"
+                          defaultChecked={r.present !== false}
+                          className="size-4 accent-primary"
+                        />
+                        {t.present}
+                      </Label>
+                      <Label className="min-h-11">
+                        <input
+                          type="radio"
+                          name="present"
+                          value="false"
+                          defaultChecked={r.present === false}
+                          className="size-4 accent-primary"
+                        />
+                        {t.absent}
+                      </Label>
+                      <FieldRoot className="flex-1">
+                        <FieldLabel className="sr-only">{t.noteLabel}</FieldLabel>
+                        <FieldControl
+                          name="note"
+                          type="text"
+                          defaultValue={r.note}
+                          maxLength={500}
+                          placeholder={t.noteLabel}
+                        />
+                      </FieldRoot>
+                      <Button type="submit" variant="outline">
+                        {t.saveRoster}
+                      </Button>
+                    </form>
+                  ) : r.present !== null ? (
+                    <span className="text-sm">{r.present ? t.present : t.absent}</span>
                   ) : null}
-                </div>
-                {canManage ? (
-                  <form action={markAttendanceAction} className="flex flex-wrap items-center gap-2">
-                    <input type="hidden" name="actionId" value={actionId} />
-                    <input type="hidden" name="sessionId" value={sessionId} />
-                    <input type="hidden" name="enrollmentId" value={r.enrollmentId} />
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name="present" value="true" defaultChecked={r.present !== false} className="size-4" />
-                      {t.present}
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name="present" value="false" defaultChecked={r.present === false} className="size-4" />
-                      {t.absent}
-                    </label>
-                    <label className="sr-only" htmlFor={`note-${r.enrollmentId}`}>{t.noteLabel}</label>
-                    <input
-                      id={`note-${r.enrollmentId}`}
-                      type="text"
-                      name="note"
-                      defaultValue={r.note}
-                      maxLength={500}
-                      placeholder={t.noteLabel}
-                      className="input min-h-11 flex-1"
-                    />
-                    <button type="submit" className="min-h-11 rounded-md border px-3 text-sm font-medium">
-                      {t.saveRoster}
-                    </button>
-                  </form>
-                ) : r.present !== null ? (
-                  <span className="text-sm">{r.present ? t.present : t.absent}</span>
-                ) : null}
+                </Card>
               </li>
             ))}
           </ul>

@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
@@ -47,54 +51,53 @@ export default async function LiveSessionsPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{t.disclaimer}</p>
-      </header>
+      <div className="flex flex-col gap-3">
+        <PageHeader title={t.title} description={t.intro} />
+        <Alert variant="warning">
+          <AlertDescription>{t.disclaimer}</AlertDescription>
+        </Alert>
+      </div>
 
       <section className="flex flex-col gap-3">
         {sessions.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.empty}</p>
+          <EmptyState title={t.empty} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-3">{t.colTitle}</th>
-                  <th className="py-2 pr-3">{t.colProvider}</th>
-                  <th className="py-2 pr-3">{t.colWhen}</th>
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((s) => (
-                  <tr key={s.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-medium">{s.title}</td>
-                    <td className="py-2 pr-3">{t.providers[s.provider]}</td>
-                    <td className="py-2 pr-3 text-muted-foreground">
-                      {new Date(s.startsAtMs).toLocaleString("es-CL")} → {new Date(s.endsAtMs).toLocaleString("es-CL")}
-                    </td>
-                    <td className="py-2">
-                      <span className="flex flex-wrap items-center gap-3">
-                        <Link href={`/admin/acciones/${actionId}/sesiones/${s.id}`} className="underline">
-                          {t.viewRoster}
-                        </Link>
-                        {canManage ? (
-                          <>
-                            <Link href={`/admin/acciones/${actionId}/sesiones?edit=${s.id}`} className="underline">
-                              {t.edit}
-                            </Link>
-                            <DeleteSessionButton actionId={actionId} sessionId={s.id} />
-                          </>
-                        ) : null}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table className="min-w-[36rem]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t.colTitle}</TableHead>
+                <TableHead>{t.colProvider}</TableHead>
+                <TableHead>{t.colWhen}</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessions.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-medium">{s.title}</TableCell>
+                  <TableCell>{t.providers[s.provider]}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(s.startsAtMs).toLocaleString("es-CL")} → {new Date(s.endsAtMs).toLocaleString("es-CL")}
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap items-center gap-3">
+                      <Link href={`/admin/acciones/${actionId}/sesiones/${s.id}`} className="text-sm underline">
+                        {t.viewRoster}
+                      </Link>
+                      {canManage ? (
+                        <>
+                          <Link href={`/admin/acciones/${actionId}/sesiones?edit=${s.id}`} className="text-sm underline">
+                            {t.edit}
+                          </Link>
+                          <DeleteSessionButton actionId={actionId} sessionId={s.id} />
+                        </>
+                      ) : null}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
 

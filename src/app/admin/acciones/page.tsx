@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { esCL } from "@/i18n/es-CL";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { listActions } from "@/modules/academico/action-service";
@@ -48,86 +52,73 @@ export default async function ActionsPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.actions.title}</h1>
-        <p className="text-muted-foreground text-sm">{esCL.actions.intro}</p>
-      </header>
+      <PageHeader title={esCL.actions.title} description={esCL.actions.intro} />
 
       <section className="flex flex-col gap-3">
         {actions.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{esCL.actions.empty}</p>
+          <EmptyState title={esCL.actions.empty} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-3">{esCL.actions.colCourse}</th>
-                  <th className="py-2 pr-3">{esCL.actions.colCode}</th>
-                  <th className="py-2 pr-3">{esCL.actions.colLine}</th>
-                  <th className="py-2 pr-3">{esCL.actions.colEnv}</th>
-                  <th className="py-2 pr-3">{esCL.actions.colDates}</th>
-                  <th className="py-2 pr-3">{esCL.actions.colStatus}</th>
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {actions.map((a) => (
-                  <tr key={a.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3">{courseName.get(a.course_id) ?? "—"}</td>
-                    <td className="py-2 pr-3 font-mono">{a.codigo_accion}</td>
-                    <td className="py-2 pr-3">{a.training_line}</td>
-                    <td className="py-2 pr-3">
-                      {a.environment === "rce" ? esCL.actions.envProd : esCL.actions.envTest}
-                    </td>
-                    <td className="py-2 pr-3 text-muted-foreground">
-                      {a.starts_on ?? "—"} → {a.ends_on ?? "—"}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <span
-                        className={`rounded px-2 py-0.5 text-xs font-medium ${
-                          a.status === "active"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                        }`}
-                      >
-                        {a.status === "active" ? esCL.actions.statusActive : esCL.actions.statusDraft}
-                      </span>
-                    </td>
-                    <td className="py-2">
-                      <span className="flex flex-wrap items-center gap-3">
-                        <ActionControls actionId={a.id} status={a.status} />
-                        <Link href={`/admin/acciones/${a.id}/preflight`} className="underline">
-                          {esCL.preflight.linkLabel}
-                        </Link>
-                        <Link href={`/admin/acciones/${a.id}/cumplimiento`} className="underline">
-                          {esCL.cumplimiento.linkLabel}
-                        </Link>
-                        <Link href={`/admin/acciones/${a.id}/encuesta`} className="underline">
-                          {esCL.surveys.resultsLink}
-                        </Link>
-                        <Link href={`/admin/acciones/${a.id}/certificados`} className="underline">
-                          {esCL.certificates.title}
-                        </Link>
-                        <Link href={`/admin/acciones/${a.id}/expediente`} className="underline">
-                          {esCL.expediente.title}
-                        </Link>
-                        <Link href={`/admin/acciones/${a.id}/sesiones`} className="underline">
-                          {esCL.liveSessions.title}
-                        </Link>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{esCL.actions.colCourse}</TableHead>
+                <TableHead>{esCL.actions.colCode}</TableHead>
+                <TableHead>{esCL.actions.colLine}</TableHead>
+                <TableHead>{esCL.actions.colEnv}</TableHead>
+                <TableHead>{esCL.actions.colDates}</TableHead>
+                <TableHead>{esCL.actions.colStatus}</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {actions.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell>{courseName.get(a.course_id) ?? "—"}</TableCell>
+                  <TableCell className="font-mono">{a.codigo_accion}</TableCell>
+                  <TableCell>{a.training_line}</TableCell>
+                  <TableCell>{a.environment === "rce" ? esCL.actions.envProd : esCL.actions.envTest}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {a.starts_on ?? "—"} → {a.ends_on ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={a.status === "active" ? "success" : "secondary"}>
+                      {a.status === "active" ? esCL.actions.statusActive : esCL.actions.statusDraft}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap items-center gap-3">
+                      <ActionControls actionId={a.id} status={a.status} />
+                      <Link href={`/admin/acciones/${a.id}/preflight`} className="text-sm underline">
+                        {esCL.preflight.linkLabel}
+                      </Link>
+                      <Link href={`/admin/acciones/${a.id}/cumplimiento`} className="text-sm underline">
+                        {esCL.cumplimiento.linkLabel}
+                      </Link>
+                      <Link href={`/admin/acciones/${a.id}/encuesta`} className="text-sm underline">
+                        {esCL.surveys.resultsLink}
+                      </Link>
+                      <Link href={`/admin/acciones/${a.id}/certificados`} className="text-sm underline">
+                        {esCL.certificates.title}
+                      </Link>
+                      <Link href={`/admin/acciones/${a.id}/expediente`} className="text-sm underline">
+                        {esCL.expediente.title}
+                      </Link>
+                      <Link href={`/admin/acciones/${a.id}/sesiones`} className="text-sm underline">
+                        {esCL.liveSessions.title}
+                      </Link>
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
 
       <section className="flex flex-col gap-3 border-t pt-6">
         <h2 className="text-lg font-semibold">{esCL.actions.newAction}</h2>
         {courses.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{esCL.actions.noCourses}</p>
+          <EmptyState title={esCL.actions.noCourses} />
         ) : (
           <ActionForm courses={courses} initialCourseId={preselectedCourseId} />
         )}

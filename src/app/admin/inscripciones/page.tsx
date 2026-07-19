@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { esCL } from "@/i18n/es-CL";
 import { tenantGuard } from "@/lib/tenant-guard";
 import { getPrincipal } from "@/modules/core/auth/session";
@@ -102,12 +106,9 @@ export default async function ImportEnrollmentsPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.enrollmentImport.title}</h1>
-        <p className="text-muted-foreground text-sm">{esCL.enrollmentImport.intro}</p>
-      </header>
+      <PageHeader title={esCL.enrollmentImport.title} description={esCL.enrollmentImport.intro} />
       {actions.length === 0 ? (
-        <p className="text-muted-foreground">{esCL.enrollmentImport.noActions}</p>
+        <EmptyState title={esCL.enrollmentImport.noActions} />
       ) : (
         <ImportForm actions={actions} initialActionId={preselectedActionId} />
       )}
@@ -116,9 +117,9 @@ export default async function ImportEnrollmentsPage({
         <h2 className="text-lg font-semibold">{tc.heading}</h2>
         <p className="text-muted-foreground text-sm">{tc.intro}</p>
         {(companies ?? []).length === 0 ? (
-          <p className="text-muted-foreground text-sm">{tc.noCompanies}</p>
+          <EmptyState title={tc.noCompanies} />
         ) : enrollments.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{tc.empty}</p>
+          <EmptyState title={tc.empty} />
         ) : (
           <>
             <ul className="flex flex-col gap-2">
@@ -137,22 +138,23 @@ export default async function ImportEnrollmentsPage({
                     </div>
                     <label className="flex flex-col gap-1 sm:w-56">
                       <span className="sr-only">{tc.colCompany}</span>
-                      <select
-                        name="companyId"
-                        defaultValue={e.companyId ?? ""}
-                        className="min-h-11 rounded-md border px-3"
-                      >
-                        <option value="">{tc.particular}</option>
-                        {(companies ?? []).map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.razonSocial}
-                          </option>
-                        ))}
-                      </select>
+                      <Select name="companyId" defaultValue={e.companyId ?? ""}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">{tc.particular}</SelectItem>
+                          {(companies ?? []).map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.razonSocial}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </label>
-                    <button type="submit" className="min-h-11 rounded-md border px-4 text-sm font-medium">
+                    <Button type="submit" variant="outline">
                       {tc.save}
-                    </button>
+                    </Button>
                   </form>
                 </li>
               ))}

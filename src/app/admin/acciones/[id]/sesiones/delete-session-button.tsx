@@ -2,6 +2,17 @@
 
 import { useState, useTransition } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { esCL } from "@/i18n/es-CL";
 import { deleteSessionAction } from "./actions";
 
@@ -12,26 +23,40 @@ export function DeleteSessionButton({ actionId, sessionId }: { actionId: string;
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
 
+  function handleDelete() {
+    setMsg(null);
+    start(async () => {
+      const result = await deleteSessionAction(actionId, sessionId);
+      if (!result.ok) {
+        setMsg(result.error === "has_attendance" ? t.deleteHasAttendance : t.deleteGenericError);
+      }
+    });
+  }
+
   return (
     <span className="inline-flex items-center gap-2">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() =>
-          start(async () => {
-            setMsg(null);
-            const result = await deleteSessionAction(actionId, sessionId);
-            if (!result.ok) {
-              setMsg(result.error === "has_attendance" ? t.deleteHasAttendance : t.deleteGenericError);
-            }
-          })
-        }
-        className="text-sm text-red-600 underline disabled:opacity-60"
-      >
-        {t.delete}
-      </button>
+      <AlertDialog>
+        <AlertDialogTrigger
+          render={
+            <Button type="button" variant="ghost" size="sm" disabled={pending} className="text-destructive">
+              {t.delete}
+            </Button>
+          }
+        />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.delete}</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.cancelEdit}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDelete}>
+              {t.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {msg ? (
-        <span role="alert" className="text-xs text-amber-700 dark:text-amber-400">
+        <span role="alert" className="text-sm text-warning">
           {msg}
         </span>
       ) : null}
