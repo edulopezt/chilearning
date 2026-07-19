@@ -79,7 +79,7 @@ export default async function PreflightPage({
         }
       />
 
-      <Alert variant={STATUS_VARIANT[view.checklist.overall]}>
+      <Alert variant={STATUS_VARIANT[view.checklist.overall]} role={view.checklist.overall === "error" ? "alert" : "status"}>
         <AlertDescription className="font-semibold">
           {STATUS_SYMBOL[view.checklist.overall]} {t.overall[view.checklist.overall]}
         </AlertDescription>

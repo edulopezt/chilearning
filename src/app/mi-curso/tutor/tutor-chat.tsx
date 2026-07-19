@@ -223,7 +223,6 @@ export function TutorChat({ courseName }: { courseName: string }) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
           onClick={handleDerive}
           disabled={!lastQuestionRef.current}
           loading={deriveStatus === "sending"}

@@ -26,7 +26,6 @@ export function LiveSessionMark({ sessionId, canMark }: { sessionId: string; can
       <Button
         type="button"
         variant="outline"
-        size="sm"
         loading={pending}
         onClick={() =>
           start(async () => {

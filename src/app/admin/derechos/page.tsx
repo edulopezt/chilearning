@@ -17,6 +17,13 @@ export const dynamic = "force-dynamic";
 
 const t = esCL.dsrAdmin;
 
+const STATUS_VARIANT: Record<string, "success" | "destructive" | "secondary"> = {
+  completed: "success",
+  rejected: "destructive",
+  pending: "secondary",
+  processing: "secondary",
+};
+
 /** Consola de solicitudes de derechos (task 3.5, HU-2.4). Admin/coordinador. */
 export default async function DerechosPage() {
   const principal = await getPrincipal();
@@ -38,7 +45,7 @@ export default async function DerechosPage() {
               <Card className="gap-2 p-3">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="font-medium">{r.kind}</span>
-                  <Badge variant="secondary">{r.status}</Badge>
+                  <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"}>{r.status}</Badge>
                   <span className="ml-auto text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString("es-CL")}</span>
                 </div>
                 {r.detail ? <p className="text-sm text-muted-foreground">{r.detail}</p> : null}

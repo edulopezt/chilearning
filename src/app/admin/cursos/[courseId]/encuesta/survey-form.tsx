@@ -98,7 +98,6 @@ export function SurveyForm({ courseId }: { courseId: string }) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
                     onClick={() => remove(q.key)}
                     className="ml-auto text-destructive"
                   >
@@ -144,13 +143,13 @@ export function SurveyForm({ courseId }: { courseId: string }) {
           </ul>
         )}
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => add("scale")}>
+          <Button type="button" variant="outline" onClick={() => add("scale")}>
             {t.addScale}
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => add("single")}>
+          <Button type="button" variant="outline" onClick={() => add("single")}>
             {t.addSingle}
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => add("text")}>
+          <Button type="button" variant="outline" onClick={() => add("text")}>
             {t.addText}
           </Button>
         </div>

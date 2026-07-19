@@ -104,7 +104,7 @@ export default async function QuizEditorPage({
                     <input type="hidden" name="questionId" value={q.id} />
                     <input type="hidden" name="quizId" value={quizId} />
                     <input type="hidden" name="courseId" value={courseId} />
-                    <Button type="submit" variant="ghost" size="sm" className="text-destructive">
+                    <Button type="submit" variant="ghost" className="text-destructive">
                       {t.removeQuestion}
                     </Button>
                   </form>

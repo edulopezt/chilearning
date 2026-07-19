@@ -52,7 +52,7 @@ export default async function PreferencesPage() {
                 <form action={toggleOptOutAction}>
                   <input type="hidden" name="channel" value={c.key} />
                   <input type="hidden" name="optedOut" value={isOut ? "false" : "true"} />
-                  <Button type="submit" variant="outline" size="sm">
+                  <Button type="submit" variant="outline">
                     {isOut ? t.resubscribe : t.unsubscribe}
                   </Button>
                 </form>

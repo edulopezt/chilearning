@@ -65,7 +65,7 @@ export default async function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
-                  <Link href={area.href} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "self-start")}>
+                  <Link href={area.href} className={cn(buttonVariants({ variant: "outline", size: "default" }), "self-start")}>
                     {t.open}
                   </Link>
                   {area.items.length > 1 ? (

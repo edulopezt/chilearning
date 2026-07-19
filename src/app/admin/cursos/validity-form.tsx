@@ -19,13 +19,18 @@ function validityError(state: MutationResult | null): string | null {
  * Edición inline de la vigencia del certificado por curso (task 5.12, HU-7.3,
  * 4-ojos MED). Vacío = no vence. Manda SOLO `validityMonths`: la Server Action
  * hace un patch de esa única columna (no reescribe el resto del curso).
+ *
+ * `size`: "sm" en la fila de tabla de escritorio (contexto denso); "default"
+ * (44px, RNF-6) en la tarjeta móvil, donde es una vía táctil directa.
  */
 export function ValidityForm({
   courseId,
   validityMonths,
+  size = "default",
 }: {
   courseId: string;
   validityMonths: number | null;
+  size?: "default" | "sm";
 }) {
   const [state, formAction, pending] = useActionState<MutationResult | null, FormData>(
     updateCourseValidityAction,
@@ -47,7 +52,7 @@ export function ValidityForm({
           aria-label={esCL.certExpiry.validityLabel}
           className="h-9 w-20 text-sm"
         />
-        <Button type="submit" variant="outline" size="sm" loading={pending}>
+        <Button type="submit" variant="outline" size={size} loading={pending}>
           {t.validitySave}
         </Button>
       </div>

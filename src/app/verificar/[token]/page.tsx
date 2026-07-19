@@ -32,7 +32,7 @@ export default async function VerificarPage({
         </Alert>
       ) : (
         <div className="flex flex-col gap-4">
-          <Alert variant={cert.status === "revoked" ? "destructive" : "success"} role="status" className="justify-center">
+          <Alert variant={cert.status === "revoked" ? "destructive" : "success"} role={cert.status === "revoked" ? "alert" : "status"} className="justify-center">
             {cert.status === "revoked" ? (
               <XCircleIcon className="size-4" aria-hidden="true" />
             ) : (

@@ -3,6 +3,7 @@
 import { Field as FieldPrimitive } from "@base-ui/react/field"
 
 import { cn } from "@/lib/utils"
+import { useCharacterCount } from "@/components/ui/use-character-count"
 
 /**
  * Composición de campo de formulario (label + control + hint + error) sobre
@@ -64,10 +65,41 @@ function FieldError({ className, ...props }: Omit<FieldPrimitive.Error.Props, "m
   )
 }
 
-function FieldControl({ className, ...props }: FieldPrimitive.Control.Props) {
-  return (
+export interface FieldControlProps extends FieldPrimitive.Control.Props {
+  /** Muestra el contador de caracteres (UX-STANDARDS.md §5). Default: `true` si hay `maxLength`.
+   *  Solo aplica al `<input>` nativo por defecto — sin efecto si se pasa `render` (ej. `render={<Textarea />}`, que ya trae su propio contador). */
+  showCount?: boolean
+}
+
+function FieldControl({
+  className,
+  maxLength,
+  showCount,
+  value,
+  defaultValue,
+  onChange,
+  render,
+  ...props
+}: FieldControlProps) {
+  const hasCustomRender = render !== undefined
+  const { length, trackLength } = useCharacterCount(value, defaultValue)
+  const shouldShowCount = !hasCustomRender && (showCount ?? maxLength != null) && maxLength != null
+
+  const control = (
     <FieldPrimitive.Control
       data-slot="field-control"
+      render={render}
+      maxLength={maxLength}
+      value={value}
+      defaultValue={defaultValue}
+      onChange={
+        hasCustomRender
+          ? onChange
+          : (event) => {
+              trackLength(event.target.value)
+              onChange?.(event)
+            }
+      }
       className={cn(
         "flex h-11 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-colors outline-none",
         "placeholder:text-muted-foreground",
@@ -75,10 +107,25 @@ function FieldControl({ className, ...props }: FieldPrimitive.Control.Props) {
         "data-[invalid]:border-destructive data-[invalid]:ring-3 data-[invalid]:ring-destructive/20 dark:data-[invalid]:ring-destructive/40",
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         "md:text-sm",
+        shouldShowCount && "pb-6",
         className
       )}
       {...props}
     />
+  )
+
+  if (!shouldShowCount) return control
+
+  return (
+    <div className="relative">
+      {control}
+      <span
+        className="pointer-events-none absolute right-2 bottom-1.5 text-xs text-muted-foreground tabular-nums"
+        aria-hidden="true"
+      >
+        {length}/{maxLength}
+      </span>
+    </div>
   )
 }
 

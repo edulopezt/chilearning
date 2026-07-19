@@ -265,7 +265,7 @@ export default function PrivacyPage() {
                   <div className="mt-4 flex flex-col gap-2 rounded-lg border bg-muted/40 p-4">
                     <h3 className="text-sm font-semibold">{t.rightsCtaTitle}</h3>
                     <p className="text-muted-foreground text-sm text-pretty">{t.rightsCtaBody}</p>
-                    <Link href="/mis-datos" className={cn(buttonVariants({ size: "sm" }), "w-fit")}>
+                    <Link href="/mis-datos" className={cn(buttonVariants({ size: "default" }), "w-fit")}>
                       {t.rightsCtaLink}
                     </Link>
                   </div>
