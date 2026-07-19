@@ -104,6 +104,48 @@ asistencia en `rcetest` de punta a punta, con bitácora auditable.
 - 5.12 ✅ Vencimientos y recertificación de certificados (alertas 90/60/30, listado por empresa) — HU-7.3 — **hecho 2026-07-17** (#100): offsets configurables por tenant con regla anti-ráfaga (D-064); recreada `issue_certificate` con `p_expires_at` y `clone_course` para copiar `validity_months` (bug real corregido: un curso clonado perdía la vigencia del original).
 - 5.13 ✅ Export completo del tenant en formatos abiertos — HU-1.5 — **hecho 2026-07-17** (#101): tope de 300MB con archivos omitidos manifestados, nunca truncados en silencio (D-063); verificado con prueba adversarial de que el ZIP de un tenant NUNCA contiene filas de otro.
 
+## Hito 6 — Overhaul visual UX/UI (post-venta, código funcionalmente completo)
+
+Ámbito: presentación y experiencia — no se toca lógica de negocio, actions, RLS ni
+`src/modules/sence/` (salvo su chrome visual). Referencia principal: RNF-6 (responsividad y
+accesibilidad WCAG 2.1 AA) y HU-1.2 (marca del tenant — hoy guardada en BD pero no aplicada al
+shell de la app). Guía de diseño: `docs/design/MASTER.md` (generado con la skill
+`ui-ux-pro-max`, curado a mano) + `docs/design/UX-STANDARDS.md` (4 estados de pantalla,
+loaders, errores comprensibles, reglas de formulario — pedido explícito de Edu). Plan completo
+en la sesión que abrió el hito (2026-07-19).
+
+- 6.0 ⬜ Spec del hito + `docs/design/MASTER.md` + `docs/design/UX-STANDARDS.md` — RNF-6 — registra
+  el hito en `specs/03-tareas.md`/`ESTADO-PROYECTO.md`/`DECISIONES.md` (D-065, D-066) y genera
+  la guía de diseño con la skill instalada global
+- 6.1 ⬜ Design tokens oklch (paleta azul/cyan real, neutrales con chroma, dark) + fuente Inter +
+  fix de escala táctil del `Button` (hoy h-8/36px, viola RNF-6 ≥44px) — RNF-6
+- 6.2 ⬜ Primitivos estáticos (`card`, `input`, `textarea`, `field`, `badge`, `alert`, `skeleton`,
+  `spinner`, `progress`, `page-header`, `empty-state`) + `phone.ts` — RNF-6
+- 6.3 ⬜ Primitivos interactivos (`tabs`, `select`, `checkbox`, `radio-group`, `switch`, `dialog`,
+  `alert-dialog`, `sheet`, `dropdown-menu`, `tooltip`, `password-requirements`) — RNF-6
+- 6.4 ⬜ Tabla responsive (`table.tsx` + colapso a cards por CSS) probada en el gradebook real —
+  RNF-6
+- 6.5 ⬜ Dark mode completo (script anti-FOUC, provider, toggle en topbar + `/preferencias`) —
+  RNF-6
+- 6.6 ⬜ Branding por tenant en runtime (RPC `tenant_branding_by_slug`, clamp de contraste
+  server-side, `<TenantBrandStyle>`, co-brand del login) — HU-1.2
+- 6.7 ⬜ App shell + layouts por rol (sidebar/topbar/nav), `error.tsx`/`loading.tsx` por área,
+  dashboard rediseñado como home real de LMS — RNF-6
+- 6.8 ⬜ Migración: área pública (landing, login, privacidad, verificar, consentimiento,
+  suspendido) — RNF-6
+- 6.9 ⬜ Migración: área alumno (`mi-curso/*`, mis-datos, preferencias) — RNF-6
+- 6.10 ⬜ Migración: área tablero (instructor/tutor: entregas, notas) — RNF-6
+- 6.11 ⬜ Migración: admin cursos (+ asistente IA de creación) — RNF-6
+- 6.12 ⬜ Migración: admin acciones + inscripciones (chrome visual únicamente; `sence/`
+  intocable) — RNF-6
+- 6.13 ⬜ Migración: resto de admin (sence, marca, correos, mensajes, empresas, supervisores,
+  derechos, exportación, vencimientos, tutor-ia) — RNF-6
+- 6.14 ⬜ Migración: portales (supervisor, empresa, superadmin) — RNF-6
+- 6.15 ⬜ Polish: motion, auditoría de foco/contraste en ambos modos, capturas visuales
+  (`VISUAL=1`), regla ESLint anti-regresión de estilos hardcodeados — RNF-6
+- 6.16 ⬜ Cierre: revisión adversarial visual global (worktrees aislados) + fixes + snapshot
+  final en `ESTADO-PROYECTO.md`
+
 ## Backlog v2 (no ahora — anotado para no perderlo)
 
 Checkout con pasarela chilena · LCE presencial · API LMS↔SIC operativa + activación líneas 1 y 6 ·

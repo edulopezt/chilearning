@@ -1049,3 +1049,47 @@ entrada original.
 - **Por qué:** HU-7.3 pide alertas configurables 90/60/30 pero no todos los tenants operan igual (algunos podrían preferir ventanas distintas); el ledger INSERT-only (`certificate_expiry_alerts`, único por cert×offset) da idempotencia real, y la regla anti-ráfaga evita que un tick con retraso genere una experiencia confusa/spam para el alumno.
 - **Alternativas descartadas:** offsets fijos 90/60/30 sin configuración por tenant (descartada: menos flexible sin necesidad real de estar fijo); notificar TODOS los offsets alcanzados si el tick se atrasó (descartada: genera una ráfaga de correos idénticos de golpe, mala experiencia sin beneficio real).
 - **Origen:** 2026-07-17 · task 5.12 (vencimientos de certificados) · PR #100
+
+## D-065 — Paleta de marca del Hito 6: azul `#1e3a8a` + cyan `#0ea5e9`, tokens intercambiables
+
+- **ID:** D-065
+- **Fecha:** 2026-07-19
+- **Decisión:** el overhaul visual (Hito 6) usa como paleta base azul `#1e3a8a` (primary) +
+  cyan `#0ea5e9` (accent), expresados como variables oklch en `src/app/globals.css` (no como
+  hex fijos en componentes) — decisión explícita de Edu al abrir el hito.
+- **Por qué:** esos dos colores ya son los defaults reales de `branding-service.ts` (usados hoy
+  en emails transaccionales y PDFs de certificados) — adoptarlos como base de la app evita una
+  paleta nueva que contradiga lo que el alumno ya ve en su correo/certificado. Se expresan como
+  tokens (no hardcodeados) porque "Chilearning" es marca de trabajo (ver D-046/5.6): el día que
+  Edu defina la marca definitiva, el cambio es editar los tokens en un solo archivo, no una
+  migración de 64 páginas.
+- **Alternativas descartadas:** dejar que el generador de design system (`ui-ux-pro-max`)
+  eligiera libremente de su base de datos de paletas (descartada: propuso teal/ámbar,
+  desalineado con lo que ya existe en `branding-service.ts` y en producción); definir una
+  paleta nueva sin relación con el branding actual (descartada: sin necesidad real, y rompería
+  la coherencia visual entre app/email/certificado que ya existe).
+- **Origen:** 2026-07-19 · task 6.0/6.1 (Hito 6, overhaul UX/UI)
+
+## D-066 — La skill `ui-ux-pro-max` es tooling de desarrollo, no dependencia runtime; no amerita ADR
+
+- **ID:** D-066
+- **Fecha:** 2026-07-19
+- **Decisión:** la skill de Claude Code `ui-ux-pro-max` (github.com/nextlevelbuilder/
+  ui-ux-pro-max-skill, MIT) se instaló **global** (`~/.claude/skills/`, fuera del repo) y se usó
+  una vez para generar `docs/design/MASTER.md` (curado a mano, ver el propio archivo). No se
+  agrega como dependencia de `package.json`, no corre en build ni en runtime, y no aparece en
+  ningún import de la app — es un script Python de solo lectura sobre CSVs locales, invocado
+  manualmente por el agente/Edu al diseñar. Por eso **no** requiere un ADR formal en
+  `specs/02-plan-tecnico.md §12` (reservado para dependencias significativas del producto) —
+  esta entrada basta para dejar la decisión auditable.
+- **Por qué:** CLAUDE.md exige registrar ADR para dependencias significativas; esta herramienta
+  no lo es en el sentido que la regla protege (no hay riesgo de supply chain en producción, no
+  hay superficie de ataque nueva en el LMS, no hay costo de mantenimiento continuo — es
+  reemplazable o eliminable sin tocar una sola línea de `src/`).
+- **Alternativas descartadas:** no usar ninguna herramienta de generación de design system y
+  diseñar la paleta/tipografía/espaciado a mano desde cero (descartada: más lento y con más
+  riesgo de inconsistencia que partir de una base curada y luego ajustarla — ver D-065 para el
+  caso concreto en que se corrigió su output); instalarla local al proyecto en vez de global
+  (descartada: Edu pidió explícitamente instalación global, y es tooling de tercero — no
+  pertenece al repo del producto).
+- **Origen:** 2026-07-19 · task 6.0 (Hito 6, overhaul UX/UI)
