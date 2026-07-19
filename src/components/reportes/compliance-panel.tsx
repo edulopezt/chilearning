@@ -1,3 +1,8 @@
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { esCL } from "@/i18n/es-CL";
 import { BECARIO_LABEL } from "@/modules/academico/domain/enrollment-group";
 import type { CompliancePanel } from "@/modules/reportes/cumplimiento-service";
@@ -6,11 +11,11 @@ import type { DayCellStatus } from "@/modules/reportes/domain/cumplimiento";
 const t = esCL.cumplimiento;
 
 const CELL_STYLE: Record<DayCellStatus, { symbol: string; className: string; label: string }> = {
-  cerrada: { symbol: "✓", className: "text-green-700 dark:text-green-400", label: "cerrada" },
-  iniciada: { symbol: "◐", className: "text-amber-700 dark:text-amber-400", label: "iniciada" },
-  error: { symbol: "✕", className: "text-red-600", label: "error" },
-  none: { symbol: "·", className: "text-neutral-400", label: "none" },
-  exento: { symbol: "—", className: "text-neutral-400", label: "exento" },
+  cerrada: { symbol: "✓", className: "text-success", label: "cerrada" },
+  iniciada: { symbol: "◐", className: "text-warning", label: "iniciada" },
+  error: { symbol: "✕", className: "text-destructive", label: "error" },
+  none: { symbol: "·", className: "text-muted-foreground", label: "none" },
+  exento: { symbol: "—", className: "text-muted-foreground", label: "exento" },
 };
 
 /**
@@ -37,10 +42,16 @@ export function CompliancePanelView({
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-lg font-semibold">{t.matrixTitle}</h2>
           <span className="flex-1" />
-          <a href={`${exportBasePath}?formato=xlsx`} className="min-h-11 rounded-md border px-4 py-2 text-sm font-medium underline-offset-2 hover:underline">
+          <a
+            href={`${exportBasePath}?formato=xlsx`}
+            className={cn(buttonVariants({ variant: "outline", size: "default" }))}
+          >
             {t.downloadXlsx}
           </a>
-          <a href={`${exportBasePath}?formato=csv`} className="min-h-11 rounded-md border px-4 py-2 text-sm font-medium underline-offset-2 hover:underline">
+          <a
+            href={`${exportBasePath}?formato=csv`}
+            className={cn(buttonVariants({ variant: "outline", size: "default" }))}
+          >
             {t.downloadCsv}
           </a>
         </div>
@@ -52,77 +63,81 @@ export function CompliancePanelView({
         {panel.rows.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t.empty}</p>
         ) : panel.days.length === 0 ? (
-          <p className="text-sm text-amber-700 dark:text-amber-400">{t.noDates}</p>
+          <Alert variant="warning" role="status">
+            <AlertDescription>{t.noDates}</AlertDescription>
+          </Alert>
         ) : (
           <>
             {/* ≥sm: matriz con primera columna sticky */}
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="bg-background sticky left-0 py-2 pr-3">{t.colStudent}</th>
-                    <th className="py-2 pr-3">{t.colRun}</th>
-                    <th className="py-2 pr-3">{t.colGroup}</th>
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="bg-background sticky left-0">{t.colStudent}</TableHead>
+                    <TableHead>{t.colRun}</TableHead>
+                    <TableHead>{t.colGroup}</TableHead>
                     {dayLabels.map((d) => (
-                      <th key={d} className="px-1 py-2 text-center font-mono text-xs">
+                      <TableHead key={d} className="px-1 text-center font-mono text-xs">
                         {d}
-                      </th>
+                      </TableHead>
                     ))}
-                    <th className="py-2 pl-3">{t.colGaps}</th>
-                  </tr>
-                </thead>
-                <tbody>
+                    <TableHead>{t.colGaps}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {panel.rows.map((row) => (
-                    <tr key={row.enrollmentId} className="border-b last:border-0">
-                      <td className="bg-background sticky left-0 py-2 pr-3">
+                    <TableRow key={row.enrollmentId}>
+                      <TableCell className="bg-background sticky left-0">
                         {row.apellidos ? `${row.apellidos}, ${row.nombres}` : row.nombres || "—"}
-                      </td>
-                      <td className="py-2 pr-3 font-mono text-xs">{row.run}</td>
-                      <td className="py-2 pr-3 text-xs whitespace-nowrap">{groupOf(row.exento) ?? "—"}</td>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{row.run}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{groupOf(row.exento) ?? "—"}</TableCell>
                       {row.cells.map((cell) => {
                         const style = CELL_STYLE[cell.status];
                         return (
-                          <td
+                          <TableCell
                             key={cell.date}
                             title={`${cell.date}: ${t.cell[cell.status]}`}
-                            className={`px-1 py-2 text-center font-bold ${style.className}`}
+                            className={`px-1 text-center font-bold ${style.className}`}
                           >
                             {style.symbol}
-                          </td>
+                          </TableCell>
                         );
                       })}
-                      <td className="py-2 pl-3 text-center">
+                      <TableCell className="text-center">
                         {row.exento ? t.exempt : row.gaps.length}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
 
             {/* <sm: tarjetas por alumno */}
             <ul className="flex flex-col gap-3 sm:hidden">
               {panel.rows.map((row) => (
-                <li key={row.enrollmentId} className="rounded-md border p-3">
-                  <p className="font-medium">
-                    {row.apellidos ? `${row.apellidos}, ${row.nombres}` : row.nombres || "—"}
-                  </p>
-                  <p className="text-muted-foreground font-mono text-xs">
-                    {row.run}
-                    {groupOf(row.exento) ? ` · ${groupOf(row.exento)}` : ""}
-                  </p>
-                  <p className="mt-1 text-sm">
-                    {row.exento ? (
-                      t.exempt
-                    ) : (
-                      <>
-                        <strong>{row.gaps.length}</strong> {t.colGaps.toLowerCase()}
-                        {" · "}
-                        {row.cells.filter((c) => c.status === "cerrada").length}/
-                        {panel.days.length} {t.daysClosed}
-                      </>
-                    )}
-                  </p>
+                <li key={row.enrollmentId}>
+                  <Card className="gap-1 p-3">
+                    <p className="font-medium">
+                      {row.apellidos ? `${row.apellidos}, ${row.nombres}` : row.nombres || "—"}
+                    </p>
+                    <p className="text-muted-foreground font-mono text-xs">
+                      {row.run}
+                      {groupOf(row.exento) ? ` · ${groupOf(row.exento)}` : ""}
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {row.exento ? (
+                        t.exempt
+                      ) : (
+                        <>
+                          <strong>{row.gaps.length}</strong> {t.colGaps.toLowerCase()}
+                          {" · "}
+                          {row.cells.filter((c) => c.status === "cerrada").length}/
+                          {panel.days.length} {t.daysClosed}
+                        </>
+                      )}
+                    </p>
+                  </Card>
                 </li>
               ))}
             </ul>
@@ -137,12 +152,16 @@ export function CompliancePanelView({
         ) : (
           <ul className="flex flex-col gap-2">
             {panel.frequentErrors.map((e) => (
-              <li key={e.code} className="rounded-md border p-3 text-sm">
-                <span className="font-mono font-bold">{e.code}</span>
-                {" × "}
-                <strong>{e.count}</strong>
-                {" — "}
-                <span className="text-muted-foreground">{e.officialGlosa}</span>
+              <li key={e.code}>
+                <Card className="p-3 text-sm">
+                  <p>
+                    <span className="font-mono font-bold">{e.code}</span>
+                    {" × "}
+                    <strong>{e.count}</strong>
+                    {" — "}
+                    <span className="text-muted-foreground">{e.officialGlosa}</span>
+                  </p>
+                </Card>
               </li>
             ))}
           </ul>

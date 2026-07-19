@@ -1593,6 +1593,8 @@ export const esCL = {
     statusActive: "Activa",
     statusSuspended: "Suspendida",
     suspend: "Suspender",
+    suspendConfirm:
+      "Esto suspende de inmediato el acceso de todos los usuarios de esta OTEC. Podrás reactivarla cuando quieras.",
     reactivate: "Reactivar",
     flagsHeading: "Funciones",
     flagScorm: "SCORM",

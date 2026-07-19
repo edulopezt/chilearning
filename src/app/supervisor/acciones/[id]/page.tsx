@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CompliancePanelView } from "@/components/reportes/compliance-panel";
+import { PageHeader } from "@/components/ui/page-header";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getSupervisorPanel } from "@/modules/portal-empresa/supervisor-portal-service";
@@ -36,18 +37,18 @@ export default async function SupervisorActionPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.cumplimiento.title}</h1>
-        <p className="text-sm">
-          <span className="font-mono">{panel.codigoAccion}</span>
-          {" · "}
-          {panel.courseName}
-          {" · "}
-          <span className="text-muted-foreground">
+      <PageHeader
+        title={esCL.cumplimiento.title}
+        description={
+          <>
+            <span className="font-mono">{panel.codigoAccion}</span>
+            {" · "}
+            {panel.courseName}
+            {" · "}
             {panel.startsOn ?? "—"} → {panel.endsOn ?? "—"}
-          </span>
-        </p>
-      </header>
+          </>
+        }
+      />
 
       <CompliancePanelView
         panel={panel}
@@ -55,7 +56,7 @@ export default async function SupervisorActionPage({
       />
 
       <p>
-        <Link href="/supervisor" className="text-sm underline">
+        <Link href="/supervisor" className="text-sm underline underline-offset-4">
           ← {t.title}
         </Link>
       </p>
