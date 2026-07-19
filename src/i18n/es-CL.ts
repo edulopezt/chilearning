@@ -1705,6 +1705,15 @@ export const esCL = {
       colCitedCount: "Veces citada",
     },
   },
+  shell: {
+    // Hito 6: tema claro/oscuro del shell de la app.
+    theme: "Tema",
+    themeLight: "Claro",
+    themeDark: "Oscuro",
+    themeSystem: "Sistema",
+    appearanceTitle: "Apariencia",
+    appearanceDescription: "Elige cómo se ve Chilearning en este dispositivo.",
+  },
 } as const;
 
 export type Messages = typeof esCL;

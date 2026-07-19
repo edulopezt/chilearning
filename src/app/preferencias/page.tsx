@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getMyOptOuts, type OptOutChannel } from "@/modules/comunicacion/automation-service";
+import { Card } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { toggleOptOutAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +21,7 @@ export default async function PreferencesPage() {
     { key: "email", label: t.email },
     { key: "whatsapp", label: t.whatsapp },
   ];
+  const ts = esCL.shell;
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 p-4 sm:p-6">
@@ -26,6 +29,14 @@ export default async function PreferencesPage() {
         <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
         <p className="text-muted-foreground text-sm">{t.intro}</p>
       </header>
+
+      <Card className="flex-row items-center justify-between gap-3 p-4">
+        <div>
+          <p className="font-medium">{ts.appearanceTitle}</p>
+          <p className="text-sm text-muted-foreground">{ts.appearanceDescription}</p>
+        </div>
+        <ThemeToggle />
+      </Card>
 
       <ul className="flex flex-col gap-3">
         {channels.map((c) => {
