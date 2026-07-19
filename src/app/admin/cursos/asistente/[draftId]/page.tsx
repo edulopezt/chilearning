@@ -6,6 +6,8 @@ import { WIZARD_STEPS, validateForGeneration, type WizardStep } from "@/modules/
 import { getDraft } from "@/modules/academico/wizard-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { PageHeader } from "@/components/ui/page-header";
+import { cn } from "@/lib/utils";
 import { DescriptorFailedStatus, DescriptorProcessingStatus } from "./descriptor-status";
 import { RevisionStep } from "./revision-step";
 import {
@@ -45,7 +47,7 @@ function Stepper({ draftId, currentIdx, activeStep }: { draftId: string; current
         const label = `${i + 1}. ${STEP_LABEL[step]}`;
         if (!reachable) {
           return (
-            <span key={step} className="text-muted-foreground rounded-full border px-3 py-1">
+            <span key={step} className="rounded-full border px-3 py-1 text-muted-foreground">
               {label}
             </span>
           );
@@ -54,11 +56,12 @@ function Stepper({ draftId, currentIdx, activeStep }: { draftId: string; current
           <Link
             key={step}
             href={`/admin/cursos/asistente/${draftId}?step=${step}`}
-            className={
+            className={cn(
+              "rounded-full border px-3 py-1",
               isActive
-                ? "rounded-full border border-neutral-900 bg-neutral-900 px-3 py-1 text-white dark:border-white dark:bg-white dark:text-neutral-900"
-                : "rounded-full border px-3 py-1 underline"
-            }
+                ? "border-primary bg-primary text-primary-foreground"
+                : "underline underline-offset-4",
+            )}
           >
             {label}
           </Link>
@@ -123,10 +126,7 @@ export default async function CourseWizardDraftPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{STEP_LABEL[activeStep]}</p>
-      </header>
+      <PageHeader title={t.title} description={STEP_LABEL[activeStep]} />
 
       <Stepper draftId={draftId} currentIdx={currentIdx} activeStep={activeStep} />
 
@@ -142,7 +142,7 @@ export default async function CourseWizardDraftPage({
         ) : null}
       </section>
 
-      <Link href="/admin/cursos/asistente" className="text-sm underline">
+      <Link href="/admin/cursos/asistente" className="text-sm underline underline-offset-4">
         {t.backToWizard}
       </Link>
     </main>

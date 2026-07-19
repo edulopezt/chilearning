@@ -4,6 +4,12 @@ import { useActionState, useState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
 import type { MutationResult } from "@/modules/academico/course-service";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createCourseAction } from "./actions";
 
 const t = esCL.courses;
@@ -26,95 +32,98 @@ export function CourseForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1 text-sm">
-        {t.nameLabel}
-        <input name="name" required className="min-h-11 rounded-md border px-3 text-base" />
-        {errors.name ? <span className="text-xs text-red-600">{errors.name}</span> : null}
-      </label>
+      <FieldRoot invalid={!!errors.name}>
+        <FieldLabel>{t.nameLabel}</FieldLabel>
+        <FieldControl name="name" required />
+        {errors.name ? <FieldError>{errors.name}</FieldError> : null}
+      </FieldRoot>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          {t.modalityLabel}
-          <select name="modality" defaultValue="elearning" className="min-h-11 rounded-md border px-3 text-base">
-            <option value="elearning">{t.modElearning}</option>
-            <option value="blended">{t.modBlended}</option>
-            <option value="presential">{t.modPresential}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.hoursLabel}
-          <input name="hours" type="number" min={0} defaultValue={0} className="min-h-11 rounded-md border px-3 text-base" />
-          {errors.hours ? <span className="text-xs text-red-600">{errors.hours}</span> : null}
-        </label>
+        <FieldRoot>
+          <FieldLabel>{t.modalityLabel}</FieldLabel>
+          <Select name="modality" defaultValue="elearning">
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="elearning">{t.modElearning}</SelectItem>
+              <SelectItem value="blended">{t.modBlended}</SelectItem>
+              <SelectItem value="presential">{t.modPresential}</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldRoot>
+        <FieldRoot invalid={!!errors.hours}>
+          <FieldLabel>{t.hoursLabel}</FieldLabel>
+          <FieldControl name="hours" type="number" min={0} defaultValue={0} />
+          {errors.hours ? <FieldError>{errors.hours}</FieldError> : null}
+        </FieldRoot>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input name="sence" type="checkbox" value="true" checked={sence} onChange={(e) => setSence(e.target.checked)} className="size-4" />
+      <Label>
+        <Checkbox name="sence" value="true" checked={sence} onCheckedChange={setSence} />
         {t.senceLabel}
-      </label>
+      </Label>
 
       {sence ? (
-        <label className="flex flex-col gap-1 text-sm">
-          {t.codSenceLabel}
-          <input name="codSence" inputMode="numeric" maxLength={10} className="min-h-11 rounded-md border px-3 font-mono text-base" />
-          <span className="text-muted-foreground text-xs">{t.codSenceHint}</span>
-          {errors.codSence ? <span className="text-xs text-red-600">{errors.codSence}</span> : null}
-        </label>
+        <FieldRoot invalid={!!errors.codSence}>
+          <FieldLabel>{t.codSenceLabel}</FieldLabel>
+          <FieldControl name="codSence" inputMode="numeric" maxLength={10} className="font-mono" />
+          <FieldDescription>{t.codSenceHint}</FieldDescription>
+          {errors.codSence ? <FieldError>{errors.codSence}</FieldError> : null}
+        </FieldRoot>
       ) : null}
 
       <fieldset className="flex flex-col gap-3 rounded-md border p-4">
         <legend className="px-1 text-sm font-medium">{t.rulesTitle}</legend>
-        <label className="flex items-center gap-2 text-sm">
-          <input name="requireAllLessons" type="checkbox" value="true" defaultChecked className="size-4" />
+        <Label>
+          <Checkbox name="requireAllLessons" value="true" defaultChecked />
           {t.requireAllLessons}
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input name="requireSurvey" type="checkbox" value="true" className="size-4" />
+        </Label>
+        <Label>
+          <Checkbox name="requireSurvey" value="true" />
           {t.requireSurvey}
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t.minAttendance}
-          <input name="minAttendancePct" type="number" min={0} max={100} defaultValue={0} className="min-h-11 w-32 rounded-md border px-3 text-base" />
-        </label>
+        </Label>
+        <FieldRoot className="max-w-32">
+          <FieldLabel>{t.minAttendance}</FieldLabel>
+          <FieldControl name="minAttendancePct" type="number" min={0} max={100} defaultValue={0} />
+        </FieldRoot>
       </fieldset>
 
       {/* Vigencia del certificado (task 5.12, HU-7.3): vacío = no vence. */}
-      <label className="flex flex-col gap-1 text-sm">
-        {tExpiry.validityLabel}
-        <input
-          name="validityMonths"
-          type="number"
-          min={1}
-          max={120}
-          placeholder="—"
-          className="min-h-11 w-32 rounded-md border px-3 text-base"
-        />
-        <span className="text-muted-foreground text-xs">{tExpiry.validityHint}</span>
-        {errors.validityMonths ? <span className="text-xs text-red-600">{errors.validityMonths}</span> : null}
-      </label>
+      <FieldRoot className="max-w-32" invalid={!!errors.validityMonths}>
+        <FieldLabel>{tExpiry.validityLabel}</FieldLabel>
+        <FieldControl name="validityMonths" type="number" min={1} max={120} placeholder="—" />
+        <FieldDescription>{tExpiry.validityHint}</FieldDescription>
+        {errors.validityMonths ? <FieldError>{errors.validityMonths}</FieldError> : null}
+      </FieldRoot>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t.statusLabel}
-        <select name="status" defaultValue="draft" className="min-h-11 w-full max-w-xs rounded-md border px-3 text-base">
-          <option value="draft">{t.statusDraft}</option>
-          <option value="published">{t.statusPublished}</option>
-        </select>
-      </label>
+      <FieldRoot className="max-w-xs">
+        <FieldLabel>{t.statusLabel}</FieldLabel>
+        <Select name="status" defaultValue="draft">
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="draft">{t.statusDraft}</SelectItem>
+            <SelectItem value="published">{t.statusPublished}</SelectItem>
+          </SelectContent>
+        </Select>
+      </FieldRoot>
 
       {state?.ok ? (
-        <p role="status" className="text-sm text-green-700 dark:text-green-400">{t.saved}</p>
+        <Alert variant="success" role="status" className="w-auto">
+          <AlertDescription>{t.saved}</AlertDescription>
+        </Alert>
       ) : null}
       {state && !state.ok && "error" in state ? (
-        <p role="alert" className="text-sm text-red-600">{t.genericError}</p>
+        <Alert variant="destructive" role="alert" className="w-auto">
+          <AlertDescription>{t.genericError}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="min-h-11 w-full rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 sm:w-auto dark:bg-white dark:text-neutral-900"
-      >
+      <Button type="submit" loading={pending} className="w-full sm:w-auto">
         {t.save}
-      </button>
+      </Button>
     </form>
   );
 }

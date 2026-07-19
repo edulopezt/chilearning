@@ -5,6 +5,8 @@ import { esCL } from "@/i18n/es-CL";
 import { listDrafts } from "@/modules/academico/wizard-service";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DescriptorDownloadButton } from "./descriptor-download-button";
 import { DiscardButton } from "./discard-button";
 import { NewDraftForms } from "./new-draft-forms";
@@ -58,50 +60,47 @@ export default async function CourseWizardIndexPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-      </header>
+      <PageHeader title={t.title} description={t.intro} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.draftsTitle}</h2>
         {drafts.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.draftsEmpty}</p>
+          <p className="text-sm text-muted-foreground">{t.draftsEmpty}</p>
         ) : (
           <>
             {/* Tabla ≥sm, tarjetas <sm (RNF-6) */}
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full min-w-[36rem] border-collapse text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="py-2 pr-3">{t.colSource}</th>
-                    <th className="py-2 pr-3">{t.colStep}</th>
-                    <th className="py-2 pr-3">{t.colUpdated}</th>
-                    <th className="py-2" />
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t.colSource}</TableHead>
+                    <TableHead>{t.colStep}</TableHead>
+                    <TableHead>{t.colUpdated}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {drafts.map((d) => (
-                    <tr key={d.id} className="border-b last:border-0">
-                      <td className="py-2 pr-3">{SOURCE_LABEL[d.source] ?? d.source}</td>
-                      <td className="py-2 pr-3">
+                    <TableRow key={d.id}>
+                      <TableCell>{SOURCE_LABEL[d.source] ?? d.source}</TableCell>
+                      <TableCell>
                         <span title={d.status === "failed" ? descriptorErrorMessage(d.descriptorError) : undefined}>
                           {STATUS_LABEL[d.status] ?? STEP_LABEL[d.currentStep] ?? d.currentStep}
                         </span>
-                      </td>
-                      <td className="py-2 pr-3">{new Date(d.updatedAt).toLocaleString("es-CL")}</td>
-                      <td className="py-2">
+                      </TableCell>
+                      <TableCell>{new Date(d.updatedAt).toLocaleString("es-CL")}</TableCell>
+                      <TableCell>
                         <span className="flex flex-wrap items-center gap-3">
-                          <Link href={`/admin/cursos/asistente/${d.id}`} className="text-sm underline">
+                          <Link href={`/admin/cursos/asistente/${d.id}`} className="text-sm underline underline-offset-4">
                             {t.resume}
                           </Link>
                           <DiscardButton draftId={d.id} />
                         </span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             <ul className="flex flex-col gap-2 sm:hidden">
               {drafts.map((d) => (
@@ -110,11 +109,11 @@ export default async function CourseWizardIndexPage() {
                     {SOURCE_LABEL[d.source] ?? d.source} · {STATUS_LABEL[d.status] ?? STEP_LABEL[d.currentStep] ?? d.currentStep}
                   </span>
                   {d.status === "failed" ? (
-                    <span className="text-xs text-red-600">{descriptorErrorMessage(d.descriptorError)}</span>
+                    <span className="text-xs text-destructive">{descriptorErrorMessage(d.descriptorError)}</span>
                   ) : null}
-                  <span className="text-muted-foreground text-xs">{new Date(d.updatedAt).toLocaleString("es-CL")}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(d.updatedAt).toLocaleString("es-CL")}</span>
                   <span className="flex items-center gap-3">
-                    <Link href={`/admin/cursos/asistente/${d.id}`} className="underline">
+                    <Link href={`/admin/cursos/asistente/${d.id}`} className="underline underline-offset-4">
                       {t.resume}
                     </Link>
                     <DiscardButton draftId={d.id} />
@@ -133,9 +132,9 @@ export default async function CourseWizardIndexPage() {
             {generatedDrafts.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
                 <span className="font-medium">{SOURCE_LABEL[d.source] ?? d.source}</span>
-                <span className="text-muted-foreground text-xs">{new Date(d.updatedAt).toLocaleString("es-CL")}</span>
+                <span className="text-xs text-muted-foreground">{new Date(d.updatedAt).toLocaleString("es-CL")}</span>
                 {d.generatedCourseId ? (
-                  <Link href={`/admin/cursos/${d.generatedCourseId}/lecciones`} className="underline">
+                  <Link href={`/admin/cursos/${d.generatedCourseId}/lecciones`} className="underline underline-offset-4">
                     {t.viewCourse}
                   </Link>
                 ) : null}
@@ -148,7 +147,7 @@ export default async function CourseWizardIndexPage() {
 
       <NewDraftForms />
 
-      <Link href="/admin/cursos" className="text-sm underline">
+      <Link href="/admin/cursos" className="text-sm underline underline-offset-4">
         {t.backToCourses}
       </Link>
     </main>

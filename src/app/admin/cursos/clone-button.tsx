@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Button } from "@/components/ui/button";
 import { cloneCourseAction } from "./actions";
 
 const t = esCL.courses;
@@ -14,9 +15,11 @@ export function CloneButton({ courseId }: { courseId: string }) {
 
   return (
     <span className="inline-flex items-center gap-2">
-      <button
+      <Button
         type="button"
-        disabled={pending}
+        variant="ghost"
+        size="sm"
+        loading={pending}
         onClick={() =>
           start(async () => {
             setError(false);
@@ -24,12 +27,11 @@ export function CloneButton({ courseId }: { courseId: string }) {
             if (!result.ok) setError(true);
           })
         }
-        className="text-sm underline disabled:opacity-60"
       >
         {pending ? t.cloning : t.clone}
-      </button>
+      </Button>
       {error ? (
-        <span role="alert" className="text-xs text-red-600">
+        <span role="alert" className="text-xs text-destructive">
           {t.cloneError}
         </span>
       ) : null}

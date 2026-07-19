@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Button } from "@/components/ui/button";
 import { descriptorDownloadUrlAction } from "./actions";
 
 const t = esCL.wizard;
@@ -19,9 +20,11 @@ export function DescriptorDownloadButton({ draftId }: { draftId: string }) {
 
   return (
     <span className="inline-flex items-center gap-2">
-      <button
+      <Button
         type="button"
-        disabled={pending}
+        variant="ghost"
+        size="sm"
+        loading={pending}
         onClick={() => {
           setError(false);
           start(async () => {
@@ -33,12 +36,11 @@ export function DescriptorDownloadButton({ draftId }: { draftId: string }) {
             window.open(result.url, "_blank", "noopener,noreferrer");
           });
         }}
-        className="text-sm underline disabled:opacity-60"
       >
         {pending ? t.downloadingDescriptor : t.downloadDescriptor}
-      </button>
+      </Button>
       {error ? (
-        <span role="alert" className="text-xs text-red-600">
+        <span role="alert" className="text-xs text-destructive">
           {t.downloadDescriptorError}
         </span>
       ) : null}

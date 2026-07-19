@@ -1,10 +1,16 @@
 import Link from "next/link";
+import { ClipboardListIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { listQuizzesByCourse } from "@/modules/evaluacion/quiz-service";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { QuizForm } from "./quiz-form";
 import { publishQuizAction, deleteQuizAction } from "./actions";
 
@@ -36,54 +42,47 @@ export default async function EvaluacionesPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 p-4 sm:p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
-      </header>
+      <PageHeader title={t.title} description={t.intro} />
 
       <section className="flex flex-col gap-3">
         {quizzes.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.empty}</p>
+          <EmptyState icon={<ClipboardListIcon />} title={t.empty} />
         ) : (
           <ul className="flex flex-col gap-2">
             {quizzes.map((q) => (
-              <li key={q.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
-                <span className="flex-1 font-medium">{q.title}</span>
-                <span className="text-muted-foreground text-sm">
-                  {q.questionCount} {t.colQuestions.toLowerCase()}
-                </span>
-                <span
-                  className={`rounded px-2 py-0.5 text-xs ${
-                    q.status === "published"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                  }`}
-                >
-                  {q.status === "published" ? t.statusPublished : t.statusDraft}
-                </span>
-                <Link
-                  href={`/admin/cursos/${courseId}/evaluaciones/quiz/${q.id}`}
-                  className="text-sm underline"
-                >
-                  {t.edit}
-                </Link>
-                <form action={publishQuizAction}>
-                  <input type="hidden" name="quizId" value={q.id} />
-                  <input type="hidden" name="courseId" value={courseId} />
-                  <input type="hidden" name="publish" value={q.status === "published" ? "false" : "true"} />
-                  <button type="submit" className="text-sm underline">
-                    {q.status === "published" ? t.unpublish : t.publish}
-                  </button>
-                </form>
-                {q.status === "draft" ? (
-                  <form action={deleteQuizAction}>
+              <li key={q.id}>
+                <Card className="flex-row flex-wrap items-center gap-3 p-3">
+                  <span className="flex-1 font-medium">{q.title}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {q.questionCount} {t.colQuestions.toLowerCase()}
+                  </span>
+                  <Badge variant={q.status === "published" ? "success" : "secondary"}>
+                    {q.status === "published" ? t.statusPublished : t.statusDraft}
+                  </Badge>
+                  <Link
+                    href={`/admin/cursos/${courseId}/evaluaciones/quiz/${q.id}`}
+                    className="text-sm underline underline-offset-4"
+                  >
+                    {t.edit}
+                  </Link>
+                  <form action={publishQuizAction}>
                     <input type="hidden" name="quizId" value={q.id} />
                     <input type="hidden" name="courseId" value={courseId} />
-                    <button type="submit" className="text-sm text-red-600 underline">
-                      {t.deleteQuiz}
-                    </button>
+                    <input type="hidden" name="publish" value={q.status === "published" ? "false" : "true"} />
+                    <Button type="submit" variant="ghost" size="sm">
+                      {q.status === "published" ? t.unpublish : t.publish}
+                    </Button>
                   </form>
-                ) : null}
+                  {q.status === "draft" ? (
+                    <form action={deleteQuizAction}>
+                      <input type="hidden" name="quizId" value={q.id} />
+                      <input type="hidden" name="courseId" value={courseId} />
+                      <Button type="submit" variant="ghost" size="sm" className="text-destructive">
+                        {t.deleteQuiz}
+                      </Button>
+                    </form>
+                  ) : null}
+                </Card>
               </li>
             ))}
           </ul>
@@ -96,7 +95,7 @@ export default async function EvaluacionesPage({
       </section>
 
       <p>
-        <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline">
+        <Link href={`/admin/cursos/${courseId}/lecciones`} className="text-sm underline underline-offset-4">
           ← {esCL.lessons.title}
         </Link>
       </p>

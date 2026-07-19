@@ -5,6 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { esCL } from "@/i18n/es-CL";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { discardDraftAction } from "../actions";
 
 const t = esCL.wizard;
@@ -24,13 +37,13 @@ export function DescriptorProcessingStatus() {
   }, [router]);
 
   return (
-    <div className="flex flex-col items-start gap-3 rounded-md border p-4">
+    <Card className="items-start gap-3 p-4">
       <h2 className="text-base font-semibold">{t.descriptorProcessingTitle}</h2>
-      <p className="text-muted-foreground text-sm">{t.descriptorProcessingBody}</p>
-      <button type="button" onClick={() => router.refresh()} className="min-h-11 text-sm underline">
+      <p className="text-sm text-muted-foreground">{t.descriptorProcessingBody}</p>
+      <Button type="button" variant="outline" size="sm" onClick={() => router.refresh()}>
         {t.refreshNow}
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }
 
@@ -43,42 +56,56 @@ export function DescriptorFailedStatus({ draftId, errorCode }: { draftId: string
   const [discardError, setDiscardError] = useState(false);
   const message = (errorCode && DESCRIPTOR_ERROR_LABELS[errorCode]) || t.descriptorErrorGeneric;
 
+  function discard(): void {
+    start(async () => {
+      setDiscardError(false);
+      const result = await discardDraftAction(draftId);
+      if (!result.ok) {
+        setDiscardError(true);
+        return;
+      }
+      router.push("/admin/cursos/asistente");
+    });
+  }
+
   return (
-    <div className="flex flex-col items-start gap-3 rounded-md border border-red-300 p-4 dark:border-red-800">
+    <Card className="items-start gap-3 border-destructive/30 p-4">
       <h2 className="text-base font-semibold">{t.descriptorFailedTitle}</h2>
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-destructive">
         {message}
       </p>
-      <p className="text-muted-foreground text-sm">{t.descriptorFailedHint}</p>
+      <p className="text-sm text-muted-foreground">{t.descriptorFailedHint}</p>
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/admin/cursos/asistente" className="min-h-11 text-sm underline">
+        <Link href="/admin/cursos/asistente" className="text-sm underline underline-offset-4">
           {t.backToWizard}
         </Link>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            if (!confirm(t.discardConfirm)) return;
-            start(async () => {
-              setDiscardError(false);
-              const result = await discardDraftAction(draftId);
-              if (!result.ok) {
-                setDiscardError(true);
-                return;
-              }
-              router.push("/admin/cursos/asistente");
-            });
-          }}
-          className="min-h-11 text-sm text-red-600 underline disabled:opacity-60"
-        >
-          {pending ? t.discarding : t.discard}
-        </button>
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={
+              <Button type="button" variant="ghost" size="sm" loading={pending} className="text-destructive">
+                {pending ? t.discarding : t.discard}
+              </Button>
+            }
+          />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t.discard}</AlertDialogTitle>
+              <AlertDialogDescription>{t.discardConfirm}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{esCL.common.cancel}</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={discard}>
+                {t.discard}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       {discardError ? (
-        <span role="alert" className="text-xs text-red-600">
+        <span role="alert" className="text-xs text-destructive">
           {t.discardError}
         </span>
       ) : null}
-    </div>
+    </Card>
   );
 }

@@ -4,6 +4,13 @@ import { useRef, useState } from "react";
 import { useActionState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FieldControl, FieldLabel, FieldRoot } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { createSurveyAction, type SurveyActionState } from "./actions";
 
 const t = esCL.surveys;
@@ -65,106 +72,109 @@ export function SurveyForm({ courseId }: { courseId: string }) {
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="questions" value={JSON.stringify(buildQuestions(questions))} />
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t.titleLabel}
-        <input name="title" required className="input" />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        {t.introLabel}
-        <textarea name="intro" rows={2} className="input" />
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="anonymous" defaultChecked className="size-4" />
+      <FieldRoot>
+        <FieldLabel>{t.titleLabel}</FieldLabel>
+        <FieldControl name="title" required />
+      </FieldRoot>
+      <FieldRoot>
+        <FieldLabel>{t.introLabel}</FieldLabel>
+        <FieldControl name="intro" render={<Textarea rows={2} />} />
+      </FieldRoot>
+      <Label>
+        <Checkbox name="anonymous" value="true" defaultChecked />
         {t.anonymousLabel}
-      </label>
+      </Label>
 
       <fieldset className="flex flex-col gap-3 border-t pt-4">
         <legend className="text-sm font-semibold">{t.questionsHeading}</legend>
         {questions.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t.noQuestions}</p>
+          <p className="text-sm text-muted-foreground">{t.noQuestions}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {questions.map((q) => (
-              <li key={q.key} className="flex flex-col gap-2 rounded-md border p-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800">{typeLabel[q.type]}</span>
-                  <button
+              <li key={q.key} className="flex flex-col gap-2 rounded-lg border p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{typeLabel[q.type]}</Badge>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => remove(q.key)}
-                    className="ml-auto min-h-11 text-red-600 underline"
+                    className="ml-auto text-destructive"
                   >
                     {t.removeQuestion}
-                  </button>
+                  </Button>
                 </div>
-                <label className="flex flex-col gap-1 text-sm">
-                  {t.questionLabel}
-                  <input
-                    value={q.label}
-                    onChange={(e) => update(q.key, { label: e.target.value })}
-                    className="input"
-                  />
-                </label>
+                <FieldRoot>
+                  <FieldLabel>{t.questionLabel}</FieldLabel>
+                  <FieldControl value={q.label} onChange={(e) => update(q.key, { label: e.target.value })} />
+                </FieldRoot>
                 {q.type === "scale" ? (
-                  <label className="flex flex-col gap-1 text-sm sm:max-w-40">
-                    {t.scaleMaxLabel}
-                    <input
+                  <FieldRoot className="sm:max-w-40">
+                    <FieldLabel>{t.scaleMaxLabel}</FieldLabel>
+                    <FieldControl
                       type="number"
                       min={2}
                       max={10}
                       value={q.scaleMax}
                       onChange={(e) => update(q.key, { scaleMax: Number(e.target.value) })}
-                      className="input"
                     />
-                  </label>
+                  </FieldRoot>
                 ) : null}
                 {q.type === "single" ? (
-                  <label className="flex flex-col gap-1 text-sm">
-                    {t.optionsLabel}
-                    <textarea
-                      rows={3}
-                      value={q.optionsText}
-                      onChange={(e) => update(q.key, { optionsText: e.target.value })}
-                      className="input"
+                  <FieldRoot>
+                    <FieldLabel>{t.optionsLabel}</FieldLabel>
+                    <FieldControl
+                      render={
+                        <Textarea
+                          rows={3}
+                          value={q.optionsText}
+                          onChange={(e) => update(q.key, { optionsText: e.target.value })}
+                        />
+                      }
                     />
-                  </label>
+                  </FieldRoot>
                 ) : null}
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={q.required}
-                    onChange={(e) => update(q.key, { required: e.target.checked })}
-                    className="size-4"
-                  />
+                <Label>
+                  <Checkbox checked={q.required} onCheckedChange={(v) => update(q.key, { required: v })} />
                   {t.requiredLabel}
-                </label>
+                </Label>
               </li>
             ))}
           </ul>
         )}
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => add("scale")} className="min-h-11 rounded-md border px-3 text-sm">
+          <Button type="button" variant="outline" size="sm" onClick={() => add("scale")}>
             {t.addScale}
-          </button>
-          <button type="button" onClick={() => add("single")} className="min-h-11 rounded-md border px-3 text-sm">
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => add("single")}>
             {t.addSingle}
-          </button>
-          <button type="button" onClick={() => add("text")} className="min-h-11 rounded-md border px-3 text-sm">
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => add("text")}>
             {t.addText}
-          </button>
+          </Button>
         </div>
       </fieldset>
 
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="min-h-11 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-        >
+        <Button type="submit" loading={pending}>
           {t.save}
-        </button>
-        {state.status === "ok" ? <span className="text-sm text-green-700 dark:text-green-400">{t.saved}</span> : null}
-        {state.status === "invalid" ? <span role="alert" className="text-sm text-red-600">{t.invalid}</span> : null}
-        {state.status === "error" ? <span role="alert" className="text-sm text-red-600">{t.genericError}</span> : null}
+        </Button>
+        {state.status === "ok" ? (
+          <Alert variant="success" role="status" className="w-auto py-2">
+            <AlertDescription>{t.saved}</AlertDescription>
+          </Alert>
+        ) : null}
+        {state.status === "invalid" ? (
+          <Alert variant="destructive" role="alert" className="w-auto py-2">
+            <AlertDescription>{t.invalid}</AlertDescription>
+          </Alert>
+        ) : null}
+        {state.status === "error" ? (
+          <Alert variant="destructive" role="alert" className="w-auto py-2">
+            <AlertDescription>{t.genericError}</AlertDescription>
+          </Alert>
+        ) : null}
       </div>
     </form>
   );
