@@ -8,7 +8,7 @@ import { esCL } from "@/i18n/es-CL"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import type { RoleKey } from "@/modules/core/domain/rbac"
-import { buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
 import {
   DropdownMenu,
   DropdownMenuContent,

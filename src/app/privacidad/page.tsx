@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { esCL } from "@/i18n/es-CL";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -127,8 +127,8 @@ export default function PrivacyPage() {
 
               {/* Registro de tratamientos — desde el catálogo de dominio */}
               {section.id === "finalidades" ? (
-                <div className="mt-2 min-w-[36rem]">
-                  <Table>
+                <div className="mt-2">
+                  <Table className="min-w-[36rem]">
                     <TableCaption className="sr-only">{p.processingTitle}</TableCaption>
                     <TableHeader>
                       <TableRow>
@@ -152,8 +152,8 @@ export default function PrivacyPage() {
 
               {/* Subencargados */}
               {section.id === "encargados" ? (
-                <div className="mt-2 min-w-[36rem]">
-                  <Table>
+                <div className="mt-2">
+                  <Table className="min-w-[36rem]">
                     <TableCaption className="sr-only">{section.heading}</TableCaption>
                     <TableHeader>
                       <TableRow>
@@ -184,8 +184,8 @@ export default function PrivacyPage() {
 
               {/* Retención — desde el catálogo de dominio */}
               {section.id === "retencion" ? (
-                <div className="mt-2 min-w-[36rem]">
-                  <Table>
+                <div className="mt-2">
+                  <Table className="min-w-[36rem]">
                     <TableCaption className="sr-only">{p.retentionTitle}</TableCaption>
                     <TableHeader>
                       <TableRow>
