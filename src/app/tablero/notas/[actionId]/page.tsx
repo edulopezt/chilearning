@@ -5,6 +5,10 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { getGradebook, getGradeHistory } from "@/modules/evaluacion/gradebook-service";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { cn } from "@/lib/utils";
 import { GradebookTable } from "./gradebook-table";
 
 export const dynamic = "force-dynamic";
@@ -58,48 +62,47 @@ export default async function NotasAccionPage({
       <header className="flex flex-wrap items-center gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">{t.boardTitle}</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             {view.courseName} · <span className="font-mono">{view.code}</span>
           </p>
         </div>
         <span className="flex-1" />
-        <a
-          href={`/api/reportes/notas/${actionId}`}
-          className="min-h-11 rounded-md border px-4 py-2 text-sm font-medium underline-offset-2 hover:underline"
-        >
+        <a href={`/api/reportes/notas/${actionId}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           {t.downloadCsv}
         </a>
       </header>
 
       <GradebookTable gradebook={view.gradebook} />
-      {anyIncomplete ? <p className="text-muted-foreground text-xs">{t.incompleteHint}</p> : null}
+      {anyIncomplete ? <p className="text-xs text-muted-foreground">{t.incompleteHint}</p> : null}
 
       {isAdmin ? (
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-semibold">{t.historyTitle}</h2>
-          <p className="text-muted-foreground text-xs">{t.historyIntro}</p>
+          <p className="text-xs text-muted-foreground">{t.historyIntro}</p>
           {history.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t.historyEmpty}</p>
+            <EmptyState title={t.historyEmpty} />
           ) : (
             <ul className="flex flex-col gap-2">
               {history.map((h, idx) => (
-                <li key={`${h.gradeId}-${idx}`} className="rounded-md border p-3 text-sm">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="font-medium">{h.studentName}</span>
-                    <span className="text-muted-foreground">{h.instrument}</span>
-                    <span className="tabular-nums">
-                      {h.oldGrade?.toFixed(1) ?? "—"} → <strong>{h.newGrade?.toFixed(1) ?? "—"}</strong>
-                    </span>
-                    <span className="flex-1" />
-                    <span className="text-muted-foreground text-xs">{formatSantiago(h.at)}</span>
-                  </div>
-                  <p className="mt-1">
-                    <span className="text-muted-foreground">{t.histMotivo}: </span>
-                    {h.motivo || "—"}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {t.histActor}: {h.actor}
-                  </p>
+                <li key={`${h.gradeId}-${idx}`}>
+                  <Card className="p-3 text-sm">
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="font-medium">{h.studentName}</span>
+                      <span className="text-muted-foreground">{h.instrument}</span>
+                      <span className="tabular-nums">
+                        {h.oldGrade?.toFixed(1) ?? "—"} → <strong>{h.newGrade?.toFixed(1) ?? "—"}</strong>
+                      </span>
+                      <span className="flex-1" />
+                      <span className="text-xs text-muted-foreground">{formatSantiago(h.at)}</span>
+                    </div>
+                    <p className="mt-1">
+                      <span className="text-muted-foreground">{t.histMotivo}: </span>
+                      {h.motivo || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.histActor}: {h.actor}
+                    </p>
+                  </Card>
                 </li>
               ))}
             </ul>
@@ -108,7 +111,7 @@ export default async function NotasAccionPage({
       ) : null}
 
       <p>
-        <Link href="/tablero/notas" className="text-sm underline">
+        <Link href="/tablero/notas" className="text-sm underline underline-offset-4">
           ← {t.backToActions}
         </Link>
       </p>

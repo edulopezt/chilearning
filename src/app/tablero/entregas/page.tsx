@@ -5,6 +5,8 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { listComplianceActions } from "@/modules/reportes/cumplimiento-service";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -31,21 +33,20 @@ export default async function EntregasPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
+        <p className="text-sm text-muted-foreground">{t.intro}</p>
       </header>
 
       {actions.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t.selectAction}</p>
+        <EmptyState title={t.selectAction} />
       ) : (
         <ul className="flex flex-col gap-2">
           {actions.map((a) => (
             <li key={a.actionId}>
-              <Link
-                href={`/tablero/entregas/${a.actionId}`}
-                className="flex min-h-11 items-center gap-3 rounded-md border p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-              >
-                <span className="font-medium">{a.courseName}</span>
-                <span className="text-muted-foreground font-mono text-sm">{a.codigoAccion}</span>
+              <Link href={`/tablero/entregas/${a.actionId}`} className="block">
+                <Card className="flex-row items-center gap-3 p-3 transition-colors hover:bg-accent/50">
+                  <span className="font-medium">{a.courseName}</span>
+                  <span className="font-mono text-sm text-muted-foreground">{a.codigoAccion}</span>
+                </Card>
               </Link>
             </li>
           ))}
