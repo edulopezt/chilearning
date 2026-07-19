@@ -7,6 +7,10 @@
 import { useRef, useState } from "react";
 
 import { esCL } from "@/i18n/es-CL";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { deriveToHumanAction } from "./actions";
 
 interface Citation {
@@ -162,32 +166,33 @@ export function TutorChat({ courseName }: { courseName: string }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
-      <p className="text-muted-foreground text-sm">{courseName}</p>
+      <p className="text-sm text-muted-foreground">{courseName}</p>
       {/* Banner PERMANENTE (no descartable), RNF-10/HU-11.1. */}
-      <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        {t.banner}
-      </div>
+      <Alert variant="warning" className="text-xs">
+        <AlertDescription>{t.banner}</AlertDescription>
+      </Alert>
 
       {errorBanner ? (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
-          {errorBanner}
-        </div>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{errorBanner}</AlertDescription>
+        </Alert>
       ) : null}
 
       <ul className="flex min-w-0 flex-1 flex-col gap-3">
         {messages.map((m, i) => (
           <li
             key={i}
-            className={`min-w-0 max-w-full rounded-lg border p-3 text-sm break-words whitespace-pre-wrap sm:max-w-[85%] ${
-              m.role === "user" ? "self-end bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "self-start"
-            }`}
+            className={cn(
+              "min-w-0 max-w-full rounded-lg border p-3 text-sm break-words whitespace-pre-wrap sm:max-w-[85%]",
+              m.role === "user" ? "self-end border-transparent bg-primary text-primary-foreground" : "self-start"
+            )}
           >
             {m.text || (m.pending ? t.sending : "")}
             {m.citations && m.citations.length > 0 ? (
               <div className="mt-2 flex flex-col gap-1 border-t pt-2 text-xs opacity-80">
                 <span className="font-medium">{t.citationsLabel}:</span>
                 {m.citations.map((c) => (
-                  <a key={c.lessonId} href={`/mi-curso#leccion-${c.lessonId}`} className="underline">
+                  <a key={c.lessonId} href={`/mi-curso#leccion-${c.lessonId}`} className="underline underline-offset-4">
                     {c.lessonTitle}
                   </a>
                 ))}
@@ -201,39 +206,40 @@ export function TutorChat({ courseName }: { courseName: string }) {
         <label className="sr-only" htmlFor="tutor-question">
           {t.inputLabel}
         </label>
-        <textarea
+        <Textarea
           id="tutor-question"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={t.inputPlaceholder}
           rows={2}
-          className="min-h-11 min-w-0 flex-1 rounded-md border px-3 py-2 text-sm"
+          className="min-w-0 flex-1"
         />
-        <button
-          type="submit"
-          disabled={sending || input.trim().length === 0}
-          className="min-h-11 shrink-0 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-        >
+        <Button type="submit" loading={sending} disabled={input.trim().length === 0} className="shrink-0">
           {sending ? t.sending : t.send}
-        </button>
+        </Button>
       </form>
 
       <div className="flex flex-wrap items-center gap-3 border-t pt-3 text-sm">
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={handleDerive}
-          disabled={!lastQuestionRef.current || deriveStatus === "sending"}
-          className="min-h-11 rounded-md border px-4 font-medium disabled:opacity-50"
+          disabled={!lastQuestionRef.current}
+          loading={deriveStatus === "sending"}
         >
           {t.deriveToHuman}
-        </button>
+        </Button>
         {deriveStatus === "sent" ? (
-          <span className="text-green-700 dark:text-green-400">
-            {t.deriveSent} <a href="/mi-curso/comunicacion" className="underline">{t.deriveGoToInbox}</a>
+          <span className="text-success">
+            {t.deriveSent}{" "}
+            <a href="/mi-curso/comunicacion" className="underline underline-offset-4">
+              {t.deriveGoToInbox}
+            </a>
           </span>
         ) : null}
         {deriveStatus === "error" ? (
-          <span className="text-red-700 dark:text-red-400">
+          <span className="text-destructive">
             {deriveError === "no_question" ? t.deriveNoQuestion : t.deriveGenericError}
           </span>
         ) : null}

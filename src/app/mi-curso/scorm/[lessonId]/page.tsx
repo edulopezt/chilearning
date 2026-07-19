@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 
 import Link from "next/link";
+import { LockIcon } from "lucide-react";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getScormCmiState, getStudentScormLessonView } from "@/modules/contenido/scorm-runtime-service";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ScormPlayer } from "./scorm-player";
 
 export const dynamic = "force-dynamic";
@@ -30,14 +32,9 @@ export default async function ScormLessonPage({
 
   if (view.kind === "locked") {
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col items-center justify-center gap-4 p-6 text-center">
-        <div
-          aria-hidden="true"
-          className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground"
-        >
-          🔒 {esCL.course.lockedTitle}
-        </div>
-        <Link href="/mi-curso" className="text-sm underline">
+      <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col items-center justify-center gap-4 p-6">
+        <EmptyState icon={<LockIcon />} title={esCL.course.lockedTitle} />
+        <Link href="/mi-curso" className="text-sm underline underline-offset-4">
           {esCL.scorm.backToCourse}
         </Link>
       </main>
@@ -47,8 +44,8 @@ export default async function ScormLessonPage({
   if (view.kind === "not_ready") {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col items-center justify-center gap-4 p-6 text-center">
-        <p className="text-muted-foreground text-sm">{esCL.scorm.notReadyYet}</p>
-        <Link href="/mi-curso" className="text-sm underline">
+        <p className="text-sm text-muted-foreground">{esCL.scorm.notReadyYet}</p>
+        <Link href="/mi-curso" className="text-sm underline underline-offset-4">
           {esCL.scorm.backToCourse}
         </Link>
       </main>
@@ -62,7 +59,7 @@ export default async function ScormLessonPage({
     <main className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
       <header className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold tracking-tight">{esCL.scorm.playerTitle}</h1>
-        <Link href="/mi-curso" className="text-sm underline">
+        <Link href="/mi-curso" className="text-sm underline underline-offset-4">
           {esCL.scorm.backToCourse}
         </Link>
       </header>

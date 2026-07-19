@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getThread } from "@/modules/comunicacion/message-service";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { FieldControl, FieldRoot } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { sendMessageAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -23,18 +28,28 @@ export default async function StudentMessageThreadPage({ params }: { params: Pro
       <h1 className="text-xl font-bold">{view.thread.subject}</h1>
       <ul className="flex flex-col gap-3">
         {view.messages.map((m) => (
-          <li key={m.id} className={`rounded-lg border p-3 ${m.senderIsStaff ? "bg-blue-50 dark:bg-blue-950" : ""}`}>
-            <p className="mb-1 text-xs text-muted-foreground">{m.senderIsStaff ? t.staffBadge : ""} · {new Date(m.createdAt).toLocaleString("es-CL")}</p>
-            <p className="whitespace-pre-wrap text-sm">{m.body}</p>
+          <li key={m.id}>
+            <Card className={cn("gap-1 p-3", m.senderIsStaff && "bg-accent")}>
+              <p className="mb-1 text-xs text-muted-foreground">
+                {m.senderIsStaff ? t.staffBadge : ""} · {new Date(m.createdAt).toLocaleString("es-CL")}
+              </p>
+              <p className="text-sm whitespace-pre-wrap">{m.body}</p>
+            </Card>
           </li>
         ))}
       </ul>
-      <form action={sendMessageAction} className="flex flex-col gap-2 border-t pt-3">
+      <form action={sendMessageAction} className="flex flex-col gap-3 border-t pt-3">
         <input type="hidden" name="threadId" value={threadId} />
-        <textarea name="body" required rows={3} placeholder={t.postBodyLabel} className="input" />
-        <button type="submit" className="min-h-11 self-start rounded-md bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">{t.send}</button>
+        <FieldRoot>
+          <FieldControl render={<Textarea name="body" required rows={3} placeholder={t.postBodyLabel} />} />
+        </FieldRoot>
+        <Button type="submit" className="self-start">
+          {t.send}
+        </Button>
       </form>
-      <Link href="/mi-curso/comunicacion" className="text-sm underline">← {t.messagesTitle}</Link>
+      <Link href="/mi-curso/comunicacion" className="text-sm underline underline-offset-4">
+        ← {t.messagesTitle}
+      </Link>
     </main>
   );
 }

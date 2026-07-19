@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { getStudentAssignmentView } from "@/modules/evaluacion/assignment-service";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { SubmitForm } from "./submit-form";
 import { DownloadLink } from "./download-link";
 
@@ -34,7 +36,7 @@ export default async function StudentAssignmentPage({
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{view.assignment.title}</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           {view.assignment.dueAt
             ? `${t.due}: ${new Date(view.assignment.dueAt).toLocaleString("es-CL")}`
             : t.noDue}
@@ -46,7 +48,7 @@ export default async function StudentAssignmentPage({
       ) : null}
 
       {view.grade ? (
-        <section className="flex flex-col gap-1 rounded-md border p-4">
+        <Card className="gap-1 p-4">
           <p className="text-2xl font-bold">
             {t.yourGrade}: {view.grade.grade.toFixed(1)}
           </p>
@@ -56,9 +58,9 @@ export default async function StudentAssignmentPage({
               {view.grade.feedback}
             </p>
           ) : null}
-        </section>
+        </Card>
       ) : view.submissions.length > 0 ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">{t.pending}</p>
+        <p className="text-sm text-warning">{t.pending}</p>
       ) : null}
 
       {view.submissions.length > 0 ? (
@@ -71,11 +73,7 @@ export default async function StudentAssignmentPage({
                   {t.version} {s.version}
                 </span>
                 <span className="text-muted-foreground">{s.file_name}</span>
-                {s.late ? (
-                  <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                    {t.lateBadge}
-                  </span>
-                ) : null}
+                {s.late ? <Badge variant="warning">{t.lateBadge}</Badge> : null}
                 <span className="flex-1" />
                 <DownloadLink submissionId={s.id} label={t.download} />
               </li>
@@ -87,7 +85,7 @@ export default async function StudentAssignmentPage({
       <SubmitForm assignmentId={assignmentId} resubmit={view.submissions.length > 0} />
 
       <p>
-        <Link href="/mi-curso" className="text-sm underline">
+        <Link href="/mi-curso" className="text-sm underline underline-offset-4">
           ← {t.backToCourse}
         </Link>
       </p>
