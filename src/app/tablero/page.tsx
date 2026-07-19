@@ -5,13 +5,16 @@ import { getInstructorBoard } from "@/modules/reportes/instructor-board";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import type { SemaforoColor } from "@/modules/reportes/domain/semaforo";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
 const DOT: Record<SemaforoColor, string> = {
-  green: "bg-green-500",
-  yellow: "bg-amber-500",
-  red: "bg-red-500",
+  green: "bg-success",
+  yellow: "bg-warning",
+  red: "bg-destructive",
 };
 const LABEL: Record<SemaforoColor, string> = {
   green: esCL.board.green,
@@ -40,50 +43,46 @@ export default async function BoardPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{esCL.board.title}</h1>
-        <p className="text-muted-foreground text-sm">{esCL.board.intro}</p>
+        <p className="text-sm text-muted-foreground">{esCL.board.intro}</p>
       </header>
 
       {rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{esCL.board.empty}</p>
+        <EmptyState title={esCL.board.empty} />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[36rem] border-collapse text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="py-2 pr-3">{esCL.board.colStatus}</th>
-                <th className="py-2 pr-3">{esCL.board.colCourse}</th>
-                <th className="py-2 pr-3">{esCL.board.colCode}</th>
-                <th className="py-2 pr-3">{esCL.board.colEnrolled}</th>
-                <th className="py-2 pr-3">{esCL.board.colProgress}</th>
-                <th className="py-2">{esCL.board.colAttendance}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.actionId} className="border-b last:border-0">
-                  <td className="py-2 pr-3">
-                    <span className="inline-flex items-center gap-2">
-                      <span className={`inline-block size-3 rounded-full ${DOT[r.semaforo.color]}`} aria-hidden />
-                      <span>{LABEL[r.semaforo.color]}</span>
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3">{r.courseName}</td>
-                  <td className="py-2 pr-3 font-mono">{r.code}</td>
-                  <td className="py-2 pr-3">{r.enrolled}</td>
-                  <td className="py-2 pr-3">
-                    <span className="flex items-center gap-2">
-                      <span className="h-2 w-16 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
-                        <span className="block h-full rounded-full bg-green-600" style={{ width: `${r.avgProgressPct}%` }} />
-                      </span>
-                      {r.avgProgressPct}%
-                    </span>
-                  </td>
-                  <td className="py-2">{r.attendanceRatePct}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{esCL.board.colStatus}</TableHead>
+              <TableHead>{esCL.board.colCourse}</TableHead>
+              <TableHead>{esCL.board.colCode}</TableHead>
+              <TableHead>{esCL.board.colEnrolled}</TableHead>
+              <TableHead>{esCL.board.colProgress}</TableHead>
+              <TableHead>{esCL.board.colAttendance}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.actionId}>
+                <TableCell>
+                  <span className="inline-flex items-center gap-2">
+                    <span className={`inline-block size-3 rounded-full ${DOT[r.semaforo.color]}`} aria-hidden />
+                    <span>{LABEL[r.semaforo.color]}</span>
+                  </span>
+                </TableCell>
+                <TableCell>{r.courseName}</TableCell>
+                <TableCell className="font-mono">{r.code}</TableCell>
+                <TableCell>{r.enrolled}</TableCell>
+                <TableCell>
+                  <span className="flex items-center gap-2">
+                    <Progress value={r.avgProgressPct} className="w-16" />
+                    {r.avgProgressPct}%
+                  </span>
+                </TableCell>
+                <TableCell>{r.attendanceRatePct}%</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </main>
   );

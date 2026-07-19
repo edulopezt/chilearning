@@ -5,6 +5,7 @@ import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
 import { authorize } from "@/modules/core/domain/rbac";
 import { listPendingSubmissions } from "@/modules/evaluacion/grading-service";
+import { EmptyState } from "@/components/ui/empty-state";
 import { GradeRow } from "./grade-row";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +44,11 @@ export default async function EntregasAccionPage({
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{t.gradingTitle}</h1>
-        <p className="text-muted-foreground text-sm">{t.intro}</p>
+        <p className="text-sm text-muted-foreground">{t.intro}</p>
       </header>
 
       {pending.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t.empty}</p>
+        <EmptyState title={t.empty} />
       ) : (
         <ul className="flex flex-col gap-3">
           {pending.map((s) => (
@@ -57,7 +58,7 @@ export default async function EntregasAccionPage({
       )}
 
       <p>
-        <Link href="/tablero/entregas" className="text-sm underline">
+        <Link href="/tablero/entregas" className="text-sm underline underline-offset-4">
           ← {t.title}
         </Link>
       </p>
