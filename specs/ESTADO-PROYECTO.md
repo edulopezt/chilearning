@@ -25,13 +25,45 @@
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
 - **Fecha:** 2026-07-19
+- **🎨 HITO 6 COMPLETO (17/17 tareas ✅, overhaul visual UX/UI), sesión autónoma end-to-end.**
+  Con el código funcionalmente completo, Edu pidió mejorar la UI (hoy gris por defecto de
+  shadcn, sin app shell, branding de tenant no aplicado a la app) e instalar la skill
+  `ui-ux-pro-max` global para apoyar el diseño. Las 17 tareas (6.0–6.16) quedaron mergeadas
+  a `main` en 17 PRs (#112–#128), CI verde en cada una: tokens/primitivos/dark mode/shell
+  (6.0–6.7) construyeron el design system; 6.8–6.14 migraron las ~64 páginas de la app
+  (pública, alumno, tablero, admin completo, los 3 portales) de estilos Tailwind
+  hardcodeados a `src/components/ui/*`; 6.15 agregó `cursor-pointer` a los primitivos
+  interactivos, cerró 3 regresiones reales encontradas al escribir la regla ESLint
+  (`mis-datos`, `scorm-player`, `attempt-runner` — leftovers de PRs anteriores del mismo
+  hito), agregó la regla `no-restricted-syntax` que prohíbe los 6 patrones hardcodeados del
+  inventario fuera de los primitivos, y `e2e/visual.spec.ts` (captura de referencia gated
+  `VISUAL=1`, sin pixel-diff); 6.16 fue la revisión de cierre: 6 lentes adversariales sobre
+  TODO el código migrado (no solo el de esta sesión) encontraron 23 hallazgos, 20 confirmados
+  contra el código real, 18 corregidos (2 bloqueantes RNF-6 de touch target, patrón dual
+  tabla/tarjeta completado en 3 pantallas que habían quedado sin rama móvil, ~15 botones
+  <44px sueltos, consistencia semántica de `Badge` entre áreas, contador de caracteres
+  portado a `FieldControl`, accesibilidad de `Alert` con `role` dinámico).
+  **Estrategia de ejecución de esta sesión (distinta a hitos previos):** PRs 0–10 uno por
+  uno (survey con Explore + migración manual); a partir de PR 11 (admin/cursos, el área más
+  grande) se pasó a **Workflow multi-agente** — survey vía Explore, luego pipeline
+  migrar→verificar adversarial contra `git diff` real→corregir por grupo de archivos — que
+  se mantuvo para 12–16. La revisión de cierre (16) usó el mismo patrón a escala de TODO el
+  repo (6 lentes en paralelo → verificación adversarial de cada hallazgo → aplicación de
+  fixes vía otro Workflow). Sin uso de capturas visuales reales (`VISUAL=1`) en esta sesión
+  — el harness quedó construido y listo, pero levantar Supabase local + seeds + build +
+  Playwright para generarlas se evaluó de mayor riesgo de tiempo que valor frente a la
+  revisión a nivel de código, que ya demostró cazar bugs reales (RNF-6, consistencia, a11y).
+  **No cerrado en esta sesión (decisión de producto para Edu, no bug — ver Bloqueos):**
+  `PasswordRequirements` (componente construido para UX-STANDARDS.md §5) no tiene ningún
+  consumidor — no existe una pantalla propia de definir/cambiar contraseña en la app; HU-2.1
+  (recuperación por correo) depende hoy de la página hosteada de Supabase.
+- **Fecha (snapshot anterior):** 2026-07-19 (misma sesión, apertura del hito)
 - **🎨 HITO 6 abierto (overhaul visual UX/UI), sesión autónoma end-to-end.** Con el código
   funcionalmente completo, Edu pidió mejorar la UI (hoy gris por defecto de shadcn, sin app
   shell, branding de tenant no aplicado a la app) e instalar la skill `ui-ux-pro-max` global
   para apoyar el diseño. Plan de 17 PRs aprobado (`feat/h6-6.0` a `feat/h6-6.16`), más los
   estándares transversales pedidos por Edu (4 estados de pantalla, loaders estratégicos,
   errores comprensibles, reglas de formulario) documentados en `docs/design/UX-STANDARDS.md`.
-  Ver sección **HITO 6** más abajo para el detalle y cómo retomar si la sesión se corta.
 - **Fecha (snapshot anterior):** 2026-07-18
 - **🌙 HITO 5 completo de punta a punta en una sesión nocturna autónoma (2026-07-17/18), producido
   con Workflows (Implement → revisión adversarial en 3 lentes aislados → verificación escéptica
@@ -133,7 +165,8 @@
   certificado + firma real · endurecer CSP a enforcing · iniciar trámite Meta · **n8n en Coolify** +
   `N8N_WEBHOOK_URL`/`SECRET` (`docs/n8n/WORKFLOWS.md`) · `APP_BASE_URL` para los correos del worker.
   (Nota: Resend, R2+age, Sentry, Kuma y APP_BASE_URL quedaron HECHOS ese mismo día — ver HANDOFF INFRA ✅.)
-- **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · Hito 2 ✅ (9/9) · **Hito 3 ✅ (12/12)**
+- **Hitos cerrados:** Hito 0 ✅ · Hito 1 ✅ (10/10) · Hito 2 ✅ (9/9) · Hito 3 ✅ (12/12) ·
+  **Hito 6 ✅ (17/17, overhaul UX/UI)**
 - **Hito 2 CERRADO** — las 9 tareas mergeadas (#31–#41), cada una con revisión adversarial
   4-ojos aplicada; migraciones M1–M4 + bucket `submissions` en el cloud; worker VIVO en staging.
   ✅ 2.6 worker (#31) · ✅ correo Resend (#32) · ✅ 2.7 pre-flight (#33) · ✅ 2.4 panel+export
@@ -189,7 +222,8 @@
   subrutas de acción = **guardia anti-#41**; verificación pública con RUN enmascarado) + smoke por rol sin
   scroll horizontal a 360px. Nuevo job `e2e` en CI. **Cierra el gate del Hito 3.**
 - **Hito 3: 12/12 mergeadas. Pendientes: NINGUNO** (los items B/C tienen handoff documentado).
-- **PRs mergeados a `main`:** 73 (incl. #78–#86: revisión H4, fixes, runbooks, rulings) · **Tests:** ~1015 verdes (unit + RLS + integración + E2E 3 flujos)
+- **PRs mergeados a `main`:** 90 (incl. #78–#86: revisión H4, fixes, runbooks, rulings; #112–#128:
+  Hito 6 overhaul UX/UI completo) · **Tests:** 948 unit + RLS + integración + E2E 3 flujos, todos verdes
 - **Staging:** VIVO en https://seminarea.chilearning.cl (D-046 ejecutado; el dominio viejo
   otec-andes.chilearning.cl sigue respondiendo en transición) (login demo en `STAGING-CREDENTIALS.txt`)
 - **Deploy:** auto-deploy GitHub→Coolify activo (merge a `main` despliega solo)
@@ -622,48 +656,125 @@ migrador Moodle · custom domains · app móvil · gamificación · marketplace 
 
 ---
 
-## HITO 6 — Overhaul visual UX/UI ⬜ (0/17, en curso — abierto 2026-07-19)
+## HITO 6 — Overhaul visual UX/UI ✅ (17/17, cerrado 2026-07-19)
 
 **Por qué existe:** con el código funcionalmente completo (Hitos 0–3 y 5 ✅), Edu pidió mejorar
 la UI — hoy es el gris por defecto de shadcn, sin color de marca, sin fuente, sin app shell
 (el dashboard era una lista plana de links), 1 solo primitivo (`Button`) infrautilizado, y
 branding por tenant guardado en BD pero nunca aplicado a la app. Ejecución **autónoma
 end-to-end**: serie de 17 PRs pequeños por área, CI verde y merge por PR, revisión adversarial
-visual al cierre de cada área. Plan completo + decisiones técnicas: sesión del 2026-07-19
-(ver también D-065, D-066).
+al cierre de cada área (y una final global). Plan completo + decisiones técnicas: sesión del
+2026-07-19 (ver también D-065, D-066).
 
 **Alcance del hito:** presentación y experiencia — CERO cambios a lógica de negocio, actions,
-RLS o `src/modules/sence/` (salvo su chrome visual). Guía de diseño:
-[`docs/design/MASTER.md`](../docs/design/MASTER.md) (generado con la skill `ui-ux-pro-max`,
-instalada global, curado a mano — su output crudo quedó archivado en
+RLS o `src/modules/sence/` (salvo su chrome visual, y verificado explícitamente por una lente
+de la revisión de cierre que no encontró ningún import nuevo fuera de los ya documentados).
+Guía de diseño: [`docs/design/MASTER.md`](../docs/design/MASTER.md) (generado con la skill
+`ui-ux-pro-max`, instalada global, curado a mano — su output crudo quedó archivado en
 `docs/design/ui-ux-pro-max-raw-output.md`) + [`docs/design/UX-STANDARDS.md`](../docs/design/UX-STANDARDS.md)
 (4 estados de pantalla, loaders estratégicos, errores comprensibles, reglas de formulario —
 pedido explícito de Edu, se aplica a toda pantalla migrada).
 
-Secuencia (rama `feat/h6-6.X-*`, ver `specs/03-tareas.md` para el detalle de cada tarea):
+- ✅ **6.0** Spec + `docs/design/MASTER.md` + `docs/design/UX-STANDARDS.md` — **#112**: registra
+  el hito en `03-tareas.md`/`ESTADO-PROYECTO.md`/`DECISIONES.md` (D-065 paleta azul/cyan sobre
+  la del generador teal/ámbar, D-066 skill como tooling dev). Paleta final: `blue-900`
+  (`--primary`) + `sky-500` (`--accent`), ya el default de `branding-service.ts`.
+- ✅ **6.1** Design tokens oklch (paleta real derivada de Tailwind v4, neutrales `slate` con
+  chroma, `--success`/`--warning` nuevos) + Inter (`next/font/google`) + fix de escala táctil
+  del `Button` (h-8/36px → h-11/44px, violaba RNF-6 desde el inicio del proyecto) — **#113**.
+- ✅ **6.2** Primitivos estáticos (`card`, `input`, `textarea`, `field`, `badge`, `alert`,
+  `skeleton`, `spinner`, `progress`, `page-header`, `empty-state`) + `phone.ts` (normalizador
+  tolerante `+56 9`, deja poblable `user_metadata.phone` para WhatsApp 5.11) — **#114**.
+- ✅ **6.3** Primitivos interactivos (`tabs`, `select`, `checkbox`, `radio-group`, `switch`,
+  `dialog`, `alert-dialog`, `sheet`, `dropdown-menu`, `tooltip`, `password-requirements`),
+  `Button` con prop `loading` (spinner con delay anti-flash ~400ms) — **#115**.
+- ✅ **6.4** Tabla responsive (`table.tsx`, patrón "render doble explícito" tabla≥sm/cards<sm,
+  sin colapso automático — decisión deliberada, cada tabla define su propia forma) probada en
+  el gradebook real — **#116**.
+- ✅ **6.5** Dark mode completo: script anti-FOUC en `<head>` (`localStorage` `chilearning-theme`
+  + `matchMedia`, corre antes del primer paint), provider, toggle en topbar + `/preferencias`
+  — **#117**.
+- ✅ **6.6** Branding por tenant en runtime: RPC `tenant_branding_by_slug` (espejo de
+  `tenant_status_by_slug`, cliente anon + TTL), `brand-palette.ts` con clamp de contraste
+  server-side (AA garantizado aunque el color guardado sea advisory), `<TenantBrandStyle>`,
+  co-brand del login — **#118**. Migración aplicada al cloud.
+- ✅ **6.7** App shell (`src/components/shell/`: sidebar/topbar/nav-config puro con test,
+  `getPrincipal()` en `React.cache()`), layouts por rol de 3 líneas, `error.tsx`/patrón
+  `loading.tsx` por área, dashboard rediseñado como home real de LMS — **#119**.
+- ✅ **6.8** Migración área pública (landing, login con Tabs, privacidad, verificar, consentimiento,
+  suspendido) — **#120**.
+- ✅ **6.9** Migración área alumno (`mi-curso/*` completo, mis-datos, preferencias) — **#121**.
+- ✅ **6.10** Migración área tablero (instructor/tutor: entregas, notas, gradebook) — **#122**.
+- ✅ **6.11** Migración admin cursos + asistente IA de creación (wizard de 7 pasos, Stepper
+  propio conservado — NO se forzó `Tabs`, el wizard tiene gating server-side direccional que
+  Tabs no modela bien) — **#123**. 28 archivos; 4 `window.confirm()` → `AlertDialog`.
+- ✅ **6.12** Migración admin acciones + inscripciones (chrome visual únicamente;
+  `src/modules/sence/` intocable — el único punto de contacto,
+  `acciones/[id]/preflight/page.tsx`, conserva sus imports carácter-por-carácter) — **#124**.
+  Primera tarea ejecutada vía **workflow multi-agente** (10 grupos: migrar → verificar
+  adversarialmente contra `git diff` real → corregir), patrón que se mantuvo hasta el cierre.
+- ✅ **6.13** Migración resto de admin (sence UI, marca —color picker + preview en vivo + contraste
+  WCAG—, correos, mensajes, empresas, supervisores, derechos, exportación, vencimientos,
+  tutor-ia) — **#125**. Verificado: el token SENCE nunca se expone (input password, placeholder
+  de bullets, servicio write-only).
+- ✅ **6.14** Migración portales (supervisor, empresa, superadmin) + `src/components/reportes/
+  compliance-panel.tsx` (componente compartido entre admin/cumplimiento y supervisor, se migró
+  una sola vez) — **#126**.
+- ✅ **6.15** Polish: `cursor-pointer` en primitivos interactivos (faltaba en todos, el navegador
+  no lo da por defecto en `<button>`), auditoría de foco (sin hallazgos — todo `outline-none`
+  ya traía su `focus-visible:ring`), 3 regresiones reales de PRs anteriores corregidas
+  (`mis-datos`, `scorm-player`, `attempt-runner` con `.input`/colores crudos que habían quedado
+  fuera del inventario mecánico original), eliminación de la clase legacy `.input` de
+  `globals.css`, regla ESLint `no-restricted-syntax` (6 patrones prohibidos fuera de
+  `src/components/ui/`), `e2e/visual.spec.ts` (captura de referencia `VISUAL=1`, cobertura
+  honesta: solo público+admin+coordinator+student, los únicos roles con `storageState`
+  sembrado) — **#127**.
+- ✅ **6.16** Cierre: revisión adversarial en 6 lentes (touch targets RNF-6, consistencia
+  semántica entre áreas, cobertura dark mode, límite de `sence/`, estándares de formulario,
+  uso de primitivos) sobre **todo** el código migrado del hito, no solo PRs recientes — **#128**.
+  20/23 hallazgos confirmados contra el código real; 18 corregidos: 2 bloqueantes (dashboard,
+  descartar borrador, ambos 36px como única vía táctil), patrón dual tabla/tarjeta completado
+  en `admin/cursos`/`admin/acciones`/paquetes SCORM, ~15 touch targets sueltos, `Badge`
+  "Revocado" unificado a `destructive` en todas las áreas, DJ/DSR con variant por estado real
+  en vez de `secondary` fijo, contador de caracteres portado a `FieldControl` (hook compartido
+  `useCharacterCount`), `role` dinámico de `Alert` en verificación pública + preflight SENCE.
+  2 hallazgos NO corregidos por ser decisión de producto, no bug de código (ver más abajo).
 
-- 6.0 ⬜ Spec + `MASTER.md` + `UX-STANDARDS.md`
-- 6.1 ⬜ Design tokens oklch + Inter + fix escala táctil del Button
-- 6.2 ⬜ Primitivos estáticos + `phone.ts`
-- 6.3 ⬜ Primitivos interactivos
-- 6.4 ⬜ Tabla responsive (probada en gradebook real)
-- 6.5 ⬜ Dark mode completo
-- 6.6 ⬜ Branding por tenant en runtime
-- 6.7 ⬜ App shell + layouts por rol + error/loading + dashboard rediseñado
-- 6.8 ⬜ Migración: área pública
-- 6.9 ⬜ Migración: área alumno
-- 6.10 ⬜ Migración: área tablero
-- 6.11 ⬜ Migración: admin cursos
-- 6.12 ⬜ Migración: admin acciones + inscripciones
-- 6.13 ⬜ Migración: resto de admin
-- 6.14 ⬜ Migración: portales
-- 6.15 ⬜ Polish + motion + regla ESLint anti-regresión
-- 6.16 ⬜ Cierre: revisión adversarial visual global + snapshot final
+**Gate del Hito 6 — ✅ verificado:** las ~64 páginas de la app migradas a `src/components/ui/*`;
+0 imports nuevos de `src/modules/sence/` fuera de los 2 ya documentados; token SENCE nunca
+expuesto; regla ESLint activa que impide reintroducir los patrones hardcodeados; CI verde
+(build+rls+integration+e2e) en las 17 PRs; 948 tests unitarios verdes en cada merge.
+
+**Follow-up de producto (no bloquea, anotado por la revisión de cierre 6.16):**
+`src/components/ui/password-requirements.tsx` (construido para UX-STANDARDS.md §5) no tiene
+ningún consumidor — grep confirma cero imports en toda la app. No existe una pantalla propia
+de definir/cambiar contraseña: `login/page.tsx` solo hace `signInWithPassword`/`signInWithOtp`,
+y los 3 `generateLink({type:"recovery"})` (`tenant-service.ts`, `company-service.ts`,
+`supervisor-grant-service.ts`) dependen de la página hosteada de Supabase. HU-2.1
+("recuperación de contraseña por correo") queda cumplida solo por ese camino externo. Decisión
+pendiente de Edu: (a) construir `src/app/auth/set-password/page.tsx` que use
+`supabase.auth.updateUser({password})` + `PasswordRequirements`, o (b) documentar el
+componente como scaffolding a futuro y seguir usando la página hosteada.
+
+**No usado en esta sesión (herramienta lista, no ejecutada):** `e2e/visual.spec.ts` requiere
+`VISUAL=1` + Supabase local + `next build` + `pnpm start` para generar capturas reales — no se
+corrió (se evaluó de mayor riesgo de tiempo que valor frente a la revisión a nivel de código,
+que sí se ejecutó exhaustivamente y cazó bugs reales). Queda disponible para cuando se quiera
+una revisión visual con capturas reales.
 
 ---
 
 ## 🔁 Follow-ups técnicos / deuda conocida (no bloquea, pero anotado)
 
+- **`PasswordRequirements` sin pantalla propia** (detectado en la revisión de cierre del Hito 6,
+  #128): el componente está construido y listo pero nada lo importa — no existe una pantalla de
+  definir/cambiar contraseña en la app; HU-2.1 depende hoy de la página hosteada de Supabase para
+  el flujo de recovery. Decisión pendiente de Edu: construir `src/app/auth/set-password/page.tsx`
+  o documentar el componente como scaffolding. Ver detalle en §HITO 6.
+- **`e2e/visual.spec.ts` nunca ejecutado con `VISUAL=1`** (Hito 6, #127): el harness de captura
+  visual de referencia está listo (público+admin+coordinator+student, 2 viewports × 2 temas) pero
+  no se corrió en la sesión que lo construyó — requiere Supabase local + build + seeds. Disponible
+  para cuando se quiera una revisión visual con capturas reales en vez de solo a nivel de código.
 - **Worker de expiración SENCE**: implementado en PR #31 (2.6). Follow-ups que dejó: alerta de
   spike de eventos `unmatched` (hoy fuera del cálculo de tasa) · conectar correo de alertas al
   EmailSender (PR de Resend de este hito) · desplegar Redis+worker en staging y prod.

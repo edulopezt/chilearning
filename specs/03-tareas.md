@@ -143,8 +143,8 @@ en la sesión que abrió el hito (2026-07-19).
 - 6.14 ✅ Migración: portales (supervisor, empresa, superadmin) — RNF-6 (#126)
 - 6.15 ✅ Polish: motion, auditoría de foco/contraste en ambos modos, capturas visuales
   (`VISUAL=1`), regla ESLint anti-regresión de estilos hardcodeados — RNF-6
-- 6.16 ⬜ Cierre: revisión adversarial visual global (worktrees aislados) + fixes + snapshot
-  final en `ESTADO-PROYECTO.md`
+- 6.16 ✅ Cierre: revisión adversarial global (6 lentes vía workflow multi-agente) + fixes +
+  snapshot final en `ESTADO-PROYECTO.md` (#128)
 
 ## Backlog v2 (no ahora — anotado para no perderlo)
 
