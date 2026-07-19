@@ -24,7 +24,15 @@
 
 ## 📸 Snapshot actual  ← ACTUALIZAR CADA SESIÓN
 
-- **Fecha:** 2026-07-18
+- **Fecha:** 2026-07-19
+- **🎨 HITO 6 abierto (overhaul visual UX/UI), sesión autónoma end-to-end.** Con el código
+  funcionalmente completo, Edu pidió mejorar la UI (hoy gris por defecto de shadcn, sin app
+  shell, branding de tenant no aplicado a la app) e instalar la skill `ui-ux-pro-max` global
+  para apoyar el diseño. Plan de 17 PRs aprobado (`feat/h6-6.0` a `feat/h6-6.16`), más los
+  estándares transversales pedidos por Edu (4 estados de pantalla, loaders estratégicos,
+  errores comprensibles, reglas de formulario) documentados en `docs/design/UX-STANDARDS.md`.
+  Ver sección **HITO 6** más abajo para el detalle y cómo retomar si la sesión se corta.
+- **Fecha (snapshot anterior):** 2026-07-18
 - **🌙 HITO 5 completo de punta a punta en una sesión nocturna autónoma (2026-07-17/18), producido
   con Workflows (Implement → revisión adversarial en 3 lentes aislados → verificación escéptica
   independiente → fix → gates, por cada PR).** Las 13 tareas (5.1–5.13) están mergeadas a `main`
@@ -611,6 +619,46 @@ Falta solo verificación humana en staging del **correo real** (needs `RESEND_AP
 
 **Backlog v2 (no ahora):** pasarela de pago chilena · LCE presencial · API LMS↔SIC + líneas 1/6 ·
 migrador Moodle · custom domains · app móvil · gamificación · marketplace · alta disponibilidad.
+
+---
+
+## HITO 6 — Overhaul visual UX/UI ⬜ (0/17, en curso — abierto 2026-07-19)
+
+**Por qué existe:** con el código funcionalmente completo (Hitos 0–3 y 5 ✅), Edu pidió mejorar
+la UI — hoy es el gris por defecto de shadcn, sin color de marca, sin fuente, sin app shell
+(el dashboard era una lista plana de links), 1 solo primitivo (`Button`) infrautilizado, y
+branding por tenant guardado en BD pero nunca aplicado a la app. Ejecución **autónoma
+end-to-end**: serie de 17 PRs pequeños por área, CI verde y merge por PR, revisión adversarial
+visual al cierre de cada área. Plan completo + decisiones técnicas: sesión del 2026-07-19
+(ver también D-065, D-066).
+
+**Alcance del hito:** presentación y experiencia — CERO cambios a lógica de negocio, actions,
+RLS o `src/modules/sence/` (salvo su chrome visual). Guía de diseño:
+[`docs/design/MASTER.md`](../docs/design/MASTER.md) (generado con la skill `ui-ux-pro-max`,
+instalada global, curado a mano — su output crudo quedó archivado en
+`docs/design/ui-ux-pro-max-raw-output.md`) + [`docs/design/UX-STANDARDS.md`](../docs/design/UX-STANDARDS.md)
+(4 estados de pantalla, loaders estratégicos, errores comprensibles, reglas de formulario —
+pedido explícito de Edu, se aplica a toda pantalla migrada).
+
+Secuencia (rama `feat/h6-6.X-*`, ver `specs/03-tareas.md` para el detalle de cada tarea):
+
+- 6.0 ⬜ Spec + `MASTER.md` + `UX-STANDARDS.md`
+- 6.1 ⬜ Design tokens oklch + Inter + fix escala táctil del Button
+- 6.2 ⬜ Primitivos estáticos + `phone.ts`
+- 6.3 ⬜ Primitivos interactivos
+- 6.4 ⬜ Tabla responsive (probada en gradebook real)
+- 6.5 ⬜ Dark mode completo
+- 6.6 ⬜ Branding por tenant en runtime
+- 6.7 ⬜ App shell + layouts por rol + error/loading + dashboard rediseñado
+- 6.8 ⬜ Migración: área pública
+- 6.9 ⬜ Migración: área alumno
+- 6.10 ⬜ Migración: área tablero
+- 6.11 ⬜ Migración: admin cursos
+- 6.12 ⬜ Migración: admin acciones + inscripciones
+- 6.13 ⬜ Migración: resto de admin
+- 6.14 ⬜ Migración: portales
+- 6.15 ⬜ Polish + motion + regla ESLint anti-regresión
+- 6.16 ⬜ Cierre: revisión adversarial visual global + snapshot final
 
 ---
 
