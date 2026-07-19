@@ -42,16 +42,22 @@ export function principalFromClaims(claims: {
   return { userId, tenantId, roles };
 }
 
-export function isSuperadmin(p: Principal): boolean {
+// `Pick<Principal, "roles">` (no `Principal` completo): estas 3 funciones
+// solo miran `.roles`, y así también sirven donde solo hay roles a mano —
+// ej. `nav-config.ts` (task 6.7), que nunca recibe el Principal completo
+// (userId/tenantId no cruzan la frontera Server→Client Component).
+type RoleSource = Pick<Principal, "roles">;
+
+export function isSuperadmin(p: RoleSource): boolean {
   return p.roles.includes("superadmin");
 }
 
-export function hasRole(p: Principal, role: RoleKey): boolean {
+export function hasRole(p: RoleSource, role: RoleKey): boolean {
   return p.roles.includes(role);
 }
 
 /** True si el principal tiene AL MENOS uno de los roles pedidos. */
-export function hasAnyRole(p: Principal, roles: readonly RoleKey[]): boolean {
+export function hasAnyRole(p: RoleSource, roles: readonly RoleKey[]): boolean {
   return roles.some((r) => p.roles.includes(r));
 }
 

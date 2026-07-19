@@ -5,6 +5,7 @@
 export const esCL = {
   common: {
     appName: "Chilearning",
+    close: "Cerrar",
   },
   /**
    * Landing comercial PROVISIONAL (task 5.6). La marca definitiva es decisión
@@ -131,6 +132,9 @@ export const esCL = {
     yourTenant: "Tu organización",
     platformAdmin: "Administrador de plataforma (sin organización)",
     goToCourse: "Ir a mi curso",
+    open: "Entrar",
+    noAccessTitle: "Sin accesos configurados",
+    noAccessDescription: "Tu cuenta no tiene ningún acceso habilitado todavía. Contacta a tu administrador.",
   },
   emails: {
     title: "Correos a tus alumnos",
@@ -1713,6 +1717,17 @@ export const esCL = {
     themeSystem: "Sistema",
     appearanceTitle: "Apariencia",
     appearanceDescription: "Elige cómo se ve Chilearning en este dispositivo.",
+    // Hito 6: navegación del app shell (task 6.7).
+    skipToContent: "Saltar al contenido",
+    openMenu: "Abrir menú",
+    mainNav: "Navegación principal",
+    account: "Mi cuenta",
+    quickAccess: "Accesos rápidos",
+    errorTitle: "Algo no salió bien",
+    errorDescription: "No pudimos cargar esta página. Puede ser un problema momentáneo — intenta de nuevo.",
+    errorRetry: "Reintentar",
+    adminArea: "Administración",
+    preferences: "Preferencias",
   },
 } as const;
 

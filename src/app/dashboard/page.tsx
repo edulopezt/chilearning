@@ -1,15 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { InboxIcon } from "lucide-react";
 
 import { esCL } from "@/i18n/es-CL";
 import { getPrincipal } from "@/modules/core/auth/session";
-import { hasRole, isSuperadmin } from "@/modules/core/domain/rbac";
-import { SignOutButton } from "./sign-out-button";
+import { isSuperadmin } from "@/modules/core/domain/rbac";
+import { navForRoles } from "@/components/shell/nav-config";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { cn } from "@/lib/utils";
+
+const t = esCL.dashboard;
 
 /**
- * Página protegida mínima (HU-2.1/2.3): si no hay sesión, el middleware ya
- * redirige a /login. Aquí se muestra el Principal derivado de los claims del
- * Auth Hook, probando que el circuito login → claims → RBAC funciona.
+ * Home del alumno/staff (HU-2.1/2.3, rediseñado task 6.7): una tarjeta por
+ * área alcanzable — misma fuente que el sidebar (`navForRoles`), así que
+ * nunca se desincroniza de lo que el usuario realmente puede hacer.
  */
 export default async function DashboardPage() {
   const principal = await getPrincipal();
@@ -21,130 +30,64 @@ export default async function DashboardPage() {
     redirect("/supervisor");
   }
 
+  const areas = navForRoles(principal);
+
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 p-6">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">{esCL.dashboard.title}</h1>
-        <SignOutButton />
-      </header>
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-6">
+      <PageHeader
+        title={t.title}
+        description={isSuperadmin(principal) ? t.platformAdmin : undefined}
+        actions={
+          <div className="flex flex-wrap gap-1.5">
+            {principal.roles.map((role) => (
+              <Badge key={role} variant="secondary">
+                {role}
+              </Badge>
+            ))}
+          </div>
+        }
+      />
 
-      <p className="text-green-700 dark:text-green-400">{esCL.dashboard.welcome}</p>
-
-      <dl className="flex flex-col gap-3 text-sm">
-        <div>
-          <dt className="text-muted-foreground">{esCL.dashboard.yourTenant}</dt>
-          <dd className="font-mono">
-            {isSuperadmin(principal)
-              ? esCL.dashboard.platformAdmin
-              : (principal.tenantId ?? "—")}
-          </dd>
+      {areas.length === 0 ? (
+        <EmptyState icon={<InboxIcon />} title={t.noAccessTitle} description={t.noAccessDescription} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {areas.map((area) => {
+            const Icon = area.icon;
+            return (
+              <Card key={area.key} className="gap-4">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="size-5" />
+                    </div>
+                    <CardTitle>{area.label}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <Link href={area.href} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "self-start")}>
+                    {t.open}
+                  </Link>
+                  {area.items.length > 1 ? (
+                    <ul className="flex flex-col gap-1">
+                      {area.items.slice(0, 4).map((item) => (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-        <div>
-          <dt className="text-muted-foreground">{esCL.dashboard.yourRoles}</dt>
-          <dd className="font-medium">{principal.roles.join(", ") || "—"}</dd>
-        </div>
-      </dl>
-
-      <nav className="flex flex-wrap gap-3">
-        {hasRole(principal, "student") ? (
-          <Link
-            href="/mi-curso"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-neutral-900 px-4 font-medium text-white dark:bg-white dark:text-neutral-900"
-          >
-            {esCL.dashboard.goToCourse}
-          </Link>
-        ) : null}
-        {hasRole(principal, "otec_admin") ? (
-          <>
-            <Link
-              href="/admin/sence"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.senceAdmin.title}
-            </Link>
-            <Link
-              href="/admin/marca"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.branding.title}
-            </Link>
-            <Link
-              href="/admin/correos"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.emails.title}
-            </Link>
-          </>
-        ) : null}
-        {/* `tutor-admin-service.ts` (`canManage()`) autoriza otec_admin O
-            coordinator — bloque separado del anterior (solo otec_admin) para
-            que un coordinador también tenga cómo descubrir/llegar (hallazgo
-            de revisión de spec-compliance, 2026-07-18: el backend concedía
-            más de lo que el dashboard dejaba descubrir). */}
-        {hasRole(principal, "otec_admin") || hasRole(principal, "coordinator") ? (
-          <Link
-            href="/admin/tutor-ia"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-          >
-            {esCL.tutorIA.adminTitle}
-          </Link>
-        ) : null}
-        {hasRole(principal, "otec_admin") ||
-        hasRole(principal, "coordinator") ||
-        hasRole(principal, "instructor") ||
-        hasRole(principal, "tutor") ? (
-          <>
-            <Link
-              href="/tablero"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.board.title}
-            </Link>
-            <Link
-              href="/tablero/entregas"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.grading.title}
-            </Link>
-            <Link
-              href="/tablero/notas"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.gradebook.title}
-            </Link>
-          </>
-        ) : null}
-        {hasRole(principal, "supervisor") ? (
-          <Link
-            href="/supervisor"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-          >
-            {esCL.supervisorPortal.dashboardLink}
-          </Link>
-        ) : null}
-        {hasRole(principal, "otec_admin") || hasRole(principal, "coordinator") ? (
-          <>
-            <Link
-              href="/admin/cursos"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.courses.title}
-            </Link>
-            <Link
-              href="/admin/acciones"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.actions.title}
-            </Link>
-            <Link
-              href="/admin/inscripciones"
-              className="inline-flex min-h-11 items-center justify-center rounded-md border px-4 font-medium"
-            >
-              {esCL.enrollmentImport.title}
-            </Link>
-          </>
-        ) : null}
-      </nav>
+      )}
     </main>
   );
 }
